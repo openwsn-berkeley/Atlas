@@ -32,9 +32,9 @@ def ObstacleAvoidAlg(start, target,grid):
         y=currentNode[1]
         neighbourNodes = [(x+1,y),(x+1,y+1),(x,y+1),(x-1,y+1),(x-1,y),(x-1,y-1),(x,y-1),(x+1,y-1)]
         avaliableNext=[]
-        print(neighbourNodes)
+        #print(neighbourNodes)
         for node in neighbourNodes:
-            print("node = ", node)
+            #print("node = ", node)
             NN=node
             #print(NN[0],NN[1])
             #print(grid[NN[0]][NN[1]])
@@ -43,14 +43,15 @@ def ObstacleAvoidAlg(start, target,grid):
                     #idx=neighbourNodes.index(node)
                     #print("index =" , idx)
                 avaliableNext.append(node)        
-        print(avaliableNext)
+        #print(avaliableNext)
         if avaliableNext==[]:
-            return print("no path avaliable")
+            print("no path avaliable")
+            return avaliableNext
         else:
             moveTo = avaliableNext[random.randint(0,len(avaliableNext)-1)]
-            print(moveTo)
+            #print(moveTo)
             onlinePath.append(moveTo)
-            print("online path so far is ", onlinePath)
+            #print("online path so far is ", onlinePath)
             currentNode=moveTo
     
     print(onlinePath)
@@ -72,32 +73,33 @@ def AstarAlgorithm(start, target,grid):
         neighbourNodes = [(x+1,y),(x+1,y+1),(x,y+1),(x-1,y+1),(x-1,y),(x-1,y-1),(x,y-1),(x+1,y-1)]
         childNodes=[]
         costF=[]
-        print(neighbourNodes)
+        #print(neighbourNodes)
         for node in neighbourNodes:
-            print("node = ", node)
+            #print("node = ", node)
             NN=node
             idx=neighbourNodes.index(node)
             if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])==1:
                 if(node != (0,0)) and (node in astarPath) == False:
-                    print("index =" , idx)
+                    #print("index =" , idx)
                     childNodes.append(node)
                     g=g+1
                     h=((currentNode[0]-target[0])**2 + (currentNode[1]-target[1])**2)
                     f=g+h
                     costF.append(node)
-                    print("costs", costF)
+                    #print("costs", costF)
                     
-        print(childNodes)
+        #print(childNodes)
         if childNodes==[]:
-            return print("no path avaliable")
+            print("no path avaliable")
+            return childNodes
         else:
             minCost=min(costF)
-            print("minF = ", costF)
-            print(costF.index(minCost))
+            #print("minF = ", costF)
+            #print(costF.index(minCost))
             moveTo = childNodes[costF.index(minCost)]
-            print(moveTo)
+            #print(moveTo)
             astarPath.append(moveTo)
-            print("astarPath path so far is ", astarPath)
+            #print("astarPath path so far is ", astarPath)
             currentNode=moveTo
     
     print(astarPath)
@@ -107,7 +109,11 @@ def AstarAlgorithm(start, target,grid):
 calculates steps taken from source to destination
 '''
 def singleRun(grid,obstacle,start,target,navAlg,runRun):
-    steps = random.randint(10,100)
+    
+    if navAlg == 1:
+        steps=len(AstarAlgorithm(start,target,grid))
+    elif navAlg == 2:
+        steps=len(ObstacleAvoidAlg(start,target,grid))
     return steps
 
 #============================ main ============================================
@@ -116,43 +122,38 @@ def singleRun(grid,obstacle,start,target,navAlg,runRun):
 asks user for the navigation algorithm they want to run then runs the specific function for it and returns the steps taken from start node to destination
 '''
 def main():
-    grids      = [(20,20),(50,50)] # FIXME
-    obstacles  = ['foo','bar']     # FIXME
-    starts     = [(1,2),(3,4)]     # FIXME
-    targets    = [(5,6),(7,8)]     # FIXME
-    numRuns    = 100
-    navAlg     = None              # FIXME
-    rows = random.randint(5,21)
-    cols = random.randint(5,21)
-    grid = genRandGrid(rows,cols)
-    start=(0,0)
-    target=(0,5)
-    AstarAlgorithm(start,target,grid)
-    ObstacleAvoidAlg(start,target,grid)
-    
+    grids      = [genRandGrid(10,10),genRandGrid(15,15)] 
+    obstacles  = ['foo','bar']     # FIXME [for now the grid is generated with random obstacles]
+    starts     = [(0,1),(2,2)]     
+    targets    = [(5,6),(7,8)]     
+    numRuns    = 10
+    navAlgs     = [1,2]             
+
+
     # run all simulations
     with open('HNOO.log','w') as f:
         for grid in grids:
             for obstacle in obstacles:
                 for start in starts:
                     for target in targets:
-                        for runRun in range(numRuns):
-                        
-                            # run  single run
-                            steps = singleRun(grid,obstacle,start,target,navAlg,runRun)
+                        for navAlg in navAlgs:
+                            for runRun in range(numRuns):
                             
-                            # log the results
-                            f.write(json.dumps(
-                                {
-                                    'grid':     grid,
-                                    'obstacle': obstacle,
-                                    'start':    start,
-                                    'target':   target,
-                                    'runRun':   runRun,
-                                    'steps':    steps,
-                                }
-                            )+'\n')
-    
+                                # run  single run
+                                steps = singleRun(grid,obstacle,start,target,navAlg,runRun)
+                                
+                                # log the results
+                                f.write(json.dumps(
+                                    {
+                                       # 'grid':     grid,
+                                        'obstacle': obstacle,
+                                        'start':    start,
+                                        'target':   target,
+                                        'runRun':   runRun,
+                                        'steps':    steps,
+                                    }
+                                )+'\n')
+                            
     # analyze the results
     dist_steps = []
     with open('HNOO.log','r') as f:
