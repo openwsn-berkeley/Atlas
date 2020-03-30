@@ -19,6 +19,18 @@ def genRandGrid(rows,cols):
     randGrid=np.random.randint(2, size=(rows, cols))
     print(randGrid)
     return randGrid
+    
+'''
+gets pre-defined grids using dimentions
+'''
+def getGrid():
+    grid1 = [[1,1,0,1,0,1,1,1,1,0],
+            [1,0,1,0,0,1,0,0,1,0],
+            [0,1,1,0,1,1,0,0,1,0],
+            [1,1,1,1,0,1,0,0,1,1],
+            [1,1,1,0,0,1,0,0,1,1],]
+    print(grid1)
+    return grid1
 '''
 performs online obstacle avoidance and returns the path found 
 '''  
@@ -34,10 +46,7 @@ def ObstacleAvoidAlg(start, target,grid):
         avaliableNext=[]
         #print(neighbourNodes)
         for node in neighbourNodes:
-            #print("node = ", node)
             NN=node
-            #print(NN[0],NN[1])
-            #print(grid[NN[0]][NN[1]])
             if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])== 1:
                 #if((node in onlinePath) == False):
                     #idx=neighbourNodes.index(node)
@@ -51,7 +60,7 @@ def ObstacleAvoidAlg(start, target,grid):
             moveTo = avaliableNext[random.randint(0,len(avaliableNext)-1)]
             #print(moveTo)
             onlinePath.append(moveTo)
-            #print("online path so far is ", onlinePath)
+            print("online path so far is ", onlinePath)
             currentNode=moveTo
     
     print(onlinePath)
@@ -99,7 +108,7 @@ def AstarAlgorithm(start, target,grid):
             moveTo = childNodes[costF.index(minCost)]
             #print(moveTo)
             astarPath.append(moveTo)
-            #print("astarPath path so far is ", astarPath)
+            print("astarPath path so far is ", astarPath)
             currentNode=moveTo
     
     print(astarPath)
@@ -122,12 +131,12 @@ def singleRun(grid,obstacle,start,target,navAlg,runRun):
 asks user for the navigation algorithm they want to run then runs the specific function for it and returns the steps taken from start node to destination
 '''
 def main():
-    grids      = [genRandGrid(10,10),genRandGrid(15,15)] 
-    obstacles  = ['foo','bar']     # FIXME [for now the grid is generated with random obstacles]
-    starts     = [(0,1),(2,2)]     
-    targets    = [(5,6),(7,8)]     
-    numRuns    = 10
-    navAlgs     = [1,2]             
+    grids      = [genRandGrid(10,10)] 
+    obstacles  = ['foo']     # FIXME [for now the grid is generated with random obstacles]
+    starts     = [(0,0)]     
+    targets    = [(6,0)]     
+    numRuns    = 2
+    navAlgs     = [2]             
 
 
     # run all simulations
@@ -145,7 +154,7 @@ def main():
                                 # log the results
                                 f.write(json.dumps(
                                     {
-                                       # 'grid':     grid,
+                                        #'grid':     grid,
                                         'obstacle': obstacle,
                                         'start':    start,
                                         'target':   target,
