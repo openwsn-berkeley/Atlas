@@ -8,6 +8,7 @@ import json
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+#==============================================================================
 
 #============================ helper functions ================================
 '''
@@ -37,11 +38,11 @@ def ObstacleAvoidAlg(start, target,grid):
             NN=node
             #print(NN[0],NN[1])
             #print(grid[NN[0]][NN[1]])
-            if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])==1:
-                if(node != (0,0)) and (node in onlinePath) == False:
-                    idx=neighbourNodes.index(node)
-                    print("index =" , idx)
-                    avaliableNext.append(node)        
+            if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])== 1:
+                #if((node in onlinePath) == False):
+                    #idx=neighbourNodes.index(node)
+                    #print("index =" , idx)
+                avaliableNext.append(node)        
         print(avaliableNext)
         if avaliableNext==[]:
             return print("no path avaliable")
@@ -54,6 +55,53 @@ def ObstacleAvoidAlg(start, target,grid):
     
     print(onlinePath)
     return onlinePath
+
+
+'''
+performs A* algorithm to find shortest path from start to target
+'''
+def AstarAlgorithm(start, target,grid):
+    
+    currentNode = start
+    astarPath = [start]
+    
+    while (currentNode != target):
+        x=currentNode[0]
+        y=currentNode[1]
+        g=0
+        neighbourNodes = [(x+1,y),(x+1,y+1),(x,y+1),(x-1,y+1),(x-1,y),(x-1,y-1),(x,y-1),(x+1,y-1)]
+        childNodes=[]
+        costF=[]
+        print(neighbourNodes)
+        for node in neighbourNodes:
+            print("node = ", node)
+            NN=node
+            idx=neighbourNodes.index(node)
+            if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])==1:
+                if(node != (0,0)) and (node in astarPath) == False:
+                    print("index =" , idx)
+                    childNodes.append(node)
+                    g=g+1
+                    h=((currentNode[0]-target[0])**2 + (currentNode[1]-target[1])**2)
+                    f=g+h
+                    costF.append(node)
+                    print("costs", costF)
+                    
+        print(childNodes)
+        if childNodes==[]:
+            return print("no path avaliable")
+        else:
+            minCost=min(costF)
+            print("minF = ", costF)
+            print(costF.index(minCost))
+            moveTo = childNodes[costF.index(minCost)]
+            print(moveTo)
+            astarPath.append(moveTo)
+            print("astarPath path so far is ", astarPath)
+            currentNode=moveTo
+    
+    print(astarPath)
+    return astarPath
 
 '''
 calculates steps taken from source to destination
@@ -78,8 +126,10 @@ def main():
     cols = random.randint(5,21)
     grid = genRandGrid(rows,cols)
     start=(0,0)
-    target=(5,5)
+    target=(0,5)
+    AstarAlgorithm(start,target,grid)
     ObstacleAvoidAlg(start,target,grid)
+    
     # run all simulations
     with open('HNOO.log','w') as f:
         for grid in grids:
