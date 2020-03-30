@@ -48,10 +48,10 @@ def ObstacleAvoidAlg(start, target,grid):
         for node in neighbourNodes:
             NN=node
             if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])== 1:
-                #if((node in onlinePath) == False):
+                if((node in onlinePath) == False):
                     #idx=neighbourNodes.index(node)
                     #print("index =" , idx)
-                avaliableNext.append(node)        
+                    avaliableNext.append(node)        
         #print(avaliableNext)
         if avaliableNext==[]:
             print("no path avaliable")
@@ -63,7 +63,7 @@ def ObstacleAvoidAlg(start, target,grid):
             print("online path so far is ", onlinePath)
             currentNode=moveTo
     
-    print(onlinePath)
+    print("Full Online path",onlinePath)
     return onlinePath
 
 
@@ -111,7 +111,7 @@ def AstarAlgorithm(start, target,grid):
             print("astarPath path so far is ", astarPath)
             currentNode=moveTo
     
-    print(astarPath)
+    print("Full A* Path" , astarPath)
     return astarPath
 
 '''
@@ -131,12 +131,12 @@ def singleRun(grid,obstacle,start,target,navAlg,runRun):
 asks user for the navigation algorithm they want to run then runs the specific function for it and returns the steps taken from start node to destination
 '''
 def main():
-    grids      = [genRandGrid(10,10)] 
-    obstacles  = ['foo']     # FIXME [for now the grid is generated with random obstacles]
-    starts     = [(0,0)]     
-    targets    = [(6,0)]     
-    numRuns    = 2
-    navAlgs     = [2]             
+    grids      = [genRandGrid(10,10),genRandGrid(12,12)] 
+    obstacles  = ['foo','boo']     # FIXME [for now the grid is generated with random obstacles]
+    starts     = [(0,0),(1,2)]     
+    targets    = [(6,0),(3,5)]     
+    numRuns    = 10
+    navAlgs     = [2,1]             
 
 
     # run all simulations
@@ -179,8 +179,8 @@ def main():
     plt.ylim(0, 0.03)
     plt.grid(True)
     '''
-   # plt.show()
-   # plt.savefig('HNOO.png')
+    plt.show()
+    plt.savefig('HNOO.png')
     
     
     print('Done.')
