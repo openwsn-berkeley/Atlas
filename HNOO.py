@@ -35,7 +35,7 @@ def getGrid():
 performs online obstacle avoidance and returns the path found 
 '''  
 def ObstacleAvoidAlg(start, target,grid):
-    
+    gridSize=grid.shape
     currentNode = start
     onlinePath = [start]
     
@@ -47,21 +47,19 @@ def ObstacleAvoidAlg(start, target,grid):
         #print(neighbourNodes)
         for node in neighbourNodes:
             NN=node
-            if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])== 1:
+            if (NN[0])>=0 and (NN[1])>=0 and NN[0]<(gridSize[0]-1) and NN[1]<(gridSize[1]-1) and (grid[NN[0]][NN[1]])== 1:
                 if((node in onlinePath) == False):
-                    #idx=neighbourNodes.index(node)
-                    #print("index =" , idx)
                     avaliableNext.append(node)        
-        #print(avaliableNext)
+                    
         if avaliableNext==[]:
             print("no path avaliable")
             return avaliableNext
         else:
             moveTo = avaliableNext[random.randint(0,len(avaliableNext)-1)]
-            #print(moveTo)
             onlinePath.append(moveTo)
-            print("online path so far is ", onlinePath)
+            #print("online path so far is ", onlinePath)
             currentNode=moveTo
+            print("moving")
     
     print("Full Online path",onlinePath)
     return onlinePath
@@ -74,6 +72,7 @@ def AstarAlgorithm(start, target,grid):
     
     currentNode = start
     astarPath = [start]
+    gridSize=grid.shape
     
     while (currentNode != target):
         x=currentNode[0]
@@ -87,7 +86,7 @@ def AstarAlgorithm(start, target,grid):
             #print("node = ", node)
             NN=node
             idx=neighbourNodes.index(node)
-            if (NN[0])>=0 and (NN[1])>=0 and (grid[NN[0]][NN[1]])==1:
+            if (NN[0])>=0 and (NN[1])>=0 and NN[0]<(gridSize[0]-1) and NN[1]<(gridSize[1]-1) and (grid[NN[0]][NN[1]])== 1:
                 if(node != (0,0)) and (node in astarPath) == False:
                     #print("index =" , idx)
                     childNodes.append(node)
@@ -108,8 +107,9 @@ def AstarAlgorithm(start, target,grid):
             moveTo = childNodes[costF.index(minCost)]
             #print(moveTo)
             astarPath.append(moveTo)
-            print("astarPath path so far is ", astarPath)
+            #print("astarPath path so far is ", astarPath)
             currentNode=moveTo
+            print("moving")
     
     print("Full A* Path" , astarPath)
     return astarPath
@@ -131,12 +131,12 @@ def singleRun(grid,obstacle,start,target,navAlg,runRun):
 asks user for the navigation algorithm they want to run then runs the specific function for it and returns the steps taken from start node to destination
 '''
 def main():
-    grids      = [genRandGrid(10,10),genRandGrid(12,12)] 
+    grids      = [genRandGrid(5,5),genRandGrid(7,7)] 
     obstacles  = ['foo','boo']     # FIXME [for now the grid is generated with random obstacles]
     starts     = [(0,0),(1,2)]     
-    targets    = [(6,0),(3,5)]     
+    targets    = [(3,4),(5,7)]     
     numRuns    = 10
-    navAlgs     = [2,1]             
+    navAlgs     = [2,2]             
 
 
     # run all simulations
