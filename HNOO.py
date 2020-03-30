@@ -38,7 +38,7 @@ def ObstacleAvoidAlg(start, target,grid):
     gridSize=grid.shape
     currentNode = start
     onlinePath = [start]
-    
+    deadEnd=[]
     while (currentNode != target):
         x=currentNode[0]
         y=currentNode[1]
@@ -47,6 +47,7 @@ def ObstacleAvoidAlg(start, target,grid):
         #print(neighbourNodes)
         for node in neighbourNodes:
             NN=node
+           
             if (NN[0])>=0 and (NN[1])>=0 and NN[0]<(gridSize[0]-1) and NN[1]<(gridSize[1]-1) and (grid[NN[0]][NN[1]])== 1:
                 if((node in onlinePath) == False):
                     avaliableNext.append(node)        
@@ -59,7 +60,8 @@ def ObstacleAvoidAlg(start, target,grid):
             onlinePath.append(moveTo)
             #print("online path so far is ", onlinePath)
             currentNode=moveTo
-            print("moving")
+
+ 
     
     print("Full Online path",onlinePath)
     return onlinePath
@@ -109,7 +111,8 @@ def AstarAlgorithm(start, target,grid):
             astarPath.append(moveTo)
             #print("astarPath path so far is ", astarPath)
             currentNode=moveTo
-            print("moving")
+
+           
     
     print("Full A* Path" , astarPath)
     return astarPath
