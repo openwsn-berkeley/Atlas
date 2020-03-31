@@ -17,20 +17,11 @@ generate grid with given rows x coloums and randon obstacles
 def genRandGrid(rows,cols):
     print(rows, cols)
     randGrid=np.random.randint(2, size=(rows, cols))
+    np.random.shuffle(randGrid)
     print(randGrid)
     return randGrid
     
-'''
-gets pre-defined grids using dimentions
-'''
-def getGrid():
-    grid1 = [[1,1,0,1,0,1,1,1,1,0],
-            [1,0,1,0,0,1,0,0,1,0],
-            [0,1,1,0,1,1,0,0,1,0],
-            [1,1,1,1,0,1,0,0,1,1],
-            [1,1,1,0,0,1,0,0,1,1],]
-    print(grid1)
-    return grid1
+
 '''
 performs online obstacle avoidance and returns the path found 
 '''  
@@ -121,7 +112,7 @@ def AstarAlgorithm(start, target,grid):
 calculates steps taken from source to destination
 '''
 def singleRun(grid,obstacle,start,target,navAlg,runRun):
-    
+     
     if navAlg == 1:
         steps=len(AstarAlgorithm(start,target,grid))
     elif navAlg == 2:
@@ -138,8 +129,8 @@ def main():
     obstacles  = ['foo','boo']     # FIXME [for now the grid is generated with random obstacles]
     starts     = [(0,0),(1,2)]     
     targets    = [(3,4),(5,7)]     
-    numRuns    = 10
-    navAlgs     = [2,2]             
+    numRuns    = 2
+    navAlgs     = [2,1]             
 
 
     # run all simulations
@@ -150,7 +141,7 @@ def main():
                     for target in targets:
                         for navAlg in navAlgs:
                             for runRun in range(numRuns):
-                            
+   
                                 # run  single run
                                 steps = singleRun(grid,obstacle,start,target,navAlg,runRun)
                                 
