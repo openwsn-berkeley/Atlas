@@ -8,7 +8,6 @@ import json
 import random
 import math
 import matplotlib.pyplot as plt
-import numpy as np
 
 #============================ helper functions ================================
 
@@ -24,19 +23,34 @@ generate grid with given rows x coloums and randon obstacles.
     ]
 '''
 def genRandGrid(rows,cols):
-    print(rows, cols)
-    randGrid       = np.random.randint(2, size=(rows, cols))
-    '''
     returnVal = []
-    for row in rows:
+    for row in range(rows):
         thisRow = []
-        for col in cols:
-            thisRow += [random.randint(2)]
+        for col in range(cols):
+            thisRow += [random.randint(0,1)]
         returnVal += [thisRow]
-    '''
-    randGrid[5][5] = 1
-    print(randGrid)
-    return randGrid
+    return returnVal
+
+def printGrid(grid,start,target,robotPosition):
+    output  = []
+    output += ['']
+    for row in range(len(grid)):
+        line = []
+        for col in range(len(grid[row])):
+            if   grid[row][col]==0:
+                line += ['#']
+            elif (row,col)==start:
+                line += ['S']
+            elif (row,col)==robotPosition:
+                line += ['R']
+            elif (row,col)==target:
+                line += ['T']
+            else:
+                line += [' ']
+        output += [' '.join(line)]
+    output += ['']
+    output = '\n'.join(output)
+    print(output)
 
 '''
 performs online obstacle avoidance and returns the path found 
@@ -183,7 +197,7 @@ class Navigation(object):
     pass
 
 class NavigationRandomWalk(Navigation):
-    def __init__(self,grid):
+    def __init__(self,grid,start,target):
         self.grid = grid
     def move(self,x,y):
         numRows     = len(self.grid)
@@ -214,13 +228,23 @@ class NavigationRandomWalk(Navigation):
         return (x,y)
 
 class NavigationAstar(Navigation):
-    pass
+    def __init__(self,grid,start,target):
+        self.grid       = grid
+        self.directPath = [] # FIXME
+        
+        # implement algorithm (Dijkstra) which computes directPath
+        # FIXME
+        
+    def move(self,x,y):
+        for i in range(len(self.directPath)):
+            if self.directPath[i]==(x,y):
+                return self.directPath[i+1]
 
 '''
 calculates steps taken from source to destination
 '''
 def singleRun(grid,start,target,NavAlgClass):
-    navAlg      = NavAlgClass(grid)
+    navAlg      = NavAlgClass(grid,start,target)
     path        = []
     (x,y)       = start
     
@@ -230,6 +254,9 @@ def singleRun(grid,start,target,NavAlgClass):
         
         # move
         (x,y)   = navAlg.move(x,y)
+        
+        # plot
+        printGrid(grid,start,target,(x,y))
         
         # abort if you're at target
         if (x,y)==target:
@@ -247,7 +274,8 @@ def main():
     starts        = [(0,0)]
     targets       = [(5,5)]
     NavAlgClasses = [
-        NavigationRandomWalk,
+        #NavigationRandomWalk,
+        NavigationAstar,
     ]
     numRuns       = 10
 
