@@ -9,87 +9,105 @@ import random
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-#==============================================================================
 
 #============================ helper functions ================================
+
 '''
-generate grid with given rows x coloums and randon obstacles
+generate grid with given rows x coloums and randon obstacles.
+
+    [
+       [0,1,0,1,0,1],
+       [0,1,0,1,0,1],
+       [0,1,0,1,0,1],
+       [0,1,0,1,0,1],
+       [0,1,0,1,0,1],
+    ]
 '''
 def genRandGrid(rows,cols):
     print(rows, cols)
-    randGrid=np.random.randint(2, size=(rows, cols))
-    randGrid[5][5]=1
+    randGrid       = np.random.randint(2, size=(rows, cols))
+    '''
+    returnVal = []
+    for row in rows:
+        thisRow = []
+        for col in cols:
+            thisRow += [random.randint(2)]
+        returnVal += [thisRow]
+    '''
+    randGrid[5][5] = 1
     print(randGrid)
     return randGrid
-    
 
 '''
 performs online obstacle avoidance and returns the path found 
 '''  
-def ObstacleAvoidAlg(start, target,grid):
-    gridSize=grid.shape
-    currentNode = start
-    onlinePath = [start]
-    deadEnd=[]
-    while (currentNode != target):
-        x=currentNode[0]
-        y=currentNode[1]
-        neighbourNodes = [(x+1,y),(x+1,y+1),(x,y+1),(x-1,y+1),(x-1,y),(x-1,y-1),(x,y-1),(x+1,y-1)]
-        avaliableNext=[]
-        #print(neighbourNodes)
-        for node in neighbourNodes:
-            NN=node
-           
-            if (NN[0])>=0 and (NN[1])>=0 and NN[0]<(gridSize[0]-1) and NN[1]<(gridSize[1]-1) and (grid[NN[0]][NN[1]])== 1:
-                if((node in onlinePath) == False):
-                    avaliableNext.append(node)        
-                    
-        if avaliableNext==[]:
-            print("no path avaliable")
-            return avaliableNext
-        else:
-            moveTo = avaliableNext[random.randint(0,len(avaliableNext)-1)]
-            onlinePath.append(moveTo)
-            #print("online path so far is ", onlinePath)
-            currentNode=moveTo
-
- 
+def ObstacleAvoidAlg(start, target, grid):
+    numRows     = len(grid)
+    numCols     = len(grid[0])
+    path        = []
+    (x,y)       = start
     
-    print("Online path:",onlinePath)
-    return onlinePath
-
+    while True:
+        # add to path
+        path   += [(x,y)]
+        
+        # filter valid neighbors
+        validNeighbors = []
+        for (nx,ny) in [
+                (x-1,y-1),(x-1,y  ),(x-1,y+1),
+                (x  ,y-1),          (x  ,y+1),
+                (x+1,y-1),(x+1,y  ),(x+1,y+1),
+            ]:
+            if  (
+                    (nx>=0)           and
+                    (nx<numCols-1)    and
+                    (ny>=0)           and
+                    (ny<(numRows-1))  and
+                    (grid[nx][ny]==1)
+                ):
+                validNeighbors += [(nx,ny)]
+        
+        # make sure if no valid neighbors
+        assert validNeighbors
+        
+        # move to a randomly chosen valid neighbor
+        (x,y) = random.choice(validNeighbors)
+        
+        # abort if you're at target
+        if (x,y)==target:
+            break
+    
+    return len(path)
 
 '''
 performs A* algorithm to find shortest path from start to target
 '''
-
 class Node():
     """A node class for A* Pathfinding"""
 
     def __init__(self, parent=None, position=None):
-        self.parent = parent
-        self.position = position
+        self.parent     = parent
+        self.position   = position
 
-        self.g = 0
-        self.h = 0
-        self.f = 0
+        self.g          = 0
+        self.h          = 0
+        self.f          = 0
 
     def __eq__(self, other):
         return self.position == other.position
-
 
 def Astar(start, target, grid):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
 
     # Create start and end node
-    start_node = Node(None, start)
+    start_node   = Node(None, start)
     start_node.g = start_node.h = start_node.f = 0
-    end_node = Node(None, target)
-    end_node.g = end_node.h = end_node.f = 0
+    end_node     = Node(None, target)
+    end_node.g   = end_node.h = end_node.f = 0
 
     # Initialize both open and closed list
-    open_list = []
-    closed_list = []
+    open_list    = []
+    closed_list  = []
 
     # Add the start node
     open_list.append(start_node)
@@ -104,7 +122,6 @@ def Astar(start, target, grid):
             if item.f < current_node.f:
                 current_node = item
                 current_index = index
- 
 
         # Pop current off open list, add to closed list
         open_list.pop(current_index)
@@ -161,19 +178,64 @@ def Astar(start, target, grid):
 
             # Add the child to the open list
             open_list.append(child)
-      
 
+class Navigation(object):
+    pass
+
+class NavigationRandomWalk(Navigation):
+    def __init__(self,grid):
+        self.grid = grid
+    def move(self,x,y):
+        numRows     = len(self.grid)
+        numCols     = len(self.grid[0])
+        
+        # filter valid neighbors
+        validNeighbors = []
+        for (nx,ny) in [
+                (x-1,y-1),(x-1,y  ),(x-1,y+1),
+                (x  ,y-1),          (x  ,y+1),
+                (x+1,y-1),(x+1,y  ),(x+1,y+1),
+            ]:
+            if  (
+                    (nx>=0)             and
+                    (nx<numCols-1)      and
+                    (ny>=0)             and
+                    (ny<(numRows-1))    and
+                    (self.grid[nx][ny]==1)
+                ):
+                validNeighbors += [(nx,ny)]
+        
+        # make sure if no valid neighbors
+        assert validNeighbors
+        
+        # move to a randomly chosen valid neighbor
+        (x,y) = random.choice(validNeighbors)
+        
+        return (x,y)
+
+class NavigationAstar(Navigation):
+    pass
 
 '''
 calculates steps taken from source to destination
 '''
-def singleRun(grid,obstacle,start,target,navAlg,runRun):
-     
-    if navAlg == 1:
-        steps=len(Astar(start,target,grid))
-    elif navAlg == 2:
-        steps=len(ObstacleAvoidAlg(start,target,grid))
-    return steps
+def singleRun(grid,start,target,NavAlgClass):
+    navAlg      = NavAlgClass(grid)
+    path        = []
+    (x,y)       = start
+    
+    while True:
+        # add to path
+        path   += [(x,y)]
+        
+        # move
+        (x,y)   = navAlg.move(x,y)
+        
+        # abort if you're at target
+        if (x,y)==target:
+            break
+    
+    return len(path)
 
 #============================ main ============================================
 
@@ -181,38 +243,37 @@ def singleRun(grid,obstacle,start,target,navAlg,runRun):
 asks user for the navigation algorithm they want to run then runs the specific function for it and returns the steps taken from start node to destination
 '''
 def main():
-    grids      = [genRandGrid(10,10)] 
-    obstacles  = ['foo']     # FIXME [for now the grid is generated with random obstacles]
-    starts     = [(0,0)]     
-    targets    = [(5,5)]     
-    numRuns    = 10
-    navAlgs     = [2,1]             
-
+    grids         = [genRandGrid(10,10)] 
+    starts        = [(0,0)]
+    targets       = [(5,5)]
+    NavAlgClasses = [
+        NavigationRandomWalk,
+    ]
+    numRuns       = 10
 
     # run all simulations
     with open('HNOO.log','w') as f:
         for grid in grids:
-            for obstacle in obstacles:
-                for start in starts:
-                    for target in targets:
-                        for navAlg in navAlgs:
-                            for runRun in range(numRuns):
-   
-                                # run  single run
-                                steps = singleRun(grid,obstacle,start,target,navAlg,runRun)
-                                
-                                # log the results
-                                f.write(json.dumps(
-                                    {
-                                        #'grid':     grid,
-                                        'obstacle': obstacle,
-                                        'start':    start,
-                                        'target':   target,
-                                        'runRun':   runRun,
-                                        'steps':    steps,
-                                    }
-                                )+'\n')
+            for start in starts:
+                for target in targets:
+                    for NavAlgClass in NavAlgClasses:
+                        
+                        for runRun in range(numRuns):
+
+                            # run  single run
+                            steps = singleRun(grid,start,target,NavAlgClass)
                             
+                            # log the results
+                            f.write(json.dumps(
+                                {
+                                    #'grid':     grid,
+                                    'start':    start,
+                                    'target':   target,
+                                    'runRun':   runRun,
+                                    'steps':    steps,
+                                }
+                            )+'\n')
+
     # analyze the results
     dist_steps = []
     with open('HNOO.log','r') as f:
@@ -220,18 +281,8 @@ def main():
             results = json.loads(line)
             dist_steps += [results['steps']]
     plt.hist(dist_steps)
-    '''
-    plt.xlabel('Smarts')
-    plt.ylabel('Probability')
-    plt.title('Histogram of IQ')
-    plt.text(60, .025, r'$\mu=100,\ \sigma=15$')
-    plt.xlim(40, 160)
-    plt.ylim(0, 0.03)
-    plt.grid(True)
-    '''
     plt.show()
     plt.savefig('HNOO.png')
-    
     
     print('Done.')
     
