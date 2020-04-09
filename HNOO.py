@@ -43,7 +43,6 @@ def genRandGrid(rows,cols):
             else:
                 thisRow += [1]
         returnVal += [thisRow]
-    print (returnVal)
     return returnVal
 
 def printGrid(grid,start,target,robotPosition=None,heights=None):
@@ -224,7 +223,6 @@ class NavigationAstar(Navigation):
         self.directPath      = [] 
         
         # pre-compute shortest path, store in directPath
-        print("Running A* Algorithm")
         # create start and end node
         numRows              = len(self.grid)
         numCols              = len(self.grid[0])
@@ -256,9 +254,7 @@ class NavigationAstar(Navigation):
                 closed_list     += [current_node]
             else:
                 continue
-
-            for (indx,ci) in enumerate(closed_list):
-                print("the closed list:", closed_list[indx])
+                
             # abort if we found the goal
             if current_node == end_node: 
                 self.directPath = []
@@ -266,7 +262,6 @@ class NavigationAstar(Navigation):
                     self.directPath   += [current_node.position]
                     current_node       = current_node.parent
                 self.directPath.reverse()
-                print("A* path:", self.directPath)
                 break
 
             # add valid neighbor nodes
@@ -369,10 +364,8 @@ def main():
             start       = (random.randint(0,GRID_SIZE-1),random.randint(0,GRID_SIZE-1))
             target      = (random.randint(0,GRID_SIZE-1),random.randint(0,GRID_SIZE-1))
             
-            print("start", start, "target", target)
             # skip if not valid scenario
             if validateScenario(grid,start,target)==False:
-                print("invalid grid")
                 continue
             
             # if I get here, this is a valid scenario
