@@ -13,6 +13,25 @@ import matplotlib.pyplot as plt
 
 #============================ defines =========================================
 
+HEADING_N          = 'N'
+HEADING_NE         = 'NE'
+HEADING_E          = 'E'
+HEADING_SE         = 'SE'
+HEADING_S          = 'S'
+HEADING_SW         = 'SW'
+HEADING_W          = 'W'
+HEADING_NW         = 'NW'
+HEADING_ALL        = [
+    HEADING_N, 
+    HEADING_NE,
+    HEADING_E,
+    HEADING_SE,
+    HEADING_S,
+    HEADING_SW,
+    HEADING_W,
+    HEADING_NW,
+]
+
 GRID_SIZE          = 10
 OBSTACLE_DENSITY   = 0.5
 
@@ -24,17 +43,41 @@ for x in range(GRID_SIZE):
 #============================ helper functions ================================
 
 def genGrid():
+    '''
+    rows = 10
+    cols = 12
+    returnVal = []
+    for row in range(rows):
+        thisRow = []
+        for col in range(cols):
+            if random.random()<OBSTACLE_DENSITY:
+                thisRow += [0]
+            else:
+                thisRow += [1]
+        returnVal += [thisRow]
+    return returnVal
+    '''
     grid = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ]
     return grid
         
@@ -49,7 +92,7 @@ def printGrid(grid,start,robotPositions):
             elif (row,col)==start:
                 line += ['S']
             elif grid[row][col]==-1:
-                line += ['?']
+                line += ['.']
             else:
                 robotFound = False
                 for (rx,ry) in robotPositions:
@@ -76,14 +119,12 @@ class ExceptionFullDiscoMap(Exception):
 #======== navigation algorithms
 
 class Navigation(object):
-    pass
-
-class NavigationRandomWalk(Navigation):
-    def __init__(self,grid,start):
+    def __init__(self,grid,start,numRobots):
         
         # store params
         self.grid            = grid
         self.start           = start
+        self.numRobots       = numRobots
         
         # local variables
         self.discoMap        = []
@@ -112,10 +153,10 @@ class NavigationRandomWalk(Navigation):
             raise ExceptionFullDiscoMap
         
         # move each robot
-        for (rx,ry) in robotPositions:
+        for (ridx,(rx,ry)) in enumerate(robotPositions):
             
             # explore your neighborhood
-            validNextPosition = []
+            validNextPositions = []
             
             for (nx,ny) in [
                     (rx-1,ry-1),(rx-1,ry  ),(rx-1,ry+1),
@@ -143,15 +184,63 @@ class NavigationRandomWalk(Navigation):
                         (self.grid[nx][ny]==1) and
                         ((nx,ny) not in nextRobotPositions)
                     ):
-                    validNextPosition += [(nx,ny)]
+                    validNextPositions += [(nx,ny)]
             
             # move robot to randomly chosen valid neighbor
-            if validNextPosition:
-                nextRobotPositions += [random.choice(validNextPosition)]
+            if validNextPositions:
+                nextRobotPositions += [self._pickNextPosition(ridx,rx,ry,validNextPositions)]
             else:
                 nextRobotPositions += [(rx,ry)]
         
         return (nextRobotPositions,self.discoMap)
+    
+    def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
+        raise SystemError()
+    
+class NavigationRandomWalk(Navigation):
+    
+    def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
+        return random.choice(validNextPositions)
+
+class NavigationBallistic(Navigation):
+
+    def __init__(self,grid,start,numRobots):
+        Navigation.__init__(self,grid,start,numRobots)
+        self.robotHeading = []
+        for _ in range(self.numRobots):
+            self.robotHeading += [random.choice(HEADING_ALL)]
+
+    def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
+        
+        nextPosition = None
+        
+        while not nextPosition:
+            # compute next position
+            # FIXME: box
+            if   self.robotHeading[ridx]==HEADING_N:
+                nextPosition = (rx-1,ry  )
+            elif self.robotHeading[ridx]==HEADING_NE:
+                nextPosition = (rx-1,ry+1)
+            elif self.robotHeading[ridx]==HEADING_E:
+                nextPosition = (rx  ,ry+1)
+            elif self.robotHeading[ridx]==HEADING_SE:
+                nextPosition = (rx+1,ry+1)
+            elif self.robotHeading[ridx]==HEADING_S:
+                nextPosition = (rx+1,ry  )
+            elif self.robotHeading[ridx]==HEADING_SW:
+                nextPosition = (rx+1,ry-1)
+            elif self.robotHeading[ridx]==HEADING_W:
+                nextPosition = (rx  ,ry-1)
+            elif self.robotHeading[ridx]==HEADING_NW:
+                nextPosition = (rx-1,ry-1)
+            else:
+                raise SystemError()
+            
+            if nextPosition not in validNextPositions:
+                self.robotHeading[ridx] = random.choice(HEADING_ALL)
+                nextPosition = None
+        
+        return nextPosition
 
 #======== core simulator
 
@@ -159,7 +248,7 @@ class NavigationRandomWalk(Navigation):
 calculates steps taken from source to destination
 '''
 def singleRun(grid,start,NavAlgClass,numRobots):
-    navAlg         = NavAlgClass(grid,start)
+    navAlg         = NavAlgClass(grid,start,numRobots)
     robotPositions = [start]*numRobots
     while True:
         
@@ -178,8 +267,9 @@ def singleRun(grid,start,NavAlgClass,numRobots):
 #============================ main ============================================
 
 def main():
-    numRobots      = 5
+    numRobots      = 1
     NavAlgClasses  = [
+        NavigationBallistic,
         NavigationRandomWalk,
     ]
     
