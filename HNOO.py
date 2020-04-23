@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 #============================ defines =========================================
 
+
 HEADING_N          = 'N'
 HEADING_NE         = 'NE'
 HEADING_E          = 'E'
@@ -41,6 +42,7 @@ for x in range(GRID_SIZE):
         ALL_INDEXES       += [(x,y)]
 
 #============================ helper functions ================================
+
 
 def genGrid():
     '''
@@ -242,11 +244,13 @@ class NavigationBallistic(Navigation):
         
         return nextPosition
 
+
 #======== core simulator
 
 '''
 calculates steps taken from source to destination
 '''
+
 def singleRun(grid,start,NavAlgClass,numRobots):
     navAlg         = NavAlgClass(grid,start,numRobots)
     robotPositions = [start]*numRobots
@@ -264,9 +268,11 @@ def singleRun(grid,start,NavAlgClass,numRobots):
         # print
         printGrid(discoMap,start,robotPositions)
 
+
 #============================ main ============================================
 
 def main():
+
     numRobots      = 1
     NavAlgClasses  = [
         NavigationBallistic,
