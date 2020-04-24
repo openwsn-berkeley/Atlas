@@ -36,6 +36,11 @@ OBSTACLE_DENSITY   = 0.5
 
 #============================ helper functions ================================
 
+def euclidian(pos1,pos2):
+    (x1,y1) = pos1 # shorthand
+    (x2,y2) = pos2 # shorthand
+    return math.sqrt((x1-x2)**2 + (y1-y2)**2)
+
 def genGrid():
     '''
     rows = 10
@@ -112,7 +117,7 @@ class ExceptionFullDiscoMap(Exception):
 
 #======== navigation algorithms
 
-class NavigationDistributed(object):
+class Navigation(object):
     def __init__(self,grid,start,numRobots):
         
         # store params
@@ -120,23 +125,18 @@ class NavigationDistributed(object):
         self.start           = start
         self.numRobots       = numRobots
         
+        # local variablels
+        self.numRows         = len(self.grid)    # shorthand
+        self.numCols         = len(self.grid[0]) # shorthand
+        
         # local variables
         self.discoMap        = []
         for row in grid:
             self.discoMap   += [[]]
             for col in row:
                 self.discoMap[-1] += [-1]
-
-    def think(self, robotPositions):
-
-        # shorthand
-        numRows              = len(self.grid)
-        numCols              = len(self.grid[0])
-        
-        # returnVal
-        nextRobotPositions   = []
-        
-        # determine whether we're done exploring
+    
+    def _determineDoneExploring(self):
         fullDiscoMap = True
         for row in self.discoMap:
             for cell in row:
@@ -145,6 +145,58 @@ class NavigationDistributed(object):
                     break
         if fullDiscoMap:
             raise ExceptionFullDiscoMap
+    
+    def _OneHopNeighborhood(self,x,y):
+        returnVal = []
+        for (nx,ny) in [
+                (x-1,y-1),(x-1,y  ),(x-1,y+1),
+                (x  ,y-1),          (x  ,y+1),
+                (x+1,y-1),(x+1,y  ),(x+1,y+1),
+            ]:
+            
+            # do not consider cells outside the grid
+            if  (
+                    (nx<0)         or
+                    (nx>=self.numRows)  or
+                    (ny<0)         or
+                    (ny>=self.numCols)
+                ):
+                continue
+            
+            returnVal += [(nx,ny)]
+        return returnVal
+    
+    def _TwoHopNeighborhood(self,x,y):
+        returnVal = []
+        for (nx,ny) in [
+                (x-2,y-2),(x-2,y-1),(x-2,y  ),(x-2,y+1),(x-2,y+2),
+                (x-1,y+1),                              (x-1,y+2),
+                (x  ,y  ),                              (x  ,y+2),
+                (x+1,y-1),                              (x+1,y+2),
+                (x+2,y-2),(x+2,y-1),(x+2,y  ),(x+2,y+1),(x+2,y+2)
+            ]:
+            
+            # do not consider cells outside the grid
+            if  (
+                    (nx<0)         or
+                    (nx>=self.numRows)  or
+                    (ny<0)         or
+                    (ny>=self.numCols)
+                ):
+                continue
+            
+            returnVal += [(nx,ny)]
+        return returnVal
+
+class NavigationDistributed(Navigation):
+
+    def think(self, robotPositions):
+        
+        # returnVal
+        nextRobotPositions   = []
+        
+        # determine whether we're done exploring
+        self._determineDoneExploring()
         
         # move each robot
         for (ridx,(rx,ry)) in enumerate(robotPositions):
@@ -152,20 +204,7 @@ class NavigationDistributed(object):
             # explore your neighborhood
             validNextPositions = []
             
-            for (nx,ny) in [
-                    (rx-1,ry-1),(rx-1,ry  ),(rx-1,ry+1),
-                    (rx  ,ry-1),            (rx  ,ry+1),
-                    (rx+1,ry-1),(rx+1,ry  ),(rx+1,ry+1),
-                ]:
-                
-                # do not consider cells outside the grid
-                if  (
-                        (nx<0)         or
-                        (nx>=numRows)  or
-                        (ny<0)         or
-                        (ny>=numCols)
-                    ):
-                    continue
+            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
                 
                 # populate the discovered map
                 if   self.grid[nx][ny] == 0:
@@ -236,6 +275,73 @@ class NavigationBallistic(NavigationDistributed):
         
         return nextPosition
 
+class NavigationRama(Navigation):
+    def think(self, robotPositions):
+        
+        # local variables
+        nextRobotPositions   = robotPositions[:]
+        
+        # determine whether we're done exploring
+        self._determineDoneExploring()
+        
+        # identify robots at the frontier
+        frontierBots = []
+        for (ridx,(rx,ry)) in enumerate(robotPositions):
+            # check that robot has frontier it its 2-neighborhood
+            closeToFrontier = False
+            for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
+                if self.discoMap[nx][ny]==-1:
+                    closeToFrontier = True
+                    break
+            if closeToFrontier==False:
+                continue
+            # check that robot has open space in its 1-neighborhood that's further than itself
+            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+                if (
+                    self.grid[nx][ny]==1            and  # open position (not wall)
+                    ((nx,ny) not in robotPositions) and  # no robot there
+                    (nx,ny)!=self.start             and  # not the start position
+                    euclidian(self.start,(nx,ny))>euclidian(self.start,(rx,ry))
+                ):
+                    frontierBots += [ridx]
+                    break
+        
+        # pick a frontierBot
+        distanceToStart = {}
+        (sx,sy) = self.start # shorthand
+        for (ridx,(x,y)) in enumerate(robotPositions):
+            if ridx not in frontierBots:
+                continue
+            distanceToStart[ridx] = euclidian((sx,sy),(x,y))
+        frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+        
+        # pick a cell for a new Robot
+        (fx,fy) = robotPositions[frontierBot]
+        while True:
+            (rx,ry) = random.choice(self._OneHopNeighborhood(fx,fy))
+            if  (
+                    self.grid[rx][ry]==1 and
+                    ((rx,ry) not in robotPositions) and
+                    (rx,ry)!=self.start
+                ):
+                break
+        
+        # pick a robot to move and change its position
+        distanceToStart = {}
+        (sx,sy) = self.start # shorthand
+        for (ridx,(x,y)) in enumerate(robotPositions):
+            distanceToStart[ridx] = math.sqrt((x-sx)**2 + (y-sy)**2)
+        newBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+        nextRobotPositions[newBot] = (rx,ry)
+        
+        # update the discoMap
+        for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+            if   self.grid[nx][ny] == 0:
+                self.discoMap[nx][ny]=0
+            elif self.grid[nx][ny] == 1:
+                self.discoMap[nx][ny]=1
+        
+        return (nextRobotPositions,self.discoMap)
 
 #======== core simulator
 
@@ -260,22 +366,22 @@ def singleRun(grid,start,NavAlgClass,numRobots):
         # print
         printGrid(discoMap,start,robotPositions)
 
-
 #============================ main ============================================
 
 def main():
 
-    numRobots      = 1
+    numRobots      = 100
     NavAlgClasses  = [
-        NavigationBallistic,
-        NavigationRandomWalk,
+        NavigationRama,
+        #NavigationBallistic,
+        #NavigationRandomWalk,
     ]
     
     with open('HNOO.log','w') as f:
         
         # create a scenario
         grid        = genGrid()
-        start       = (5,11)
+        start       = (10,10)
         
         # execute the simulation for each navigation algorithm
         for NavAlgClass in NavAlgClasses:
