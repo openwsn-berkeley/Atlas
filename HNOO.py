@@ -35,8 +35,8 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 5
-    cols  = 5
+    rows  = 20
+    cols  = 30
     start = (int(rows/2),int(cols/2))
     grid  = []
     for row in range(rows):
@@ -89,7 +89,7 @@ def printGrid(grid,start,robotPositions,rank=None):
                 for (rx,ry) in robotPositions:
                     if (row,col) == (rx,ry):
                         robotFound = True
-                        line += ['R']
+                        line += ['*']
                         break
                 if robotFound:
                     break
@@ -117,7 +117,6 @@ def printGrid(grid,start,robotPositions,rank=None):
     output = '\n'.join(output)
     os.system('cls')
     print(output)
-    print(robotPositions)
 
 #============================ classes =========================================
 
@@ -449,14 +448,14 @@ def singleRun(grid,start,NavAlgClass,numRobots):
         # print
         printGrid(discoMap,start,robotPositions,rankMap)
         
-        input()
+        #input()
         #time.sleep(0.500)
 
 #============================ main ============================================
 
 def main():
 
-    numRobots      = 1
+    numRobots      = 100
     NavAlgClasses  = [
         NavigationRama,
         #NavigationRandomWalk,
