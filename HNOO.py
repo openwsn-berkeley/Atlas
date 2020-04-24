@@ -112,7 +112,7 @@ class ExceptionFullDiscoMap(Exception):
 
 #======== navigation algorithms
 
-class Navigation(object):
+class NavigationDistributed(object):
     def __init__(self,grid,start,numRobots):
         
         # store params
@@ -191,15 +191,15 @@ class Navigation(object):
     def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
         raise SystemError()
     
-class NavigationRandomWalk(Navigation):
+class NavigationRandomWalk(NavigationDistributed):
     
     def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
         return random.choice(validNextPositions)
 
-class NavigationBallistic(Navigation):
+class NavigationBallistic(NavigationDistributed):
 
     def __init__(self,grid,start,numRobots):
-        Navigation.__init__(self,grid,start,numRobots)
+        NavigationDistributed.__init__(self,grid,start,numRobots)
         self.robotHeading = []
         for _ in range(self.numRobots):
             self.robotHeading += [random.choice(HEADING_ALL)]
@@ -295,6 +295,6 @@ def main():
     # TODO
     
     print('Done.')
-    
+
 if __name__=='__main__':
     main()
