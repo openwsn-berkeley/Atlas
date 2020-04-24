@@ -32,7 +32,7 @@ HEADING_ALL        = [
     HEADING_NW,
 ]
 
-OBSTACLE_DENSITY   = 0.5
+OBSTACLE_DENSITY   = 0.05
 
 #============================ helper functions ================================
 
@@ -44,7 +44,7 @@ def euclidian(pos1,pos2):
 def genGrid():
     '''
     rows = 10
-    cols = 12
+    cols = 10
     returnVal = []
     for row in range(rows):
         thisRow = []
@@ -59,18 +59,20 @@ def genGrid():
     grid = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        #[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        #[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
@@ -79,7 +81,7 @@ def genGrid():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ]
     return grid
-        
+
 def printGrid(grid,start,robotPositions):
     output  = []
     output += ['']
@@ -106,7 +108,7 @@ def printGrid(grid,start,robotPositions):
     output = '\n'.join(output)
     os.system('cls')
     print(output)
-    time.sleep(0.010)
+    #time.sleep(0.010)
 
 #============================ classes =========================================
 
@@ -279,63 +281,66 @@ class NavigationRama(Navigation):
     def think(self, robotPositions):
         
         # local variables
+        robotsMoved          = []
         nextRobotPositions   = robotPositions[:]
+        (sx,sy)              = self.start # shorthand
         
         # determine whether we're done exploring
         self._determineDoneExploring()
         
         # identify robots at the frontier
         frontierBots = []
-        for (ridx,(rx,ry)) in enumerate(robotPositions):
+        for (i,(x,y)) in enumerate(robotPositions):
             # check that robot has frontier it its 2-neighborhood
             closeToFrontier = False
-            for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
+            for (nx,ny) in self._TwoHopNeighborhood(x,y):
                 if self.discoMap[nx][ny]==-1:
                     closeToFrontier = True
                     break
             if closeToFrontier==False:
                 continue
             # check that robot has open space in its 1-neighborhood that's further than itself
-            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+            for (nx,ny) in self._OneHopNeighborhood(x,y):
                 if (
                     self.grid[nx][ny]==1            and  # open position (not wall)
                     ((nx,ny) not in robotPositions) and  # no robot there
                     (nx,ny)!=self.start             and  # not the start position
-                    euclidian(self.start,(nx,ny))>euclidian(self.start,(rx,ry))
+                    euclidian(self.start,(nx,ny))>euclidian(self.start,(x,y))
                 ):
-                    frontierBots += [ridx]
+                    frontierBots += [i]
                     break
         
         # pick a frontierBot
         distanceToStart = {}
-        (sx,sy) = self.start # shorthand
-        for (ridx,(x,y)) in enumerate(robotPositions):
-            if ridx not in frontierBots:
+        for (i,(x,y)) in enumerate(robotPositions):
+            if i not in frontierBots:
                 continue
-            distanceToStart[ridx] = euclidian((sx,sy),(x,y))
+            distanceToStart[i] = euclidian((sx,sy),(x,y))
         frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
         
-        # pick a cell for a new Robot
+        # pick a moveRobot
+        distanceToStart = {}
+        for (i,(x,y)) in enumerate(robotPositions):
+            distanceToStart[i] = math.sqrt((x-sx)**2 + (y-sy)**2)
+        moveBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+        
+        # pick a cell for moveRobot
         (fx,fy) = robotPositions[frontierBot]
         while True:
-            (rx,ry) = random.choice(self._OneHopNeighborhood(fx,fy))
+            (mx,my) = random.choice(self._OneHopNeighborhood(fx,fy))
             if  (
-                    self.grid[rx][ry]==1 and
-                    ((rx,ry) not in robotPositions) and
-                    (rx,ry)!=self.start
+                    self.grid[mx][my]==1            and
+                    ((mx,my) not in robotPositions) and
+                    (mx,my)!=self.start             and
+                    euclidian(self.start,(mx,my))>euclidian(self.start,(fx,fy))
                 ):
                 break
         
-        # pick a robot to move and change its position
-        distanceToStart = {}
-        (sx,sy) = self.start # shorthand
-        for (ridx,(x,y)) in enumerate(robotPositions):
-            distanceToStart[ridx] = math.sqrt((x-sx)**2 + (y-sy)**2)
-        newBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-        nextRobotPositions[newBot] = (rx,ry)
+        # move moveRobot
+        nextRobotPositions[moveBot] = (mx,my)
         
         # update the discoMap
-        for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+        for (nx,ny) in self._OneHopNeighborhood(mx,my):
             if   self.grid[nx][ny] == 0:
                 self.discoMap[nx][ny]=0
             elif self.grid[nx][ny] == 1:
@@ -370,18 +375,18 @@ def singleRun(grid,start,NavAlgClass,numRobots):
 
 def main():
 
-    numRobots      = 100
+    numRobots      = 55
     NavAlgClasses  = [
         NavigationRama,
-        #NavigationBallistic,
-        #NavigationRandomWalk,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     
     with open('HNOO.log','w') as f:
         
         # create a scenario
         grid        = genGrid()
-        start       = (10,10)
+        start       = (10,20)
         
         # execute the simulation for each navigation algorithm
         for NavAlgClass in NavAlgClasses:
