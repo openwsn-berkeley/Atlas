@@ -32,14 +32,7 @@ HEADING_ALL        = [
     HEADING_NW,
 ]
 
-OBSTACLE_DENSITY   = 0.05
-
 #============================ helper functions ================================
-
-def euclidian(pos1,pos2):
-    (x1,y1) = pos1 # shorthand
-    (x2,y2) = pos2 # shorthand
-    return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 def genGrid():
     '''
@@ -49,7 +42,7 @@ def genGrid():
     for row in range(rows):
         thisRow = []
         for col in range(cols):
-            if random.random()<OBSTACLE_DENSITY:
+            if random.random()<0.05:
                 thisRow += [0]
             else:
                 thisRow += [1]
@@ -63,10 +56,10 @@ def genGrid():
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        #[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        #[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
@@ -82,39 +75,55 @@ def genGrid():
     ]
     return grid
 
-def printGrid(grid,start,robotPositions):
+def printGrid(grid,start,robotPositions,rank=None):
     output  = []
     output += ['']
     for row in range(len(grid)):
         line = []
         for col in range(len(grid[row])):
-            if   grid[row][col]==0:
-                line += ['#']
-            elif (row,col)==start:
-                line += ['S']
-            elif grid[row][col]==-1:
-                line += ['.']
-            else:
+            while True:
+                # wall
+                if  grid[row][col]==0:
+                    line += ['#']
+                    break
+                # start position
+                if (row,col)==start:
+                    line += ['S']
+                    break
+                # unexplored
+                if grid[row][col]==-1:
+                    line += ['.']
+                    break
+                # robot
                 robotFound = False
                 for (rx,ry) in robotPositions:
                     if (row,col) == (rx,ry):
                         robotFound = True
                         line += ['R']
                         break
-                if not robotFound:
-                    line += [' ']
+                if robotFound:
+                    break
+                # rank
+                if rank:
+                    line += [str(rank[row][col]%10)]
+                    break
+                # explore
+                line += [' ']
+                break
         output += [' '.join(line)]
     output += ['']
     output = '\n'.join(output)
     os.system('cls')
     print(output)
-    #time.sleep(0.010)
 
 #============================ classes =========================================
 
 #======== exceptions
 
-class ExceptionFullDiscoMap(Exception):
+class MappingDoneSuccess(Exception):
+    pass
+
+class MappingDoneIncomplete(Exception):
     pass
 
 #======== navigation algorithms
@@ -132,6 +141,7 @@ class Navigation(object):
         self.numCols         = len(self.grid[0]) # shorthand
         
         # local variables
+        self.rankMap         = None
         self.discoMap        = []
         for row in grid:
             self.discoMap   += [[]]
@@ -146,7 +156,7 @@ class Navigation(object):
                     fullDiscoMap = False
                     break
         if fullDiscoMap:
-            raise ExceptionFullDiscoMap
+            raise MappingDoneSuccess
     
     def _OneHopNeighborhood(self,x,y):
         returnVal = []
@@ -288,6 +298,9 @@ class NavigationRama(Navigation):
         # determine whether we're done exploring
         self._determineDoneExploring()
         
+        # compute ranks
+        self.rankMap         = self.computeRankMap(self.grid,self.start)
+        
         # identify robots at the frontier
         frontierBots = []
         for (i,(x,y)) in enumerate(robotPositions):
@@ -305,17 +318,19 @@ class NavigationRama(Navigation):
                     self.grid[nx][ny]==1            and  # open position (not wall)
                     ((nx,ny) not in robotPositions) and  # no robot there
                     (nx,ny)!=self.start             and  # not the start position
-                    euclidian(self.start,(nx,ny))>euclidian(self.start,(x,y))
+                    self.rankMap[nx][ny]>self.rankMap[x][y]
                 ):
                     frontierBots += [i]
                     break
+        if not frontierBots:
+            raise MappingDoneIncomplete
         
         # pick a frontierBot
         distanceToStart = {}
         for (i,(x,y)) in enumerate(robotPositions):
             if i not in frontierBots:
                 continue
-            distanceToStart[i] = euclidian((sx,sy),(x,y))
+            distanceToStart[i] = self.rankMap[x][y]
         frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
         
         # pick a moveRobot
@@ -332,7 +347,7 @@ class NavigationRama(Navigation):
                     self.grid[mx][my]==1            and
                     ((mx,my) not in robotPositions) and
                     (mx,my)!=self.start             and
-                    euclidian(self.start,(mx,my))>euclidian(self.start,(fx,fy))
+                    self.rankMap[mx][my]>self.rankMap[fx][fy]
                 ):
                 break
         
@@ -346,7 +361,61 @@ class NavigationRama(Navigation):
             elif self.grid[nx][ny] == 1:
                 self.discoMap[nx][ny]=1
         
-        return (nextRobotPositions,self.discoMap)
+        return (nextRobotPositions,self.discoMap,self.rankMap)
+    
+    def computeRankMap(self,grid,start):
+        
+        # local variables
+        rankMap                   = []
+        shouldvisit               = []
+        for row in grid:
+            rankMap              += [[]]
+            shouldvisit          += [[]]
+            for col in row:
+                rankMap[-1]      += [None]
+                shouldvisit[-1]  += [False]
+
+        # start from start position
+        (sx,sy) = start
+        rankMap[sx][sy]           = 0
+        shouldvisit[sx][sy]       = True
+        
+        while True:
+            
+            # find cell to visit with lowest rank (abort if none)
+            found         = False
+            currentrank   = None
+            for x in range(self.numRows):
+                for y in range(self.numCols):
+                    if  (
+                            shouldvisit[x][y]==True and
+                            (
+                                currentrank==None or
+                                rankMap[x][y]<currentrank
+                            )
+                        ):
+                        currentrank   = rankMap[x][y]
+                        (cx,cy)       = (x,y)
+                        found = True
+            if found==False:
+                break
+            
+            # assign a height for all its neighbors
+            for (nx,ny) in self._OneHopNeighborhood(cx,cy):
+                if (
+                        grid[nx][ny]==1 and
+                        (
+                            rankMap[nx][ny] == None or
+                            rankMap[nx][ny]>currentrank+1
+                        )
+                    ):
+                    rankMap[nx][ny]     = currentrank+1
+                    shouldvisit[nx][ny] = True
+            
+            # mark a visited
+            shouldvisit[cx][cy] = False
+        
+        return rankMap
 
 #======== core simulator
 
@@ -361,25 +430,28 @@ def singleRun(grid,start,NavAlgClass,numRobots):
         
         # think
         try:
-            (nextRobotPositions,discoMap)   = navAlg.think(robotPositions)
-        except ExceptionFullDiscoMap:
+            (nextRobotPositions,discoMap,rankMap)   = navAlg.think(robotPositions)
+        except MappingDoneSuccess:
             break
         
         # move
         robotPositions                      = nextRobotPositions
         
         # print
-        printGrid(discoMap,start,robotPositions)
+        printGrid(discoMap,start,robotPositions,rankMap)
+        
+        input()
+        time.sleep(0.500)
 
 #============================ main ============================================
 
 def main():
 
-    numRobots      = 55
+    numRobots      = 1
     NavAlgClasses  = [
         NavigationRama,
-        NavigationRandomWalk,
-        NavigationBallistic,
+        #NavigationRandomWalk,
+        #NavigationBallistic,
     ]
     
     with open('HNOO.log','w') as f:
