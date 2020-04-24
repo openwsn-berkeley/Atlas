@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 
 #============================ defines =========================================
 
-
 HEADING_N          = 'N'
 HEADING_NE         = 'NE'
 HEADING_E          = 'E'
@@ -33,16 +32,9 @@ HEADING_ALL        = [
     HEADING_NW,
 ]
 
-GRID_SIZE          = 10
 OBSTACLE_DENSITY   = 0.5
 
-ALL_INDEXES        = []
-for x in range(GRID_SIZE):
-    for y in range(GRID_SIZE):
-        ALL_INDEXES       += [(x,y)]
-
 #============================ helper functions ================================
-
 
 def genGrid():
     '''
