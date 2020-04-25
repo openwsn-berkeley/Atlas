@@ -3,7 +3,6 @@ simulation of navigation algorithms for micro-robots
 '''
 
 import os
-import time
 import random
 
 #============================ defines =========================================
@@ -30,8 +29,8 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 40
-    cols  = 45
+    rows  = 10
+    cols  = 10
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -75,7 +74,7 @@ def genGrid():
     '''
     return (grid,startPos)
 
-def printGrid(discoMap,startPos,robotPositions,kpis,rankMapIdx,rank=None):
+def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
     output         = []
     numUnExplored  = 0
     output        += ['']
@@ -106,11 +105,6 @@ def printGrid(discoMap,startPos,robotPositions,kpis,rankMapIdx,rank=None):
                 if  discoMap[row][col]==0:
                     line += ['#']
                     break
-                '''
-                if (row,col) in rankMapIdx:
-                    line += ['$']
-                    break
-                '''
                 # unexplored
                 if discoMap[row][col]==-1:
                     numUnExplored += 1
@@ -443,7 +437,7 @@ class NavigationRama(Navigation):
                 elif self.grid[x][y] == 1:
                     self.discoMap[x][y]=1
         
-        return (robotPositions,self.discoMap,self._rankMap(sx,sy),self.rankMaps.keys())
+        return (robotPositions,self.discoMap,self._rankMap(sx,sy))
     
     def _rankMap(self,sx,sy):
     
@@ -542,7 +536,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         
         # think
         try:
-            (nextRobotPositions,discoMap,rankMapStart,rankMapIdx)   = navAlg.think(robotPositions)
+            (nextRobotPositions,discoMap,rankMapStart)   = navAlg.think(robotPositions)
         except MappingDoneSuccess:
             break
         
@@ -557,10 +551,9 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         kpis['numTicks'] += 1
         
         # print
-        printGrid(discoMap,startPos,robotPositions,kpis,rankMapIdx)#,rankMapStart)
+        printGrid(discoMap,startPos,robotPositions,kpis)#,rankMapStart)
         
         #input()
-        #time.sleep(0.100)
     
     return kpis
 
@@ -571,8 +564,8 @@ def main():
     numRobots      = 10
     NavAlgClasses  = [
         NavigationRama,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     kpis           = []
 
