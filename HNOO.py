@@ -3,6 +3,7 @@ simulation of navigation algorithms for micro-robots
 '''
 
 import os
+import time
 import random
 
 #============================ defines =========================================
@@ -29,8 +30,8 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 5
-    cols  = 5
+    rows  = 15
+    cols  = 15
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -99,12 +100,12 @@ def printGrid(grid,startPos,robotPositions,rank=None):
                 if grid[row][col]==-1:
                     line += ['.']
                     break
-                #'''
+                '''
                 # rank
                 if rank:
                     line += [str(rank[row][col]%10)]
                     break
-                #'''
+                '''
                 # explored
                 line += [' ']
                 break
@@ -289,9 +290,11 @@ class NavigationBallistic(NavigationDistributed):
 class NavigationRama(Navigation):
     def think(self, robotPositions):
         
+        # store params
+        robotPositions       = robotPositions[:] # many a local copy
+        
         # local variables
         robotsMoved          = []
-        nextRobotPositions   = robotPositions[:]
         (sx,sy)              = self.startPos # shorthand
         
         # determine whether we're done exploring
@@ -329,42 +332,62 @@ class NavigationRama(Navigation):
             for (fx,fy) in frontierCells:
                 rankMapFcs[(fx,fy)] = self._computeRankMap(self.grid,fx,fy)
             
-            # pick move robot (mv) and target frontier cell (fc)
-            # Rules (most important first):
-            # - robot as close as possible to frontier
-            # - robot as close as possible to start
-            mr_idx           = None
-            mr_distToStart   = None
-            mr_distToFc      = None
-            fc_pos           = None
-            fc_rankMap       = None
-            for (ridx,(rx,ry)) in enumerate(nextRobotPositions):
-                rDistToStart = self.rankMapStart[rx][ry]
+            # pick move robot (mv) and frontier cell (fc) to move towards
+            #   Rules (most important first):
+            #     - robot as close as possible to frontier
+            #     - robot as close as possible to start position
+            #     - frontier cell with many neighbors with a higher rank (avoids cutting corners)
+            #     - frontier cell with many unexplored neighbors
+            mr_idx                          = None
+            fc_pos                          = None
+            mr_distToStart                  = None
+            mr_distToFc                     = None
+            fc_rankMap                      = None
+            for (ridx,(rx,ry)) in enumerate(robotPositions):
+                rDistToStart                = self.rankMapStart[rx][ry]
+                max_numHigherRankNeighbors  = None
+                max_numUnexploredNeighbors  = None
                 for ((fx,fy),rankMap) in rankMapFcs.items():
-                    rDistToFc = rankMap[rx][ry]
+                    rDistToFc               = rankMap[rx][ry]
+                    numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap,self.rankMapStart)
+                    numUnexploredNeighbors  = self._numUnexploredNeighbors(fx,fy,self.discoMap)
                     if  (
-                            mr_idx==None or
-                            rDistToFc<mr_distToFc or
+                            mr_idx==None                   or
+                            rDistToFc<mr_distToFc          or
                             (
-                                rDistToFc==mr_distToFc and
+                                rDistToFc==mr_distToFc               and
                                 rDistToStart<mr_distToStart
+                            )                              or
+                            (
+                                rDistToFc==mr_distToFc               and
+                                rDistToStart==mr_distToStart         and
+                                max_numHigherRankNeighbors!=None     and
+                                numHigherRankNeighbors>max_numHigherRankNeighbors
+                            )                              or
+                            (
+                                rDistToFc==mr_distToFc               and
+                                rDistToStart==mr_distToStart         and
+                                max_numUnexploredNeighbors!=None     and
+                                numUnexploredNeighbors>max_numUnexploredNeighbors
                             )
                         ):
-                        mr_idx         = ridx
-                        mr_distToStart = rDistToStart
-                        mr_distToFc    = rDistToFc
-                        fc_pos         = (fx,fy)
-                        fc_rankMap     = rankMap
+                        mr_idx                     = ridx
+                        fc_pos                     = (fx,fy)
+                        mr_distToStart             = rDistToStart
+                        mr_distToFc                = rDistToFc
+                        fc_rankMap                 = rankMap
+                        max_numHigherRankNeighbors = numHigherRankNeighbors
+                        max_numUnexploredNeighbors = numUnexploredNeighbors
             assert(mr_idx!=None)
             
-            # pick new position for move robot
-            (mx_cur, my_cur)       = nextRobotPositions[mr_idx] # shorthand
+            # pick new position
+            (mx_cur, my_cur)       = robotPositions[mr_idx] # shorthand
             (mx_next,my_next)      = (None,None)
             min_dist               = None
             for (x,y) in self._OneHopNeighborhood(mx_cur,my_cur):
                 if (
                     self.grid[x][y]==1              and
-                    (x,y) not in nextRobotPositions and
+                    (x,y) not in robotPositions     and
                     (
                         min_dist==None or
                         fc_rankMap[x][y]<min_dist
@@ -376,7 +399,7 @@ class NavigationRama(Navigation):
             assert(my_next!=None)
         
         # move moveRobot
-        nextRobotPositions[mr_idx] = (mx_next,my_next)
+        robotPositions[mr_idx] = (mx_next,my_next)
         
         # update the discoMap
         for (x,y) in self._OneHopNeighborhood(mx_next,my_next):
@@ -388,7 +411,7 @@ class NavigationRama(Navigation):
         # compute ranks
         self.rankMapStart = self._computeRankMap(self.grid,sx,sy)
         
-        return (nextRobotPositions,self.discoMap,self.rankMapStart)
+        return (robotPositions,self.discoMap,self.rankMapStart)
     
     def _computeRankMap(self,grid,sx,sy):
         
@@ -441,6 +464,23 @@ class NavigationRama(Navigation):
             shouldvisit[cx][cy] = False
         
         return rankMap
+    
+    def _numHigherRankNeighbors(self,x,y,discoMap,rankMap):
+        returnVal = 0
+        for (nx,ny) in self._OneHopNeighborhood(x,y):
+            if  (
+                    discoMap[nx][ny]==1 and
+                    rankMap[nx][ny]>rankMap[x][y]
+                ):
+                returnVal += 1
+        return returnVal
+    
+    def _numUnexploredNeighbors(self,x,y,discoMap):
+        returnVal = 0
+        for (nx,ny) in self._OneHopNeighborhood(x,y):
+            if discoMap[nx][ny]==-1:
+                returnVal += 1
+        return returnVal
 
 #======== core simulator
 
@@ -475,6 +515,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         numTicks += 1
         
         #input()
+        #time.sleep(0.100)
     
     return {
         'numTicks': numTicks,
@@ -485,11 +526,11 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
 
 def main():
 
-    numRobots      = 3
+    numRobots      = 2
     NavAlgClasses  = [
         NavigationRama,
-        NavigationRandomWalk,
-        NavigationBallistic,
+        #NavigationRandomWalk,
+        #NavigationBallistic,
     ]
     kpis           = {}
 
