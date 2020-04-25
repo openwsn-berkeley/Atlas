@@ -291,125 +291,139 @@ class NavigationRama(Navigation):
     def think(self, robotPositions):
         
         # store params
-        robotPositions       = robotPositions[:] # many a local copy
+        robotPositions            = robotPositions[:] # many a local copy
         
         # local variables
-        robotsMoved          = []
-        (sx,sy)              = self.startPos # shorthand
+        robotsMoved               = []
+        frontierCellsTargeted     = []
+        (sx,sy)                   = self.startPos # shorthand
         
         # determine whether we're done exploring
         self._determineDoneExploring()
         
-        if self.firstIteration:
-            # this is my first iteration: put robot 0 in the start position
-            mr_idx                = 0
-            (mx_next,my_next)     = self.startPos
-            self.firstIteration   = False
-        
-        else:
-            # I already have robots in the area
+        while True:
+            if self.firstIteration:
+                # this is my first iteration: put robot 0 in the start position
+                
+                mr_idx                = 0
+                (mx_next,my_next)     = self.startPos
+                self.firstIteration   = False
             
-            # identify all frontierCells
-            frontierCells = []
-            for (x,y) in self.allCellsIdx:
-                # consider only open cells
-                if self.discoMap[x][y]!=1:
-                    continue
-                # check wether this cell has unexplored neighbor cells
-                for (nx,ny) in self._OneHopNeighborhood(x,y):
-                    if self.discoMap[nx][ny]==-1:
-                        frontierCells += [((x,y),self.rankMapStart[x][y])]
-                        break
+            else:
+                # I already have robots in the area
+                
+                # identify all frontierCells
+                frontierCells = []
+                for (x,y) in self.allCellsIdx:
+                    # consider only open cells
+                    if self.discoMap[x][y]!=1:
+                        continue
+                    # check wether this cell has unexplored neighbor cells
+                    for (nx,ny) in self._OneHopNeighborhood(x,y):
+                        if self.discoMap[nx][ny]==-1:
+                            frontierCells += [((x,y),self.rankMapStart[x][y])]
+                            break
+                
+                # keep only frontierCells with lowest rank
+                frontierCells = [
+                    fc[0] for fc in frontierCells
+                    if fc[1]==sorted(frontierCells, key=lambda item: item[1])[0][1]
+                ]
+                
+                # find the distance from each frontier cell to each robot
+                rankMapFcs = {}
+                for (fx,fy) in frontierCells:
+                    rankMapFcs[(fx,fy)] = self._computeRankMap(self.grid,fx,fy)
+                
+                # pick move robot (mv) and frontier cell (fc) to move towards
+                #   Rules (most important first):
+                #     - robot as close as possible to frontier
+                #     - robot as close as possible to start position
+                #     - frontier cell with many neighbors with a higher rank (avoids cutting corners)
+                #     - frontier cell with many unexplored neighbors
+                mr_idx                          = None
+                fc_pos                          = None
+                mr_distToStart                  = None
+                mr_distToFc                     = None
+                fc_rankMap                      = None
+                for (ridx,(rx,ry)) in enumerate(robotPositions):
+                    
+                    # don't move the same robot twice
+                    if ridx in robotsMoved:
+                        continue
+                    
+                    rDistToStart                = self.rankMapStart[rx][ry]
+                    max_numHigherRankNeighbors  = None
+                    max_numUnexploredNeighbors  = None
+                    for ((fx,fy),rankMap) in rankMapFcs.items():
+                        rDistToFc               = rankMap[rx][ry]
+                        numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap,self.rankMapStart)
+                        numUnexploredNeighbors  = self._numUnexploredNeighbors(fx,fy,self.discoMap)
+                        if  (
+                                mr_idx==None                   or
+                                rDistToFc<mr_distToFc          or
+                                (
+                                    rDistToFc==mr_distToFc               and
+                                    rDistToStart<mr_distToStart
+                                )                              or
+                                (
+                                    rDistToFc==mr_distToFc               and
+                                    rDistToStart==mr_distToStart         and
+                                    max_numHigherRankNeighbors!=None     and
+                                    numHigherRankNeighbors>max_numHigherRankNeighbors
+                                )                              or
+                                (
+                                    rDistToFc==mr_distToFc               and
+                                    rDistToStart==mr_distToStart         and
+                                    max_numUnexploredNeighbors!=None     and
+                                    numUnexploredNeighbors>max_numUnexploredNeighbors
+                                )
+                            ):
+                            mr_idx                     = ridx
+                            fc_pos                     = (fx,fy)
+                            mr_distToStart             = rDistToStart
+                            mr_distToFc                = rDistToFc
+                            fc_rankMap                 = rankMap
+                            max_numHigherRankNeighbors = numHigherRankNeighbors
+                            max_numUnexploredNeighbors = numUnexploredNeighbors
+                
+                # abort if couldn't find robot to move
+                if mr_idx==None:
+                    break
+                
+                # pick new position
+                (mx_cur, my_cur)       = robotPositions[mr_idx] # shorthand
+                (mx_next,my_next)      = (None,None)
+                min_dist               = None
+                for (x,y) in self._OneHopNeighborhood(mx_cur,my_cur):
+                    if (
+                        self.grid[x][y]==1              and
+                        (x,y) not in robotPositions     and
+                        (
+                            min_dist==None or
+                            fc_rankMap[x][y]<min_dist
+                        )
+                    ):
+                        min_dist = fc_rankMap[x][y]
+                        (mx_next,my_next) = (x,y)
+                
+                # abort if couldn't find a position to move to
+                if mx_next==None:
+                    break
             
-            # keep only frontierCells with lowest rank
-            frontierCells = [
-                fc[0] for fc in frontierCells
-                if fc[1]==sorted(frontierCells, key=lambda item: item[1])[0][1]
-            ]
+            # move moveRobot
+            robotPositions[mr_idx] = (mx_next,my_next)
+            robotsMoved           += [mr_idx]
             
-            # find the distance from each frontier cell to each robot
-            rankMapFcs = {}
-            for (fx,fy) in frontierCells:
-                rankMapFcs[(fx,fy)] = self._computeRankMap(self.grid,fx,fy)
+            # update the discoMap
+            for (x,y) in self._OneHopNeighborhood(mx_next,my_next):
+                if   self.grid[x][y] == 0:
+                    self.discoMap[x][y]=0
+                elif self.grid[x][y] == 1:
+                    self.discoMap[x][y]=1
             
-            # pick move robot (mv) and frontier cell (fc) to move towards
-            #   Rules (most important first):
-            #     - robot as close as possible to frontier
-            #     - robot as close as possible to start position
-            #     - frontier cell with many neighbors with a higher rank (avoids cutting corners)
-            #     - frontier cell with many unexplored neighbors
-            mr_idx                          = None
-            fc_pos                          = None
-            mr_distToStart                  = None
-            mr_distToFc                     = None
-            fc_rankMap                      = None
-            for (ridx,(rx,ry)) in enumerate(robotPositions):
-                rDistToStart                = self.rankMapStart[rx][ry]
-                max_numHigherRankNeighbors  = None
-                max_numUnexploredNeighbors  = None
-                for ((fx,fy),rankMap) in rankMapFcs.items():
-                    rDistToFc               = rankMap[rx][ry]
-                    numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap,self.rankMapStart)
-                    numUnexploredNeighbors  = self._numUnexploredNeighbors(fx,fy,self.discoMap)
-                    if  (
-                            mr_idx==None                   or
-                            rDistToFc<mr_distToFc          or
-                            (
-                                rDistToFc==mr_distToFc               and
-                                rDistToStart<mr_distToStart
-                            )                              or
-                            (
-                                rDistToFc==mr_distToFc               and
-                                rDistToStart==mr_distToStart         and
-                                max_numHigherRankNeighbors!=None     and
-                                numHigherRankNeighbors>max_numHigherRankNeighbors
-                            )                              or
-                            (
-                                rDistToFc==mr_distToFc               and
-                                rDistToStart==mr_distToStart         and
-                                max_numUnexploredNeighbors!=None     and
-                                numUnexploredNeighbors>max_numUnexploredNeighbors
-                            )
-                        ):
-                        mr_idx                     = ridx
-                        fc_pos                     = (fx,fy)
-                        mr_distToStart             = rDistToStart
-                        mr_distToFc                = rDistToFc
-                        fc_rankMap                 = rankMap
-                        max_numHigherRankNeighbors = numHigherRankNeighbors
-                        max_numUnexploredNeighbors = numUnexploredNeighbors
-            assert(mr_idx!=None)
-            
-            # pick new position
-            (mx_cur, my_cur)       = robotPositions[mr_idx] # shorthand
-            (mx_next,my_next)      = (None,None)
-            min_dist               = None
-            for (x,y) in self._OneHopNeighborhood(mx_cur,my_cur):
-                if (
-                    self.grid[x][y]==1              and
-                    (x,y) not in robotPositions     and
-                    (
-                        min_dist==None or
-                        fc_rankMap[x][y]<min_dist
-                    )
-                ):
-                    min_dist = fc_rankMap[x][y]
-                    (mx_next,my_next) = (x,y)
-            assert(mx_next!=None)
-            assert(my_next!=None)
-        
-        # move moveRobot
-        robotPositions[mr_idx] = (mx_next,my_next)
-        
-        # update the discoMap
-        for (x,y) in self._OneHopNeighborhood(mx_next,my_next):
-            if   self.grid[x][y] == 0:
-                self.discoMap[x][y]=0
-            elif self.grid[x][y] == 1:
-                self.discoMap[x][y]=1
-        
-        # compute ranks
-        self.rankMapStart = self._computeRankMap(self.grid,sx,sy)
+            # compute ranks
+            self.rankMapStart = self._computeRankMap(self.grid,sx,sy)
         
         return (robotPositions,self.discoMap,self.rankMapStart)
     
@@ -514,7 +528,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         # update KPIs
         numTicks += 1
         
-        #input()
+        input()
         #time.sleep(0.100)
     
     return {
