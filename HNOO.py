@@ -4,6 +4,7 @@ simulation of navigation algorithms for micro-robots
 
 import os
 import random
+import cProfile
 
 #============================ defines =========================================
 
@@ -29,8 +30,8 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 10
-    cols  = 10
+    rows  = 40
+    cols  = 40
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -183,9 +184,9 @@ class Navigation(object):
             
             # do not consider cells outside the grid
             if  (
-                    (nx<0)         or
+                    (nx<0)              or
                     (nx>=self.numRows)  or
-                    (ny<0)         or
+                    (ny<0)              or
                     (ny>=self.numCols)
                 ):
                 continue
@@ -370,7 +371,7 @@ class NavigationRama(Navigation):
                     max_numUnexploredNeighbors  = None
                     for (fx,fy) in frontierCells:
                         rDistToFc               = self._distance((fx,fy),(rx,ry))
-                        numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap,self._rankMap(sx,sy))
+                        numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap)
                         numUnexploredNeighbors  = self._numUnexploredNeighbors(fx,fy,self.discoMap)
                         if  (
                                 mr_idx==None                   or
@@ -437,24 +438,38 @@ class NavigationRama(Navigation):
                 elif self.grid[x][y] == 1:
                     self.discoMap[x][y]=1
         
-        return (robotPositions,self.discoMap,self._rankMap(sx,sy))
+        return (robotPositions,self.discoMap,self.rankMaps[self.startPos])
     
-    def _rankMap(self,sx,sy):
-    
+    def _distance(self,pos1,pos2):
+        
+        # easy answer if same position
+        if pos1==pos2:
+            return 0
+        
+        # inverting pos1 and pos2 in case pos2 already cached (same distance)
+        if (pos1 not in self.rankMaps) and (pos2 in self.rankMaps):
+            temp = pos1
+            pos1 = pos2
+            pos2 = temp
+        
+        # shorthands
+        (x1,y1) = pos1 
+        (x2,y2) = pos2
+        
         # if not in cache, compute rank map (and store in cache)
-        if (sx,sy) not in self.rankMaps:
+        if (x1,y1) not in self.rankMaps:
             
             # local variables
-            rankMap                   = []
             shouldvisit               = []
+            rankMap                   = []
             for row in self.grid:
                 rankMap              += [[]]
                 for col in row:
                     rankMap[-1]      += [None]
 
             # start from start position
-            rankMap[sx][sy]           = 0
-            shouldvisit              += [(sx,sy)]
+            rankMap[x1][y1]           = 0
+            shouldvisit              += [(x1,y1)]
             
             while True:
                 
@@ -486,22 +501,13 @@ class NavigationRama(Navigation):
                 # mark a visited
                 shouldvisit.remove((cx,cy))
             
-            self.rankMaps[(sx,sy)] = rankMap
+            self.rankMaps[(x1,y1)] = rankMap
         
-        return self.rankMaps[(sx,sy)]
+        return self.rankMaps[(x1,y1)][x2][y2]
     
-    def _distance(self,pos1,pos2):
-        (x1,y1) = pos1 # shorthand
-        (x2,y2) = pos2 # shorthand
-        if   (x1,y1) in self.rankMaps:
-            return self.rankMaps[(x1,y1)][x2][y2]
-        elif (x2,y2) in self.rankMaps:
-            return self.rankMaps[(x2,y2)][x1][y1]
-        else:
-            return self._rankMap(x1,y1)[x2][y2]
-    
-    def _numHigherRankNeighbors(self,x,y,discoMap,rankMap):
+    def _numHigherRankNeighbors(self,x,y,discoMap):
         returnVal = 0
+        rankMap = self.rankMaps[self.startPos] # shorthand
         for (nx,ny) in self._OneHopNeighborhood(x,y):
             if  (
                     discoMap[nx][ny]==1 and
@@ -564,8 +570,8 @@ def main():
     numRobots      = 10
     NavAlgClasses  = [
         NavigationRama,
-        NavigationRandomWalk,
-        NavigationBallistic,
+        #NavigationRandomWalk,
+        #NavigationBallistic,
     ]
     kpis           = []
 
@@ -586,3 +592,4 @@ def main():
 
 if __name__=='__main__':
     main()
+    #cProfile.run('main()')
