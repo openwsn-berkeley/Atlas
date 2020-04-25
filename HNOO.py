@@ -31,12 +31,12 @@ HEADING_ALL        = [
 
 def genGrid():
     rows  = 15
-    cols  = 15
+    cols  = 17
     grid  = []
     for row in range(rows):
         thisRow = []
         for col in range(cols):
-            if random.random()<0.00:
+            if random.random()<0.05:
                 thisRow += [0]
             else:
                 thisRow += [1]
@@ -526,11 +526,11 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
 
 def main():
 
-    numRobots      = 2
+    numRobots      = 10
     NavAlgClasses  = [
         NavigationRama,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     kpis           = {}
 
