@@ -7,9 +7,6 @@ import os
 import time
 import json
 import random
-import math
-import itertools
-import matplotlib.pyplot as plt
 
 #============================ defines =========================================
 
@@ -35,9 +32,9 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
+    '''
     rows  = 20
     cols  = 30
-    start = (int(rows/2),int(cols/2))
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -47,7 +44,7 @@ def genGrid():
             else:
                 thisRow += [1]
         grid += [thisRow]
-    return (grid,start)
+    start = (int(rows/2),int(cols/2))
     '''
     grid = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -55,11 +52,11 @@ def genGrid():
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+       #[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-       #[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-       #[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+       #[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
@@ -74,8 +71,8 @@ def genGrid():
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ]
-    '''
-    return grid
+    start = (10,20)
+    return (grid,start)
 
 def printGrid(grid,start,robotPositions,rank=None):
     output  = []
@@ -106,9 +103,11 @@ def printGrid(grid,start,robotPositions,rank=None):
                     line += ['.']
                     break
                 # rank
+                '''
                 if rank:
                     line += [str(rank[row][col]%10)]
                     break
+                '''
                 # explored
                 line += [' ']
                 break
@@ -144,10 +143,12 @@ class Navigation(object):
         self.firstIteration  = True
         self.rankMap         = None
         self.discoMap        = []
-        for row in grid:
+        self.allCellsIdx     = []
+        for (x,row) in enumerate(grid):
             self.discoMap   += [[]]
-            for col in row:
+            for (y,col) in enumerate(row):
                 self.discoMap[-1] += [-1]
+                self.allCellsIdx  += [(x,y)]
     
     def _determineDoneExploring(self):
         fullDiscoMap = True
@@ -302,69 +303,43 @@ class NavigationRama(Navigation):
         
         if self.firstIteration:
             moveBot               = 0
-            (mx,my)               = self.start
+            (fx,fy)               = self.start
             self.firstIteration   = False
         
         else:
-            # identify robots at the frontier
-            frontierBots = []
-            for (i,(x,y)) in enumerate(robotPositions):
-                # check that robot has frontier it its 2-neighborhood
-                closeToFrontier = False
-                for (nx,ny) in self._TwoHopNeighborhood(x,y):
-                    if self.discoMap[nx][ny]==-1:
-                        closeToFrontier = True
-                        break
-                if closeToFrontier==False:
+            # identify cells at the frontier
+            frontierCells = []
+            for (x,y) in self.allCellsIdx:
+                # consider only open cells
+                if self.discoMap[x][y]!=1:
                     continue
-                # check that robot has open space in its 1-neighborhood that's further than itself
+                # check wether this cell has unexplored neighbor cells
+                isFrontierCell = False
                 for (nx,ny) in self._OneHopNeighborhood(x,y):
-                    if (
-                        self.grid[nx][ny]==1            and  # open position (not wall)
-                        ((nx,ny) not in robotPositions) and  # no robot there
-                        (nx,ny)!=self.start             and  # not the start position
-                        self.rankMap[nx][ny]>self.rankMap[x][y]
-                    ):
-                        frontierBots += [i]
+                    if self.discoMap[nx][ny]==-1:
+                        isFrontierCell = True
                         break
-            if not frontierBots:
-                raise MappingDoneIncomplete
+                if isFrontierCell==True:
+                    frontierCells += [((x,y),self.rankMap[x][y])]
             
-            # pick a frontierBot
-            distanceToStart = {}
-            for (i,(x,y)) in enumerate(robotPositions):
-                if i not in frontierBots:
-                    continue
-                distanceToStart[i] = self.rankMap[x][y]
-            frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+            # pick the frontierCell with lowest rank
+            (fx,fy) = sorted(frontierCells, key=lambda item: item[1])[0][0]
             
             # pick a moveRobot
             distanceToStart = {}
             for (i,(x,y)) in enumerate(robotPositions):
-                distanceToStart[i] = math.sqrt((x-sx)**2 + (y-sy)**2)
+                distanceToStart[i] = self.rankMap[x][y]
             moveBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-            
-            # pick a cell for moveRobot
-            (fx,fy) = robotPositions[frontierBot]
-            while True:
-                (mx,my) = random.choice(self._OneHopNeighborhood(fx,fy))
-                if  (
-                        self.grid[mx][my]==1            and
-                        ((mx,my) not in robotPositions) and
-                        (mx,my)!=self.start             and
-                        self.rankMap[mx][my]>self.rankMap[fx][fy]
-                    ):
-                    break
         
-        # move moveRobot
-        nextRobotPositions[moveBot] = (mx,my)
+        # move moveRobot to frontierCell
+        nextRobotPositions[moveBot] = (fx,fy)
         
         # update the discoMap
-        for (nx,ny) in self._OneHopNeighborhood(mx,my):
-            if   self.grid[nx][ny] == 0:
-                self.discoMap[nx][ny]=0
-            elif self.grid[nx][ny] == 1:
-                self.discoMap[nx][ny]=1
+        for (x,y) in self._OneHopNeighborhood(fx,fy):
+            if   self.grid[x][y] == 0:
+                self.discoMap[x][y]=0
+            elif self.grid[x][y] == 1:
+                self.discoMap[x][y]=1
         
         # compute ranks
         self.rankMap     = self.computeRankMap(self.grid,self.start)
@@ -384,7 +359,7 @@ class NavigationRama(Navigation):
                 shouldvisit[-1]  += [False]
 
         # start from start position
-        (sx,sy) = start
+        (sx,sy)                   = start
         rankMap[sx][sy]           = 0
         shouldvisit[sx][sy]       = True
         
@@ -393,18 +368,17 @@ class NavigationRama(Navigation):
             # find cell to visit with lowest rank (abort if none)
             found         = False
             currentrank   = None
-            for x in range(self.numRows):
-                for y in range(self.numCols):
-                    if  (
-                            shouldvisit[x][y]==True and
-                            (
-                                currentrank==None or
-                                rankMap[x][y]<currentrank
-                            )
-                        ):
-                        currentrank   = rankMap[x][y]
-                        (cx,cy)       = (x,y)
-                        found = True
+            for (x,y) in self.allCellsIdx:
+                if  (
+                        shouldvisit[x][y]==True and
+                        (
+                            currentrank==None or
+                            rankMap[x][y]<currentrank
+                        )
+                    ):
+                    currentrank   = rankMap[x][y]
+                    (cx,cy)       = (x,y)
+                    found = True
             if found==False:
                 break
             
@@ -455,7 +429,7 @@ def singleRun(grid,start,NavAlgClass,numRobots):
 
 def main():
 
-    numRobots      = 100
+    numRobots      = 10
     NavAlgClasses  = [
         NavigationRama,
         #NavigationRandomWalk,
@@ -471,18 +445,6 @@ def main():
         for NavAlgClass in NavAlgClasses:
             # run  single run
             kpis    = singleRun(grid,start,NavAlgClass,numRobots)
-            
-            # log the results
-            f.write(json.dumps(
-                {
-                    'grid':     grid,
-                    'start':    start,
-                    'kpis':     kpis,
-                }
-            )+'\n')
-    
-    # analyze the results
-    # TODO
     
     print('Done.')
 
