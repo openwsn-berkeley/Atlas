@@ -30,19 +30,21 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    
     rows  = 40
-    cols  = 50
+    cols  = 45
     grid  = []
     for row in range(rows):
         thisRow = []
         for col in range(cols):
-            if random.random()<0.05:
+            if random.random()<0.10:
                 thisRow += [0]
             else:
                 thisRow += [1]
         grid += [thisRow]
-    startPos = (int(rows/2),int(cols/2))
+    sx = int(rows/2)
+    sy = int(cols/2)
+    startPos = (sx,sy)
+    grid[sx][sy] = 1 # avoid invalid grid with obstacle at start position
     '''
     grid = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -478,12 +480,11 @@ class NavigationRama(Navigation):
                 
                 # assign a height for all its neighbors
                 for (nx,ny) in self._OneHopNeighborhood(cx,cy):
-                    if (
+                    if rankMap[nx][ny] != None:
+                        assert rankMap[nx][ny] <= currentrank+1 
+                    if  (
                             self.grid[nx][ny]==1 and
-                            (
-                                rankMap[nx][ny] == None or
-                                rankMap[nx][ny]>currentrank+1
-                            )
+                            rankMap[nx][ny] == None
                         ):
                         rankMap[nx][ny]     = currentrank+1
                         shouldvisit        += [(nx,ny)]
