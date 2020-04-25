@@ -30,8 +30,8 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 40
-    cols  = 40
+    rows  = 20
+    cols  = 20
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -158,11 +158,15 @@ class Navigation(object):
         self.rankMaps        = {}
         self.discoMap        = []
         self.allCellsIdx     = []
+        self.stats           = {}
         for (x,row) in enumerate(grid):
             self.discoMap   += [[]]
             for (y,col) in enumerate(row):
                 self.discoMap[-1] += [-1]
                 self.allCellsIdx  += [(x,y)]
+    
+    def getStats(self):
+        return self.stats
     
     def _determineDoneExploring(self):
         fullDiscoMap = True
@@ -304,7 +308,12 @@ class NavigationBallistic(NavigationDistributed):
         return nextPosition
 
 class NavigationRama(Navigation):
-
+    
+    def __init__(self,grid,startPos,numRobots):
+        Navigation.__init__(self,grid,startPos,numRobots)
+        self.shouldvisits         = {}
+        self._distance(startPos) # force rankMap to be fully built for start position
+    
     def think(self, robotPositions):
         
         # store params
@@ -316,7 +325,15 @@ class NavigationRama(Navigation):
         (sx,sy)                   = self.startPos # shorthand
         
         # determine whether we're done exploring
-        self._determineDoneExploring()
+        try:
+            self._determineDoneExploring()
+        except:
+            self.stats['num_cache_entries'] = len(self.rankMaps)
+            l = [len(v) for (k,v) in self.rankMaps.items()]
+            self.stats['cache_maxlength']   = max(l)
+            self.stats['cache_minlength']   = min(l)
+            self.stats['cache_avglength']   = float(sum(l))/len(l)
+            raise
         
         while True:
             if self.firstIteration:
@@ -440,7 +457,12 @@ class NavigationRama(Navigation):
         
         return (robotPositions,self.discoMap,self.rankMaps[self.startPos])
     
-    def _distance(self,pos1,pos2):
+    def _stats_incr(self,k):
+        if k not in self.stats:
+            self.stats[k] = 0
+        self.stats[k] += 1
+    
+    def _distance(self,pos1,pos2=None):
         
         # easy answer if same position
         if pos1==pos2:
@@ -452,24 +474,39 @@ class NavigationRama(Navigation):
             pos1 = pos2
             pos2 = temp
         
-        # shorthands
-        (x1,y1) = pos1 
-        (x2,y2) = pos2
-        
-        # if not in cache, compute rank map (and store in cache)
-        if (x1,y1) not in self.rankMaps:
-            
-            # local variables
-            shouldvisit               = []
-            rankMap                   = []
-            for row in self.grid:
-                rankMap              += [[]]
-                for col in row:
-                    rankMap[-1]      += [None]
-
-            # start from start position
-            rankMap[x1][y1]           = 0
-            shouldvisit              += [(x1,y1)]
+        # check whether rankMaps in cache, otherwise build or resume
+        if  (
+                (pos1 in self.rankMaps) and
+                (pos2 in self.rankMaps[pos1])
+            ):
+                # stats
+                self._stats_incr('cache_hit')
+        else:
+            if  (
+                    (pos1 in self.rankMaps) and
+                    (pos2 not in self.rankMaps[pos1])
+                ):
+                # resuming building the rankMap
+                
+                # stats
+                self._stats_incr('cache_miss_resume')
+                
+                # local variables (resume)
+                rankMap                   = self.rankMaps[pos1]
+                shouldvisit               = self.shouldvisits[pos1]
+            else:
+                # starting new rankMap
+                
+                # stats
+                self._stats_incr('cache_miss_new')
+                
+                # local variables (new)
+                rankMap                   = {}
+                shouldvisit               = []
+                
+                # start from start position
+                rankMap[pos1]             = 0
+                shouldvisit              += [pos1]
             
             while True:
                 
@@ -479,9 +516,9 @@ class NavigationRama(Navigation):
                 for (x,y) in shouldvisit:
                     if  (
                             currentrank==None or
-                            rankMap[x][y]<currentrank
+                            rankMap[(x,y)]<currentrank
                         ):
-                        currentrank   = rankMap[x][y]
+                        currentrank   = rankMap[(x,y)]
                         (cx,cy)       = (x,y)
                         found = True
                 if found==False:
@@ -489,21 +526,27 @@ class NavigationRama(Navigation):
                 
                 # assign a height for all its neighbors
                 for (nx,ny) in self._OneHopNeighborhood(cx,cy):
-                    if rankMap[nx][ny] != None:
-                        assert rankMap[nx][ny] <= currentrank+1 
+                    if (nx,ny) in rankMap:
+                        assert rankMap[(nx,ny)] <= currentrank+1 
                     if  (
-                            self.grid[nx][ny]==1 and
-                            rankMap[nx][ny] == None
+                            (self.grid[nx][ny]==1) and
+                            ((nx,ny) not in rankMap)
                         ):
-                        rankMap[nx][ny]     = currentrank+1
+                        rankMap[(nx,ny)]     = currentrank+1
                         shouldvisit        += [(nx,ny)]
                 
                 # mark a visited
                 shouldvisit.remove((cx,cy))
+                
+                # abort if I reached pos2
+                if pos2 and (pos2 in rankMap):
+                    self.shouldvisits[pos1] = shouldvisit
+                    break
             
-            self.rankMaps[(x1,y1)] = rankMap
-        
-        return self.rankMaps[(x1,y1)][x2][y2]
+            self.rankMaps[pos1] = rankMap
+
+        if pos2:
+            return self.rankMaps[pos1][pos2]
     
     def _numHigherRankNeighbors(self,x,y,discoMap):
         returnVal = 0
@@ -511,7 +554,7 @@ class NavigationRama(Navigation):
         for (nx,ny) in self._OneHopNeighborhood(x,y):
             if  (
                     discoMap[nx][ny]==1 and
-                    rankMap[nx][ny]>rankMap[x][y]
+                    rankMap[(nx,ny)]>rankMap[(x,y)]
                 ):
                 returnVal += 1
         return returnVal
@@ -561,6 +604,8 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         
         #input()
     
+    kpis['stats'] = navAlg.getStats()
+    
     return kpis
 
 #============================ main ============================================
@@ -570,8 +615,8 @@ def main():
     numRobots      = 10
     NavAlgClasses  = [
         NavigationRama,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     kpis           = []
 
