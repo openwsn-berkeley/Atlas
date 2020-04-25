@@ -103,11 +103,9 @@ def printGrid(grid,start,robotPositions,rank=None):
                     line += ['.']
                     break
                 # rank
-                '''
                 if rank:
                     line += [str(rank[row][col]%10)]
                     break
-                '''
                 # explored
                 line += [' ']
                 break
@@ -307,23 +305,26 @@ class NavigationRama(Navigation):
             self.firstIteration   = False
         
         else:
-            # identify cells at the frontier
+            # identify all frontierCells
             frontierCells = []
             for (x,y) in self.allCellsIdx:
                 # consider only open cells
                 if self.discoMap[x][y]!=1:
                     continue
                 # check wether this cell has unexplored neighbor cells
-                isFrontierCell = False
                 for (nx,ny) in self._OneHopNeighborhood(x,y):
                     if self.discoMap[nx][ny]==-1:
-                        isFrontierCell = True
+                        frontierCells += [((x,y),self.rankMap[x][y])]
                         break
-                if isFrontierCell==True:
-                    frontierCells += [((x,y),self.rankMap[x][y])]
             
-            # pick the frontierCell with lowest rank
-            (fx,fy) = sorted(frontierCells, key=lambda item: item[1])[0][0]
+            # keep only frontierCells with lowest rank
+            frontierCells = [
+                fc[0] for fc in frontierCells
+                if fc[1]==sorted(frontierCells, key=lambda item: item[1])[0][1]
+            ]
+            
+            # find the frontierCellsLowest which has a robot the nearest by
+            (fx,fy) = frontierCells[0]
             
             # pick a moveRobot
             distanceToStart = {}
@@ -422,30 +423,28 @@ def singleRun(grid,start,NavAlgClass,numRobots):
         # print
         printGrid(discoMap,start,robotPositions,rankMap)
         
-        #input()
+        input()
         #time.sleep(0.500)
 
 #============================ main ============================================
 
 def main():
 
-    numRobots      = 10
+    numRobots      = 20
     NavAlgClasses  = [
         NavigationRama,
         #NavigationRandomWalk,
         #NavigationBallistic,
     ]
+
+    # create a scenario
+    (grid,start) = genGrid()
     
-    with open('HNOO.log','w') as f:
-        
-        # create a scenario
-        (grid,start) = genGrid()
-        
-        # execute the simulation for each navigation algorithm
-        for NavAlgClass in NavAlgClasses:
-            # run  single run
-            kpis    = singleRun(grid,start,NavAlgClass,numRobots)
-    
+    # execute the simulation for each navigation algorithm
+    for NavAlgClass in NavAlgClasses:
+        # run  single run
+        kpis    = singleRun(grid,start,NavAlgClass,numRobots)
+
     print('Done.')
 
 if __name__=='__main__':
