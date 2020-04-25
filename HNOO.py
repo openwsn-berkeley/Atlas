@@ -30,8 +30,8 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 15
-    cols  = 17
+    rows  = 20
+    cols  = 20
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -85,10 +85,13 @@ def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
             while True:
                 # robot
                 robotFound = False
-                for (rx,ry) in robotPositions:
+                for (ri,(rx,ry)) in enumerate(robotPositions):
                     if (row,col) == (rx,ry):
                         robotFound = True
-                        line += ['*']
+                        if rank:
+                            line += ['*']
+                        else:
+                            line += [str(ri%10)]
                         break
                 if robotFound:
                     break
@@ -105,12 +108,10 @@ def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
                     numUnExplored += 1
                     line += ['.']
                     break
-                '''
                 # rank
                 if rank:
                     line += [str(rank[row][col]%10)]
                     break
-                '''
                 # explored
                 line += [' ']
                 break
@@ -121,8 +122,8 @@ def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
             numCells-numUnExplored,numCells,100.0*((numCells-numUnExplored)/numCells)
         )
     ]
-    for (k,v) in kpis.items():
-        output += ['{0:<13}: {1}'.format(k,v)]
+    for k in sorted(kpis.keys()):
+        output += ['{0:<13}: {1}'.format(k,kpis[k])]
     output = '\n'.join(output)
     os.system('cls')
     print(output)
@@ -523,6 +524,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
     navAlg         = NavAlgClass(grid,startPos,numRobots)
     robotPositions = [startPos]*numRobots
     kpis           = {
+        'navAlg':    NavAlgClass.__name__,
         'numTicks':  0,
         'numSteps':  0,
     }
@@ -546,7 +548,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         kpis['numTicks'] += 1
         
         # print
-        printGrid(discoMap,startPos,robotPositions,kpis,rankMapStart)
+        printGrid(discoMap,startPos,robotPositions,kpis)#,rankMapStart)
         
         #input()
         #time.sleep(0.100)
@@ -563,7 +565,7 @@ def main():
         NavigationRandomWalk,
         NavigationBallistic,
     ]
-    kpis           = {}
+    kpis           = []
 
     # create a scenario
     (grid,startPos) = genGrid()
@@ -575,7 +577,7 @@ def main():
         kpis_run   = singleExploration(grid,startPos,NavAlgClass,numRobots)
         
         # collect KPIs
-        kpis[NavAlgClass.__name__]=kpis_run
+        kpis      += [kpis_run]
 
     print(kpis)
     print('Done.')
