@@ -30,7 +30,7 @@ HEADING_ALL        = [
 
 def genGrid():
     rows  = 5
-    cols  = 5
+    cols  = 10
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -350,11 +350,11 @@ class NavigationRama(Navigation):
         returnVal = self._computeRankMap(
             self.grid,
             x,y,
-            stopCells = robotPositions,
+            robotPositions,
         )
         return returnVal
     
-    def _computeRankMap(self,grid,sx,sy,stopCells=None):
+    def _computeRankMap(self,grid,sx,sy,robotPositions=None):
         
         # local variables
         rankMap                   = []
@@ -404,28 +404,30 @@ class NavigationRama(Navigation):
             # mark a visited
             shouldvisit[cx][cy] = False
             
-            # stop if reached a stopCells
-            if stopCells:
-                for (stopidx,(stopx,stopy)) in enumerate(stopCells):
-                    if rankMap[stopx][stopy]!=None:
-                        # I've reached a stop cell
+            # stop if reached a robot
+            if robotPositions:
+                robotsReached = []
+                for (ridx,(rx,ry)) in enumerate(robotPositions):
+                    if rankMap[rx][ry]!=None:
+                        # I've reached a robot
                         
                         # prepare return values
-                        returnStopCellIdx  = stopidx
+                        return_ridx              = ridx
                         lowestRank = None
-                        for (nx,ny) in self._OneHopNeighborhood(stopx,stopy):
+                        for (nx,ny) in self._OneHopNeighborhood(rx,ry):
                             if rankMap[nx][ny]==None:
                                 continue
                             if lowestRank==None or rankMap[nx][ny]<lowestRank:
-                                lowestRank = rankMap[nx][ny]
-                                returnPos  = (nx,ny)
-                        returnDist         = rankMap[stopx][stopy]
+                                lowestRank       = rankMap[nx][ny]
+                                return_nextpos   = (nx,ny)
+                        return_dist              = rankMap[rx][ry]
                         break
         
-        if stopCells:
-            returnVal = (returnStopCellIdx,returnPos,returnDist)
+        if robotPositions:
+            returnVal = (return_ridx,return_nextpos,return_dist)
         else:
             returnVal = rankMap
+        
         return returnVal
 
 #======== core simulator
@@ -434,7 +436,7 @@ class NavigationRama(Navigation):
 calculates steps taken from source to destination
 '''
 
-def singleRun(grid,start,NavAlgClass,numRobots):
+def singleExploration(grid,start,NavAlgClass,numRobots):
     navAlg         = NavAlgClass(grid,start,numRobots)
     robotPositions = [start]*numRobots
     numSteps       = 1
@@ -476,8 +478,11 @@ def main():
     
     # execute the simulation for each navigation algorithm
     for NavAlgClass in NavAlgClasses:
-        # run  single run
-        numSteps   = singleRun(grid,start,NavAlgClass,numRobots)
+        
+        # run single run
+        numSteps   = singleExploration(grid,start,NavAlgClass,numRobots)
+        
+        # collect KPIs
         kpis[NavAlgClass.__name__]=numSteps
 
     print(kpis)
