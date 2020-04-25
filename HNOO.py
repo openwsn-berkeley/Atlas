@@ -30,8 +30,9 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 20
-    cols  = 20
+    
+    rows  = 40
+    cols  = 50
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -46,20 +47,20 @@ def genGrid():
     grid = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-       #[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-       #[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
@@ -72,7 +73,7 @@ def genGrid():
     '''
     return (grid,startPos)
 
-def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
+def printGrid(discoMap,startPos,robotPositions,kpis,rankMapIdx,rank=None):
     output         = []
     numUnExplored  = 0
     output        += ['']
@@ -103,6 +104,11 @@ def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
                 if  discoMap[row][col]==0:
                     line += ['#']
                     break
+                '''
+                if (row,col) in rankMapIdx:
+                    line += ['$']
+                    break
+                '''
                 # unexplored
                 if discoMap[row][col]==-1:
                     numUnExplored += 1
@@ -152,7 +158,7 @@ class Navigation(object):
         self.numRows         = len(self.grid)    # shorthand
         self.numCols         = len(self.grid[0]) # shorthand
         self.firstIteration  = True
-        self.rankMapStart    = None
+        self.rankMaps        = {}
         self.discoMap        = []
         self.allCellsIdx     = []
         for (x,row) in enumerate(grid):
@@ -250,7 +256,7 @@ class NavigationDistributed(Navigation):
             else:
                 nextRobotPositions += [(rx,ry)]
         
-        return (nextRobotPositions,self.discoMap,self.rankMapStart)
+        return (nextRobotPositions,self.discoMap,None)
     
     def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
         raise SystemError()
@@ -301,6 +307,7 @@ class NavigationBallistic(NavigationDistributed):
         return nextPosition
 
 class NavigationRama(Navigation):
+
     def think(self, robotPositions):
         
         # store params
@@ -337,7 +344,7 @@ class NavigationRama(Navigation):
                     # check wether this cell has unexplored neighbor cells
                     for (nx,ny) in self._OneHopNeighborhood(x,y):
                         if self.discoMap[nx][ny]==-1:
-                            frontierCells += [((x,y),self.rankMapStart[x][y])]
+                            frontierCells += [((x,y),self._distance((sx,sy),(x,y)))]
                             break
                 
                 # keep only frontierCells with lowest rank
@@ -345,11 +352,6 @@ class NavigationRama(Navigation):
                     fc[0] for fc in frontierCells
                     if fc[1]==sorted(frontierCells, key=lambda item: item[1])[0][1]
                 ]
-                
-                # find the distance from each frontier cell to each robot
-                rankMapFcs = {}
-                for (fx,fy) in frontierCells:
-                    rankMapFcs[(fx,fy)] = self._computeRankMap(self.grid,fx,fy)
                 
                 # pick move robot (mv) and frontier cell (fc) to move towards
                 #   Rules (most important first):
@@ -361,19 +363,18 @@ class NavigationRama(Navigation):
                 fc_pos                          = None
                 mr_distToStart                  = None
                 mr_distToFc                     = None
-                fc_rankMap                      = None
                 for (ridx,(rx,ry)) in enumerate(robotPositions):
                     
                     # don't move the same robot twice
                     if ridx in robotsMoved:
                         continue
                     
-                    rDistToStart                = self.rankMapStart[rx][ry]
+                    rDistToStart                = self._distance((sx,sy),(rx,ry))
                     max_numHigherRankNeighbors  = None
                     max_numUnexploredNeighbors  = None
-                    for ((fx,fy),rankMap) in rankMapFcs.items():
-                        rDistToFc               = rankMap[rx][ry]
-                        numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap,self.rankMapStart)
+                    for (fx,fy) in frontierCells:
+                        rDistToFc               = self._distance((fx,fy),(rx,ry))
+                        numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap,self._rankMap(sx,sy))
                         numUnexploredNeighbors  = self._numUnexploredNeighbors(fx,fy,self.discoMap)
                         if  (
                                 mr_idx==None                   or
@@ -399,7 +400,6 @@ class NavigationRama(Navigation):
                             fc_pos                     = (fx,fy)
                             mr_distToStart             = rDistToStart
                             mr_distToFc                = rDistToFc
-                            fc_rankMap                 = rankMap
                             max_numHigherRankNeighbors = numHigherRankNeighbors
                             max_numUnexploredNeighbors = numUnexploredNeighbors
                 
@@ -408,6 +408,7 @@ class NavigationRama(Navigation):
                     break
                 
                 # pick new position
+                (fx,fy)                = fc_pos                 # shorthand
                 (mx_cur, my_cur)       = robotPositions[mr_idx] # shorthand
                 (mx_next,my_next)      = (None,None)
                 min_dist               = None
@@ -417,10 +418,10 @@ class NavigationRama(Navigation):
                         (x,y) not in robotPositions     and
                         (
                             min_dist==None or
-                            fc_rankMap[x][y]<min_dist
+                            self._distance((fx,fy),(x,y))<min_dist
                         )
                     ):
-                        min_dist = fc_rankMap[x][y]
+                        min_dist = self._distance((fx,fy),(x,y))
                         (mx_next,my_next) = (x,y)
                 
                 # abort if couldn't find a position to move to
@@ -439,63 +440,70 @@ class NavigationRama(Navigation):
                     self.discoMap[x][y]=0
                 elif self.grid[x][y] == 1:
                     self.discoMap[x][y]=1
-            
-            # compute ranks
-            self.rankMapStart = self._computeRankMap(self.grid,sx,sy)
         
-        return (robotPositions,self.discoMap,self.rankMapStart)
+        return (robotPositions,self.discoMap,self._rankMap(sx,sy),self.rankMaps.keys())
     
-    def _computeRankMap(self,grid,sx,sy):
-        
-        # local variables
-        rankMap                   = []
-        shouldvisit               = []
-        for row in grid:
-            rankMap              += [[]]
-            shouldvisit          += [[]]
-            for col in row:
-                rankMap[-1]      += [None]
-                shouldvisit[-1]  += [False]
-
-        # start from start position
-        rankMap[sx][sy]           = 0
-        shouldvisit[sx][sy]       = True
-        
-        while True:
+    def _rankMap(self,sx,sy):
+    
+        # if not in cache, compute rank map (and store in cache)
+        if (sx,sy) not in self.rankMaps:
             
-            # find cell to visit with lowest rank (abort if none)
-            found         = False
-            currentrank   = None
-            for (x,y) in self.allCellsIdx:
-                if  (
-                        shouldvisit[x][y]==True and
-                        (
+            # local variables
+            rankMap                   = []
+            shouldvisit               = []
+            for row in self.grid:
+                rankMap              += [[]]
+                for col in row:
+                    rankMap[-1]      += [None]
+
+            # start from start position
+            rankMap[sx][sy]           = 0
+            shouldvisit              += [(sx,sy)]
+            
+            while True:
+                
+                # find cell to visit with lowest rank (abort if none)
+                found         = False
+                currentrank   = None
+                for (x,y) in shouldvisit:
+                    if  (
                             currentrank==None or
                             rankMap[x][y]<currentrank
-                        )
-                    ):
-                    currentrank   = rankMap[x][y]
-                    (cx,cy)       = (x,y)
-                    found = True
-            if found==False:
-                break
+                        ):
+                        currentrank   = rankMap[x][y]
+                        (cx,cy)       = (x,y)
+                        found = True
+                if found==False:
+                    break
+                
+                # assign a height for all its neighbors
+                for (nx,ny) in self._OneHopNeighborhood(cx,cy):
+                    if (
+                            self.grid[nx][ny]==1 and
+                            (
+                                rankMap[nx][ny] == None or
+                                rankMap[nx][ny]>currentrank+1
+                            )
+                        ):
+                        rankMap[nx][ny]     = currentrank+1
+                        shouldvisit        += [(nx,ny)]
+                
+                # mark a visited
+                shouldvisit.remove((cx,cy))
             
-            # assign a height for all its neighbors
-            for (nx,ny) in self._OneHopNeighborhood(cx,cy):
-                if (
-                        grid[nx][ny]==1 and
-                        (
-                            rankMap[nx][ny] == None or
-                            rankMap[nx][ny]>currentrank+1
-                        )
-                    ):
-                    rankMap[nx][ny]     = currentrank+1
-                    shouldvisit[nx][ny] = True
-            
-            # mark a visited
-            shouldvisit[cx][cy] = False
+            self.rankMaps[(sx,sy)] = rankMap
         
-        return rankMap
+        return self.rankMaps[(sx,sy)]
+    
+    def _distance(self,pos1,pos2):
+        (x1,y1) = pos1 # shorthand
+        (x2,y2) = pos2 # shorthand
+        if   (x1,y1) in self.rankMaps:
+            return self.rankMaps[(x1,y1)][x2][y2]
+        elif (x2,y2) in self.rankMaps:
+            return self.rankMaps[(x2,y2)][x1][y1]
+        else:
+            return self._rankMap(x1,y1)[x2][y2]
     
     def _numHigherRankNeighbors(self,x,y,discoMap,rankMap):
         returnVal = 0
@@ -533,7 +541,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         
         # think
         try:
-            (nextRobotPositions,discoMap,rankMapStart)   = navAlg.think(robotPositions)
+            (nextRobotPositions,discoMap,rankMapStart,rankMapIdx)   = navAlg.think(robotPositions)
         except MappingDoneSuccess:
             break
         
@@ -548,7 +556,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         kpis['numTicks'] += 1
         
         # print
-        printGrid(discoMap,startPos,robotPositions,kpis)#,rankMapStart)
+        printGrid(discoMap,startPos,robotPositions,kpis,rankMapIdx)#,rankMapStart)
         
         #input()
         #time.sleep(0.100)
@@ -562,8 +570,8 @@ def main():
     numRobots      = 10
     NavAlgClasses  = [
         NavigationRama,
-        NavigationRandomWalk,
-        NavigationBallistic,
+        #NavigationRandomWalk,
+        #NavigationBallistic,
     ]
     kpis           = []
 
