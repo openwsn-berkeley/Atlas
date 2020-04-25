@@ -297,13 +297,15 @@ class NavigationRama(Navigation):
         # determine whether we're done exploring
         self._determineDoneExploring()
         
-        
         if self.firstIteration:
+            # this is my first iteration: put robot 0 in the start position
             mr_idx                = 0
             (mx_next,my_next)     = self.start
             self.firstIteration   = False
         
         else:
+            # I already have robots in the area
+            
             # identify all frontierCells
             frontierCells = []
             for (x,y) in self.allCellsIdx:
@@ -444,7 +446,8 @@ calculates steps taken from source to destination
 def singleExploration(grid,start,NavAlgClass,numRobots):
     navAlg         = NavAlgClass(grid,start,numRobots)
     robotPositions = [start]*numRobots
-    numSteps       = 1
+    numTicks       = 0
+    numSteps       = 0
     while True:
         
         # think
@@ -454,27 +457,34 @@ def singleExploration(grid,start,NavAlgClass,numRobots):
             break
         
         # move
-        robotPositions                      = nextRobotPositions
+        for (i,(nx,ny)) in enumerate(nextRobotPositions):
+            (cx,cy) = robotPositions[i]
+            if (nx,ny)!= (cx,cy):
+                numSteps += 1
+            robotPositions[i] = nextRobotPositions[i]
         
         # print
         printGrid(discoMap,start,robotPositions,rankMapStart)
         
         # update KPIs
-        numSteps += 1
+        numTicks += 1
         
         #input()
     
-    return numSteps
+    return {
+        'numTicks': numTicks,
+        'numSteps': numSteps,
+    }
 
 #============================ main ============================================
 
 def main():
 
-    numRobots      = 100
+    numRobots      = 1
     NavAlgClasses  = [
         NavigationRama,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     kpis           = {}
 
@@ -485,10 +495,10 @@ def main():
     for NavAlgClass in NavAlgClasses:
         
         # run single run
-        numSteps   = singleExploration(grid,start,NavAlgClass,numRobots)
+        kpis_run   = singleExploration(grid,start,NavAlgClass,numRobots)
         
         # collect KPIs
-        kpis[NavAlgClass.__name__]=numSteps
+        kpis[NavAlgClass.__name__]=kpis_run
 
     print(kpis)
     print('Done.')
