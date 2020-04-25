@@ -30,13 +30,13 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 20
-    cols  = 20
+    rows  = 30
+    cols  = 30
     grid  = []
     for row in range(rows):
         thisRow = []
         for col in range(cols):
-            if random.random()<0.10:
+            if random.random()<0.05:
                 thisRow += [0]
             else:
                 thisRow += [1]
@@ -75,7 +75,7 @@ def genGrid():
     '''
     return (grid,startPos)
 
-def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
+def printGrid(discoMap,startPos,robotPositions,kpis,rankMapStart=None):
     output         = []
     numUnExplored  = 0
     output        += ['']
@@ -91,7 +91,7 @@ def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
                 for (ri,(rx,ry)) in enumerate(robotPositions):
                     if (row,col) == (rx,ry):
                         robotFound = True
-                        if rank:
+                        if rankMapStart:
                             line += ['*']
                         else:
                             line += [str(ri%10)]
@@ -109,11 +109,22 @@ def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
                 # unexplored
                 if discoMap[row][col]==-1:
                     numUnExplored += 1
-                    line += ['.']
+                    if rankMapStart:
+                        line += [' ']
+                    else:
+                        line += ['.']
                     break
                 # rank
-                if rank:
-                    line += [str(rank[row][col]%10)]
+                if rankMapStart:
+                    line += [str(rankMapStart[(row,col)]%10)]
+                    '''
+                    if   rankMapStart[(row,col)]%3==0:
+                        line += ['$']
+                    elif rankMapStart[(row,col)]%3==1:
+                        line += ['>']
+                    else:
+                        line += ['.']
+                    '''
                     break
                 # explored
                 line += [' ']
@@ -612,11 +623,11 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
 
 def main():
 
-    numRobots      = 10
+    numRobots      = 1
     NavAlgClasses  = [
         NavigationRama,
-        NavigationRandomWalk,
-        NavigationBallistic,
+        #NavigationRandomWalk,
+        #NavigationBallistic,
     ]
     kpis           = []
 
