@@ -72,12 +72,16 @@ def genGrid():
     '''
     return (grid,startPos)
 
-def printGrid(grid,startPos,robotPositions,rank=None):
-    output  = []
-    output += ['']
-    for row in range(len(grid)):
+def printGrid(discoMap,startPos,robotPositions,kpis,rank=None):
+    output         = []
+    numUnExplored  = 0
+    output        += ['']
+    numRows        = len(discoMap)
+    numCols        = len(discoMap[0])
+    numCells       = numRows*numCols
+    for row in range(len(discoMap)):
         line = []
-        for col in range(len(grid[row])):
+        for col in range(len(discoMap[row])):
             while True:
                 # robot
                 robotFound = False
@@ -93,11 +97,12 @@ def printGrid(grid,startPos,robotPositions,rank=None):
                     line += ['S']
                     break
                 # wall
-                if  grid[row][col]==0:
+                if  discoMap[row][col]==0:
                     line += ['#']
                     break
                 # unexplored
-                if grid[row][col]==-1:
+                if discoMap[row][col]==-1:
+                    numUnExplored += 1
                     line += ['.']
                     break
                 '''
@@ -111,6 +116,13 @@ def printGrid(grid,startPos,robotPositions,rank=None):
                 break
         output += [' '.join(line)]
     output += ['']
+    output += [
+        'numExplored  : {0}/{1} ({2:.0f}%)'.format(
+            numCells-numUnExplored,numCells,100.0*((numCells-numUnExplored)/numCells)
+        )
+    ]
+    for (k,v) in kpis.items():
+        output += ['{0:<13}: {1}'.format(k,v)]
     output = '\n'.join(output)
     os.system('cls')
     print(output)
@@ -315,6 +327,9 @@ class NavigationRama(Navigation):
                 # identify all frontierCells
                 frontierCells = []
                 for (x,y) in self.allCellsIdx:
+                    # don't consider the same call twice
+                    if (x,y) in frontierCellsTargeted:
+                        continue
                     # consider only open cells
                     if self.discoMap[x][y]!=1:
                         continue
@@ -410,6 +425,8 @@ class NavigationRama(Navigation):
                 # abort if couldn't find a position to move to
                 if mx_next==None:
                     break
+                
+                frontierCellsTargeted += [fc_pos]
             
             # move moveRobot
             robotPositions[mr_idx] = (mx_next,my_next)
@@ -505,8 +522,11 @@ calculates steps taken from source to destination
 def singleExploration(grid,startPos,NavAlgClass,numRobots):
     navAlg         = NavAlgClass(grid,startPos,numRobots)
     robotPositions = [startPos]*numRobots
-    numTicks       = 0
-    numSteps       = 0
+    kpis           = {
+        'numTicks':  0,
+        'numSteps':  0,
+    }
+    
     while True:
         
         # think
@@ -519,22 +539,19 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         for (i,(nx,ny)) in enumerate(nextRobotPositions):
             (cx,cy) = robotPositions[i]
             if (nx,ny)!= (cx,cy):
-                numSteps += 1
+                kpis['numSteps'] += 1
             robotPositions[i] = nextRobotPositions[i]
         
-        # print
-        printGrid(discoMap,startPos,robotPositions,rankMapStart)
-        
         # update KPIs
-        numTicks += 1
+        kpis['numTicks'] += 1
         
-        input()
+        # print
+        printGrid(discoMap,startPos,robotPositions,kpis,rankMapStart)
+        
+        #input()
         #time.sleep(0.100)
     
-    return {
-        'numTicks': numTicks,
-        'numSteps': numSteps,
-    }
+    return kpis
 
 #============================ main ============================================
 
