@@ -1,11 +1,8 @@
 '''
-simulation of online and offline navigation algorithms
-user has option to either give a specific grid through a config file, or to have the simulator generate a random grid :
+simulation of navigation algorithms for micro-robots
 '''
 
 import os
-import time
-import json
 import random
 
 #============================ defines =========================================
@@ -32,9 +29,8 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    '''
-    rows  = 20
-    cols  = 30
+    rows  = 5
+    cols  = 5
     grid  = []
     for row in range(rows):
         thisRow = []
@@ -72,6 +68,7 @@ def genGrid():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ]
     start = (10,20)
+    '''
     return (grid,start)
 
 def printGrid(grid,start,robotPositions,rank=None):
@@ -102,10 +99,12 @@ def printGrid(grid,start,robotPositions,rank=None):
                 if grid[row][col]==-1:
                     line += ['.']
                     break
+                #'''
                 # rank
                 if rank:
                     line += [str(rank[row][col]%10)]
                     break
+                #'''
                 # explored
                 line += [' ']
                 break
@@ -237,7 +236,7 @@ class NavigationDistributed(Navigation):
             else:
                 nextRobotPositions += [(rx,ry)]
         
-        return (nextRobotPositions,self.discoMap)
+        return (nextRobotPositions,self.discoMap,self.rankMap)
     
     def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
         raise SystemError()
@@ -301,7 +300,7 @@ class NavigationRama(Navigation):
         
         if self.firstIteration:
             moveBot               = 0
-            (fx,fy)               = self.start
+            (mx,my)               = self.start
             self.firstIteration   = False
         
         else:
@@ -323,31 +322,39 @@ class NavigationRama(Navigation):
                 if fc[1]==sorted(frontierCells, key=lambda item: item[1])[0][1]
             ]
             
-            # find the frontierCellsLowest which has a robot the nearest by
-            (fx,fy) = frontierCells[0]
-            
-            # pick a moveRobot
-            distanceToStart = {}
-            for (i,(x,y)) in enumerate(robotPositions):
-                distanceToStart[i] = self.rankMap[x][y]
-            moveBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+            # find the frontier cell which has a robot closest by
+            cellClosestRobotDist = []
+            for (fx,fy) in frontierCells:
+                (ridx,rnextpos,d) = self._cellClosestRobotDist(fx,fy,nextRobotPositions)
+                cellClosestRobotDist += [(ridx,rnextpos,d)]
+                if d==1:
+                    break
+            (moveBot,(mx,my),_) = sorted(cellClosestRobotDist, key=lambda item: item[2])[0]
         
         # move moveRobot to frontierCell
-        nextRobotPositions[moveBot] = (fx,fy)
+        nextRobotPositions[moveBot] = (mx,my)
         
         # update the discoMap
-        for (x,y) in self._OneHopNeighborhood(fx,fy):
+        for (x,y) in self._OneHopNeighborhood(mx,my):
             if   self.grid[x][y] == 0:
                 self.discoMap[x][y]=0
             elif self.grid[x][y] == 1:
                 self.discoMap[x][y]=1
         
         # compute ranks
-        self.rankMap     = self.computeRankMap(self.grid,self.start)
+        self.rankMap     = self._computeRankMap(self.grid,sx,sy)
         
         return (nextRobotPositions,self.discoMap,self.rankMap)
     
-    def computeRankMap(self,grid,start):
+    def _cellClosestRobotDist(self,x,y,robotPositions):
+        returnVal = self._computeRankMap(
+            self.grid,
+            x,y,
+            stopCells = robotPositions,
+        )
+        return returnVal
+    
+    def _computeRankMap(self,grid,sx,sy,stopCells=None):
         
         # local variables
         rankMap                   = []
@@ -360,7 +367,6 @@ class NavigationRama(Navigation):
                 shouldvisit[-1]  += [False]
 
         # start from start position
-        (sx,sy)                   = start
         rankMap[sx][sy]           = 0
         shouldvisit[sx][sy]       = True
         
@@ -397,8 +403,30 @@ class NavigationRama(Navigation):
             
             # mark a visited
             shouldvisit[cx][cy] = False
+            
+            # stop if reached a stopCells
+            if stopCells:
+                for (stopidx,(stopx,stopy)) in enumerate(stopCells):
+                    if rankMap[stopx][stopy]!=None:
+                        # I've reached a stop cell
+                        
+                        # prepare return values
+                        returnStopCellIdx  = stopidx
+                        lowestRank = None
+                        for (nx,ny) in self._OneHopNeighborhood(stopx,stopy):
+                            if rankMap[nx][ny]==None:
+                                continue
+                            if lowestRank==None or rankMap[nx][ny]<lowestRank:
+                                lowestRank = rankMap[nx][ny]
+                                returnPos  = (nx,ny)
+                        returnDist         = rankMap[stopx][stopy]
+                        break
         
-        return rankMap
+        if stopCells:
+            returnVal = (returnStopCellIdx,returnPos,returnDist)
+        else:
+            returnVal = rankMap
+        return returnVal
 
 #======== core simulator
 
@@ -409,6 +437,7 @@ calculates steps taken from source to destination
 def singleRun(grid,start,NavAlgClass,numRobots):
     navAlg         = NavAlgClass(grid,start,numRobots)
     robotPositions = [start]*numRobots
+    numSteps       = 1
     while True:
         
         # think
@@ -423,19 +452,24 @@ def singleRun(grid,start,NavAlgClass,numRobots):
         # print
         printGrid(discoMap,start,robotPositions,rankMap)
         
-        input()
-        #time.sleep(0.500)
+        # KPIs
+        numSteps += 1
+        
+        #input()
+    
+    return numSteps
 
 #============================ main ============================================
 
 def main():
 
-    numRobots      = 20
+    numRobots      = 1
     NavAlgClasses  = [
         NavigationRama,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
+    kpis           = {}
 
     # create a scenario
     (grid,start) = genGrid()
@@ -443,8 +477,10 @@ def main():
     # execute the simulation for each navigation algorithm
     for NavAlgClass in NavAlgClasses:
         # run  single run
-        kpis    = singleRun(grid,start,NavAlgClass,numRobots)
+        numSteps   = singleRun(grid,start,NavAlgClass,numRobots)
+        kpis[NavAlgClass.__name__]=numSteps
 
+    print(kpis)
     print('Done.')
 
 if __name__=='__main__':
