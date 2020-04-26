@@ -258,6 +258,8 @@ class Navigation(object):
                 
         return returnVal
 
+#=== distributed
+
 class NavigationDistributed(Navigation):
 
     def think(self, robotPositions):
@@ -344,6 +346,8 @@ class NavigationBallistic(NavigationDistributed):
                 nextPosition = None
         
         return nextPosition
+
+#=== centralized
 
 class NavigationCentralized(Navigation):
     def __init__(self,realMap,startPos,numRobots):
@@ -724,6 +728,10 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         try:
             (nextRobotPositions,discoMap,rankMapStart)   = navAlg.think(robotPositions)
         except MappingDoneSuccess:
+            kpis['mappingoutcome'] = 'success'
+            break
+        except MappingDoneIncomplete:
+            kpis['mappingoutcome'] = 'incomplete'
             break
         
         # move
@@ -754,7 +762,7 @@ def main():
     NavAlgClasses  = [
         #NavigationRandomWalk,
         #NavigationBallistic,
-        #NavigationRama,
+        NavigationRama,
         NavigationAtlas,
     ]
     kpis           = []
