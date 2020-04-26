@@ -54,50 +54,55 @@ HEADING_ALL        = [
 
 #============================ helper functions ================================
 
-def genGridRandom():
-    rows  = NUM_ROWS
-    cols  = NUM_COLS
-    grid  = []
+def genRealMapRandom():
+    rows           = NUM_ROWS
+    cols           = NUM_COLS
+    
+    # realMap
+    realMap        = []
     for row in range(rows):
-        thisRow = []
+        thisRow    = []
         for col in range(cols):
             if random.random()<OBSTACLE_DENSITY:
                 thisRow += [0]
             else:
                 thisRow += [1]
-        grid += [thisRow]
-    sx = int(rows/2)
-    sy = int(cols/2)
+        realMap   += [thisRow]
+    
+    # startPos
+    sx      = int(rows/2)
+    sy      = int(cols/2)
     startPos = (sx,sy)
-    grid[sx][sy] = 1 # avoid invalid grid with obstacle at start position
-    return (grid,startPos)
+    realMap[sx][sy] = 1 # avoid invalid realMap with obstacle at start position
+    
+    return (realMap,startPos)
 
-def genGridDrawing(drawing):
-    grid      = []
+def genRealMapDrawing(drawing):
+    realMap   = []
     startPos  = None
     row       = 0
     col       = 0
     for line in drawing.splitlines():
         if not line.startswith('#'):
             continue
-        grid += [[]]
+        realMap += [[]]
         for c in line:
             if   c=='#':
-                grid[-1] += [0]
+                realMap[-1] += [0]
             elif c==' ':
-                grid[-1] += [1]
+                realMap[-1] += [1]
             elif c=='S':
-                grid[-1] += [1]
+                realMap[-1] += [1]
                 assert startPos==None
                 startPos = (row,col)
             else:
                 raise SystemError()
-            col += 1
-        row += 1
-        col  = 0
-    return (grid,startPos)
+            col   += 1
+        row  += 1
+        col   = 0
+    return (realMap,startPos)
 
-def printGrid(discoMap,startPos,robotPositions,kpis,rankMapStart=None):
+def printDiscoMap(discoMap,startPos,robotPositions,kpis,rankMapStart=None):
     output         = []
     numUnExplored  = 0
     output        += ['']
@@ -177,22 +182,22 @@ class MappingDoneIncomplete(Exception):
 #======== navigation algorithms
 
 class Navigation(object):
-    def __init__(self,grid,startPos,numRobots):
+    def __init__(self,realMap,startPos,numRobots):
         
         # store params
-        self.grid                      = grid
+        self.realMap                   = realMap
         self.startPos                  = startPos
         self.numRobots                 = numRobots
         
         # local variablels
-        self.numRows                   = len(self.grid)    # shorthand
-        self.numCols                   = len(self.grid[0]) # shorthand
+        self.numRows                   = len(self.realMap)    # shorthand
+        self.numCols                   = len(self.realMap[0]) # shorthand
         self.firstIteration            = True
         self.rankMaps                  = {}
         self.discoMap                  = []
         self.allCellsIdx               = []
         self.stats                     = {}
-        for (x,row) in enumerate(grid):
+        for (x,row) in enumerate(realMap):
             self.discoMap             += [[]]
             for (y,col) in enumerate(row):
                 self.discoMap[-1]     += [-1]
@@ -219,7 +224,7 @@ class Navigation(object):
                 (x+1,y-1),(x+1,y  ),(x+1,y+1),
             ]:
             
-            # only consider cells inside the grid
+            # only consider cells inside the realMap
             if  (
                     (nx>=0)            and
                     (nx<self.numRows)  and
@@ -240,7 +245,7 @@ class Navigation(object):
                 (x+2,y-2),(x+2,y-1),(x+2,y  ),(x+2,y+1),(x+2,y+2)
             ]:
             
-            # only consider cells inside the grid
+            # only consider cells inside the realMap
             if  (
                     (nx>=0)            and
                     (nx<self.numRows)  and
@@ -270,14 +275,14 @@ class NavigationDistributed(Navigation):
             for (nx,ny) in self._OneHopNeighborhood(rx,ry):
                 
                 # populate the discovered map
-                if   self.grid[nx][ny] == 0:
+                if   self.realMap[nx][ny] == 0:
                     self.discoMap[nx][ny]=0
-                elif self.grid[nx][ny] == 1:
+                elif self.realMap[nx][ny] == 1:
                     self.discoMap[nx][ny]=1
                 
                 # a valid next position is one with no wall or robot
                 if  (
-                        (self.grid[nx][ny]==1) and
+                        (self.realMap[nx][ny]==1) and
                         ((nx,ny) not in nextRobotPositions)
                     ):
                     validNextPositions += [(nx,ny)]
@@ -300,8 +305,8 @@ class NavigationRandomWalk(NavigationDistributed):
 
 class NavigationBallistic(NavigationDistributed):
 
-    def __init__(self,grid,startPos,numRobots):
-        NavigationDistributed.__init__(self,grid,startPos,numRobots)
+    def __init__(self,realMap,startPos,numRobots):
+        NavigationDistributed.__init__(self,realMap,startPos,numRobots)
         self.robotHeading = []
         for _ in range(self.numRobots):
             self.robotHeading += [random.choice(HEADING_ALL)]
@@ -340,8 +345,8 @@ class NavigationBallistic(NavigationDistributed):
 
 class NavigationRama(Navigation):
     
-    def __init__(self,grid,startPos,numRobots):
-        Navigation.__init__(self,grid,startPos,numRobots)
+    def __init__(self,realMap,startPos,numRobots):
+        Navigation.__init__(self,realMap,startPos,numRobots)
         self.shouldvisits         = {}
         self._distance(startPos) # force rankMap to be fully built for start position
     
@@ -458,7 +463,7 @@ class NavigationRama(Navigation):
                 min_dist               = None
                 for (x,y) in self._OneHopNeighborhood(mx_cur,my_cur):
                     if (
-                        self.grid[x][y]==1              and
+                        self.realMap[x][y]==1           and
                         (x,y) not in robotPositions     and
                         (
                             min_dist==None or
@@ -480,9 +485,9 @@ class NavigationRama(Navigation):
             
             # update the discoMap
             for (x,y) in self._OneHopNeighborhood(mx_next,my_next):
-                if   self.grid[x][y] == 0:
+                if   self.realMap[x][y] == 0:
                     self.discoMap[x][y]=0
-                elif self.grid[x][y] == 1:
+                elif self.realMap[x][y] == 1:
                     self.discoMap[x][y]=1
         
         return (robotPositions,self.discoMap,self.rankMaps[self.startPos])
@@ -559,7 +564,7 @@ class NavigationRama(Navigation):
                     if (nx,ny) in rankMap:
                         assert rankMap[(nx,ny)] <= currentrank+1 
                     if  (
-                            (self.grid[nx][ny]==1) and
+                            (self.realMap[nx][ny]==1) and
                             ((nx,ny) not in rankMap)
                         ):
                         rankMap[(nx,ny)]     = currentrank+1
@@ -628,7 +633,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         # print
         if UI:
-            printGrid(discoMap,startPos,robotPositions,kpis)#,rankMapStart)
+            printDiscoMap(discoMap,startPos,robotPositions,kpis)#,rankMapStart)
         
         #input()
     
@@ -651,7 +656,7 @@ def main():
     for scenario in SCENARIOS:
         
         # create the realMap
-        (realMap,startPos) = genGridDrawing(getattr(scenarios,scenario))
+        (realMap,startPos) = genRealMapDrawing(getattr(scenarios,scenario))
         
         # execute the simulation for each navigation algorithm
         for NavAlgClass in NavAlgClasses:
