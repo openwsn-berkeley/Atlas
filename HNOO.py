@@ -343,7 +343,7 @@ class NavigationBallistic(NavigationDistributed):
         
         return nextPosition
 
-class NavigationRama(Navigation):
+class NavigationAtlas(Navigation):
     
     def __init__(self,realMap,startPos,numRobots):
         Navigation.__init__(self,realMap,startPos,numRobots)
@@ -647,9 +647,10 @@ def main():
 
     numRobots      = NUM_ROBOTS
     NavAlgClasses  = [
-        NavigationRama,
         NavigationRandomWalk,
         NavigationBallistic,
+        #NavigationRama,
+        NavigationAtlas,
     ]
     kpis           = []
 
