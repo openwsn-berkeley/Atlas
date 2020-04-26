@@ -453,103 +453,74 @@ class NavigationCentralized(Navigation):
 
 class NavigationRama(NavigationCentralized):
     
-    def __init__(self,realMap,startPos,numRobots):
-        NavigationCentralized.__init__(self,realMap,startPos,numRobots)
-        self.raiseMappingDoneImcomplete  = False
-
     def think(self, robotPositions):
-        
-        
-        if self.raiseMappingDoneImcomplete:
-            raise MappingDoneIncomplete()
         
         # store params
         nextRobotPositions   = robotPositions[:] # many a local copy
         
-        # local variables
-        robotsMoved          = []
-        
         # determine whether we're done exploring
         self._determineDoneExploring()
         
-        while True:
+        # identify robots at the frontier
+        frontierBots = []
+        for (ridx,(rx,ry)) in enumerate(robotPositions):
             
-            # stop if I have moved all robots
-            if len(robotsMoved)==len(robotPositions):
-                break
-            
-            # identify robots at the frontier
-            frontierBots = []
-            for (ridx,(rx,ry)) in enumerate(robotPositions):
-                
-                # don't move the same robot twice
-                if ridx in robotsMoved:
-                    continue
-            
-                # check that robot has frontier in its 2-neighborhood
-                closeToFrontier = False
-                for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
-                    if self.discoMap[nx][ny]==-1:
-                        closeToFrontier = True
-                        break
-                if closeToFrontier==False:
-                    continue
-                
-                # check that robot has open space in its 1-neighborhood that's further than itself
-                for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-                    if (
-                        self.realMap[nx][ny]==1         and  # open position (not wall)
-                        ((nx,ny) not in robotPositions) and  # no robot there
-                        (nx,ny)!=self.startPos          and  # not the start position
-                        self._distance(self.startPos,(nx,ny))>self._distance(self.startPos,(rx,ry))
-                    ):
-                        frontierBots += [ridx]
-                        break
-            
-            # break if couldn't find any further robot to move
-            if frontierBots==[]:
-                break
-            
-            # pick a frontierBot
-            distanceToStart = {}
-            for (ridx,(x,y)) in enumerate(robotPositions):
-                if ridx not in frontierBots:
-                    continue
-                distanceToStart[ridx] = self._distance(self.startPos,(x,y))
-            frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-            
-            # pick a cell for a new Robot
-            (fx,fy) = robotPositions[frontierBot]
-            while True:
-                (rx,ry) = random.choice(self._OneHopNeighborhood(fx,fy))
-                if  (
-                        self.realMap[rx][ry]==1            and
-                        ((rx,ry) not in robotPositions)    and
-                        (rx,ry)!=self.startPos
-                    ):
+            # check that robot has frontier in its 2-neighborhood
+            closeToFrontier = False
+            for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
+                if self.discoMap[nx][ny]==-1:
+                    closeToFrontier = True
                     break
+            if closeToFrontier==False:
+                continue
             
-            # pick a robot to move and change its position
-            distanceToStart = {}
-            for (ridx,(x,y)) in enumerate(robotPositions):
-                distanceToStart[ridx] = self._distance(self.startPos,(x,y))
-            newBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-            nextRobotPositions[newBot] = (rx,ry)
-            robotsMoved               += [newBot]
-            
-            # update the discoMap
+            # check that robot has open space in its 1-neighborhood that's further than itself
             for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-                if   self.realMap[nx][ny]==0:
-                    self.discoMap[nx][ny]=0
-                elif self.realMap[nx][ny]==1:
-                    self.discoMap[nx][ny]=1
-            
-            # move just one robot
-            break # FIXME
+                if (
+                    self.realMap[nx][ny]==1         and  # open position (not wall)
+                    ((nx,ny) not in robotPositions) and  # no robot there
+                    (nx,ny)!=self.startPos          and  # not the start position
+                    self._distance(self.startPos,(nx,ny))>self._distance(self.startPos,(rx,ry))
+                ):
+                    frontierBots += [ridx]
+                    break
         
-        # abort if couldn't find any robot to move
-        if robotsMoved==[]:
-            self.raiseMappingDoneImcomplete = True
+        # break if couldn't find any further robot to move
+        if frontierBots==[]:
+            raise MappingDoneIncomplete()
+        
+        # pick a frontierBot
+        distanceToStart = {}
+        for (ridx,(x,y)) in enumerate(robotPositions):
+            if ridx not in frontierBots:
+                continue
+            distanceToStart[ridx] = self._distance(self.startPos,(x,y))
+        frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+        
+        # pick a cell for a new Robot
+        (fx,fy) = robotPositions[frontierBot]
+        while True:
+            (rx,ry) = random.choice(self._OneHopNeighborhood(fx,fy))
+            if  (
+                    self.realMap[rx][ry]==1            and
+                    ((rx,ry) not in robotPositions)    and
+                    (rx,ry)!=self.startPos
+                ):
+                break
+        
+        # pick a robot to move and change its position
+        distanceToStart = {}
+        for (ridx,(x,y)) in enumerate(robotPositions):
+            distanceToStart[ridx] = self._distance(self.startPos,(x,y))
+        newBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+        nextRobotPositions[newBot] = (rx,ry)
+        
+        # update the discoMap
+        for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+            if   self.realMap[nx][ny]==0:
+                self.discoMap[nx][ny]=0
+            elif self.realMap[nx][ny]==1:
+                self.discoMap[nx][ny]=1
         
         return (nextRobotPositions,self.discoMap,None)
 
@@ -768,7 +739,7 @@ def main():
         #NavigationRandomWalk,
         #NavigationBallistic,
         NavigationRama,
-        NavigationAtlas,
+        #NavigationAtlas,
     ]
     kpis           = []
 
