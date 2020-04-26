@@ -57,11 +57,6 @@ HEADING_ALL        = [
 
 #============================ helper functions ================================
 
-def euclidian(pos1,pos2):
-    (x1,y1) = pos1 # shorthand
-    (x2,y2) = pos2 # shorthand
-    return math.sqrt((x1-x2)**2 + (y1-y2)**2)
-
 def genRealMapRandom():
     rows           = NUM_ROWS
     cols           = NUM_COLS
@@ -247,9 +242,9 @@ class Navigation(object):
         returnVal = []
         for (nx,ny) in [
                 (x-2,y-2),(x-2,y-1),(x-2,y  ),(x-2,y+1),(x-2,y+2),
-                (x-1,y+1),                              (x-1,y+2),
+                (x-1,y-2),                              (x-1,y+2),
                 (x  ,y  ),                              (x  ,y+2),
-                (x+1,y-1),                              (x+1,y+2),
+                (x+1,y-2),                              (x+1,y+2),
                 (x+2,y-2),(x+2,y-1),(x+2,y  ),(x+2,y+1),(x+2,y+2)
             ]:
             
@@ -351,81 +346,206 @@ class NavigationBallistic(NavigationDistributed):
         
         return nextPosition
 
-class NavigationRama(Navigation):
-    
-    def think(self, robotPositions):
-        
-        # local variables
-        nextRobotPositions   = robotPositions[:]
-        
-        # determine whether we're done exploring
-        self._determineDoneExploring()
-        
-        # identify robots at the frontier
-        frontierBots = []
-        for (ridx,(rx,ry)) in enumerate(robotPositions):
-            # check that robot has frontier it its 2-neighborhood
-            closeToFrontier = False
-            for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
-                if self.discoMap[nx][ny]==-1:
-                    closeToFrontier = True
-                    break
-            if closeToFrontier==False:
-                continue
-            # check that robot has open space in its 1-neighborhood that's further than itself
-            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-                if (
-                    self.realMap[nx][ny]==1         and  # open position (not wall)
-                    ((nx,ny) not in robotPositions) and  # no robot there
-                    (nx,ny)!=self.startPos          and  # not the start position
-                    euclidian(self.startPos,(nx,ny))>euclidian(self.startPos,(rx,ry))
-                ):
-                    frontierBots += [ridx]
-                    break
-        
-        # pick a frontierBot
-        distanceToStart = {}
-        (sx,sy) = self.startPos # shorthand
-        for (ridx,(x,y)) in enumerate(robotPositions):
-            if ridx not in frontierBots:
-                continue
-            distanceToStart[ridx] = euclidian((sx,sy),(x,y))
-        frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-        
-        # pick a cell for a new Robot
-        (fx,fy) = robotPositions[frontierBot]
-        while True:
-            (rx,ry) = random.choice(self._OneHopNeighborhood(fx,fy))
-            if  (
-                    self.realMap[rx][ry]==1            and
-                    ((rx,ry) not in robotPositions)    and
-                    (rx,ry)!=self.startPos
-                ):
-                break
-        
-        # pick a robot to move and change its position
-        distanceToStart = {}
-        (sx,sy) = self.startPos # shorthand
-        for (ridx,(x,y)) in enumerate(robotPositions):
-            distanceToStart[ridx] = math.sqrt((x-sx)**2 + (y-sy)**2)
-        newBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-        nextRobotPositions[newBot] = (rx,ry)
-        
-        # update the discoMap
-        for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-            if   self.realMap[nx][ny] == 0:
-                self.discoMap[nx][ny]=0
-            elif self.realMap[nx][ny] == 1:
-                self.discoMap[nx][ny]=1
-        
-        return (nextRobotPositions,self.discoMap,None)
-
-class NavigationAtlas(Navigation):
-    
+class NavigationCentralized(Navigation):
     def __init__(self,realMap,startPos,numRobots):
         Navigation.__init__(self,realMap,startPos,numRobots)
         self.shouldvisits         = {}
         self._distance(startPos) # force rankMap to be fully built for start position
+    
+    def _distance(self,pos1,pos2=None):
+        
+        # easy answer if same position
+        if pos1==pos2:
+            return 0
+        
+        # inverting pos1 and pos2 in case pos2 already cached (same distance)
+        if (pos1 not in self.rankMaps) and (pos2 in self.rankMaps):
+            temp = pos1
+            pos1 = pos2
+            pos2 = temp
+        
+        # check whether rankMaps in cache, otherwise build or resume
+        if  (
+                (pos1 in self.rankMaps) and
+                (pos2 in self.rankMaps[pos1])
+            ):
+                # stats
+                self._stats_incr('cache_hit')
+        else:
+            if  (
+                    (pos1 in self.rankMaps) and
+                    (pos2 not in self.rankMaps[pos1])
+                ):
+                # resuming building the rankMap
+                
+                # stats
+                self._stats_incr('cache_miss_resume')
+                
+                # local variables (resume)
+                rankMap                   = self.rankMaps[pos1]
+                shouldvisit               = self.shouldvisits[pos1]
+            else:
+                # starting new rankMap
+                
+                # stats
+                self._stats_incr('cache_miss_new')
+                
+                # local variables (new)
+                rankMap                   = {}
+                shouldvisit               = []
+                
+                # start from start position
+                rankMap[pos1]             = 0
+                shouldvisit              += [pos1]
+            
+            while True:
+                
+                # find cell to visit with lowest rank (abort if none)
+                found         = False
+                currentrank   = None
+                for (x,y) in shouldvisit:
+                    if  (
+                            currentrank==None or
+                            rankMap[(x,y)]<currentrank
+                        ):
+                        currentrank   = rankMap[(x,y)]
+                        (cx,cy)       = (x,y)
+                        found = True
+                if found==False:
+                    break
+                
+                # assign a height for all its neighbors
+                for (nx,ny) in self._OneHopNeighborhood(cx,cy):
+                    if (nx,ny) in rankMap:
+                        assert rankMap[(nx,ny)] <= currentrank+1 
+                    if  (
+                            (self.realMap[nx][ny]==1) and
+                            ((nx,ny) not in rankMap)
+                        ):
+                        rankMap[(nx,ny)]     = currentrank+1
+                        shouldvisit        += [(nx,ny)]
+                
+                # mark a visited
+                shouldvisit.remove((cx,cy))
+                
+                # abort if I reached pos2
+                if pos2 and (pos2 in rankMap):
+                    self.shouldvisits[pos1] = shouldvisit
+                    break
+            
+            self.rankMaps[pos1] = rankMap
+
+        if pos2:
+            return self.rankMaps[pos1][pos2]
+
+    def _stats_incr(self,k):
+        if k not in self.stats:
+            self.stats[k] = 0
+        self.stats[k] += 1
+
+class NavigationRama(NavigationCentralized):
+    
+    def __init__(self,realMap,startPos,numRobots):
+        NavigationCentralized.__init__(self,realMap,startPos,numRobots)
+        self.raiseMappingDoneImcomplete  = False
+
+    def think(self, robotPositions):
+        
+        
+        if self.raiseMappingDoneImcomplete:
+            raise MappingDoneIncomplete()
+        
+        # store params
+        nextRobotPositions   = robotPositions[:] # many a local copy
+        
+        # local variables
+        robotsMoved          = []
+        
+        # determine whether we're done exploring
+        self._determineDoneExploring()
+        
+        while True:
+            
+            # stop if I have moved all robots
+            if len(robotsMoved)==len(robotPositions):
+                break
+            
+            # identify robots at the frontier
+            frontierBots = []
+            for (ridx,(rx,ry)) in enumerate(robotPositions):
+                
+                # don't move the same robot twice
+                if ridx in robotsMoved:
+                    continue
+            
+                # check that robot has frontier in its 2-neighborhood
+                closeToFrontier = False
+                for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
+                    if self.discoMap[nx][ny]==-1:
+                        closeToFrontier = True
+                        break
+                if closeToFrontier==False:
+                    continue
+                
+                # check that robot has open space in its 1-neighborhood that's further than itself
+                for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+                    if (
+                        self.realMap[nx][ny]==1         and  # open position (not wall)
+                        ((nx,ny) not in robotPositions) and  # no robot there
+                        (nx,ny)!=self.startPos          and  # not the start position
+                        self._distance(self.startPos,(nx,ny))>self._distance(self.startPos,(rx,ry))
+                    ):
+                        frontierBots += [ridx]
+                        break
+            
+            # break if couldn't find any further robot to move
+            if frontierBots==[]:
+                break
+            
+            # pick a frontierBot
+            distanceToStart = {}
+            for (ridx,(x,y)) in enumerate(robotPositions):
+                if ridx not in frontierBots:
+                    continue
+                distanceToStart[ridx] = self._distance(self.startPos,(x,y))
+            frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+            
+            # pick a cell for a new Robot
+            (fx,fy) = robotPositions[frontierBot]
+            while True:
+                (rx,ry) = random.choice(self._OneHopNeighborhood(fx,fy))
+                if  (
+                        self.realMap[rx][ry]==1            and
+                        ((rx,ry) not in robotPositions)    and
+                        (rx,ry)!=self.startPos
+                    ):
+                    break
+            
+            # pick a robot to move and change its position
+            distanceToStart = {}
+            for (ridx,(x,y)) in enumerate(robotPositions):
+                distanceToStart[ridx] = self._distance(self.startPos,(x,y))
+            newBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
+            nextRobotPositions[newBot] = (rx,ry)
+            robotsMoved               += [newBot]
+            
+            # update the discoMap
+            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+                if   self.realMap[nx][ny]==0:
+                    self.discoMap[nx][ny]=0
+                elif self.realMap[nx][ny]==1:
+                    self.discoMap[nx][ny]=1
+            
+            # move just one robot
+            break # FIXME
+        
+        # abort if couldn't find any robot to move
+        if robotsMoved==[]:
+            self.raiseMappingDoneImcomplete = True
+        
+        return (nextRobotPositions,self.discoMap,None)
+
+class NavigationAtlas(NavigationCentralized):
     
     def think(self, robotPositions):
         
@@ -568,97 +688,6 @@ class NavigationAtlas(Navigation):
                     self.discoMap[x][y]=1
         
         return (robotPositions,self.discoMap,self.rankMaps[self.startPos])
-    
-    def _stats_incr(self,k):
-        if k not in self.stats:
-            self.stats[k] = 0
-        self.stats[k] += 1
-    
-    def _distance(self,pos1,pos2=None):
-        
-        # easy answer if same position
-        if pos1==pos2:
-            return 0
-        
-        # inverting pos1 and pos2 in case pos2 already cached (same distance)
-        if (pos1 not in self.rankMaps) and (pos2 in self.rankMaps):
-            temp = pos1
-            pos1 = pos2
-            pos2 = temp
-        
-        # check whether rankMaps in cache, otherwise build or resume
-        if  (
-                (pos1 in self.rankMaps) and
-                (pos2 in self.rankMaps[pos1])
-            ):
-                # stats
-                self._stats_incr('cache_hit')
-        else:
-            if  (
-                    (pos1 in self.rankMaps) and
-                    (pos2 not in self.rankMaps[pos1])
-                ):
-                # resuming building the rankMap
-                
-                # stats
-                self._stats_incr('cache_miss_resume')
-                
-                # local variables (resume)
-                rankMap                   = self.rankMaps[pos1]
-                shouldvisit               = self.shouldvisits[pos1]
-            else:
-                # starting new rankMap
-                
-                # stats
-                self._stats_incr('cache_miss_new')
-                
-                # local variables (new)
-                rankMap                   = {}
-                shouldvisit               = []
-                
-                # start from start position
-                rankMap[pos1]             = 0
-                shouldvisit              += [pos1]
-            
-            while True:
-                
-                # find cell to visit with lowest rank (abort if none)
-                found         = False
-                currentrank   = None
-                for (x,y) in shouldvisit:
-                    if  (
-                            currentrank==None or
-                            rankMap[(x,y)]<currentrank
-                        ):
-                        currentrank   = rankMap[(x,y)]
-                        (cx,cy)       = (x,y)
-                        found = True
-                if found==False:
-                    break
-                
-                # assign a height for all its neighbors
-                for (nx,ny) in self._OneHopNeighborhood(cx,cy):
-                    if (nx,ny) in rankMap:
-                        assert rankMap[(nx,ny)] <= currentrank+1 
-                    if  (
-                            (self.realMap[nx][ny]==1) and
-                            ((nx,ny) not in rankMap)
-                        ):
-                        rankMap[(nx,ny)]     = currentrank+1
-                        shouldvisit        += [(nx,ny)]
-                
-                # mark a visited
-                shouldvisit.remove((cx,cy))
-                
-                # abort if I reached pos2
-                if pos2 and (pos2 in rankMap):
-                    self.shouldvisits[pos1] = shouldvisit
-                    break
-            
-            self.rankMaps[pos1] = rankMap
-
-        if pos2:
-            return self.rankMaps[pos1][pos2]
     
     def _numHigherRankAndUnexploredNeighbors(self,x,y,discoMap):
         numHigherRankNeighbors = 0
