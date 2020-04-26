@@ -3,10 +3,21 @@ simulation of navigation algorithms for micro-robots
 '''
 
 import os
+import time
 import random
-import cProfile
 
 #============================ defines =========================================
+
+#=== settings
+
+NUM_ROBOTS         = 10
+NUM_ROWS           = 10
+NUM_COLS           = 10
+OBSTACLE_DENSITY   = 0.05
+UI                 = True
+NUMRUNS            = 1
+
+#=== defines
 
 HEADING_N          = 'N'
 HEADING_NE         = 'NE'
@@ -30,13 +41,13 @@ HEADING_ALL        = [
 #============================ helper functions ================================
 
 def genGrid():
-    rows  = 30
-    cols  = 30
+    rows  = NUM_ROWS
+    cols  = NUM_COLS
     grid  = []
     for row in range(rows):
         thisRow = []
         for col in range(cols):
-            if random.random()<0.05:
+            if random.random()<OBSTACLE_DENSITY:
                 thisRow += [0]
             else:
                 thisRow += [1]
@@ -158,23 +169,23 @@ class Navigation(object):
     def __init__(self,grid,startPos,numRobots):
         
         # store params
-        self.grid            = grid
-        self.startPos        = startPos
-        self.numRobots       = numRobots
+        self.grid                      = grid
+        self.startPos                  = startPos
+        self.numRobots                 = numRobots
         
         # local variablels
-        self.numRows         = len(self.grid)    # shorthand
-        self.numCols         = len(self.grid[0]) # shorthand
-        self.firstIteration  = True
-        self.rankMaps        = {}
-        self.discoMap        = []
-        self.allCellsIdx     = []
-        self.stats           = {}
+        self.numRows                   = len(self.grid)    # shorthand
+        self.numCols                   = len(self.grid[0]) # shorthand
+        self.firstIteration            = True
+        self.rankMaps                  = {}
+        self.discoMap                  = []
+        self.allCellsIdx               = []
+        self.stats                     = {}
         for (x,row) in enumerate(grid):
-            self.discoMap   += [[]]
+            self.discoMap             += [[]]
             for (y,col) in enumerate(row):
-                self.discoMap[-1] += [-1]
-                self.allCellsIdx  += [(x,y)]
+                self.discoMap[-1]     += [-1]
+                self.allCellsIdx      += [(x,y)]
     
     def getStats(self):
         return self.stats
@@ -197,16 +208,15 @@ class Navigation(object):
                 (x+1,y-1),(x+1,y  ),(x+1,y+1),
             ]:
             
-            # do not consider cells outside the grid
+            # only consider cells inside the grid
             if  (
-                    (nx<0)              or
-                    (nx>=self.numRows)  or
-                    (ny<0)              or
-                    (ny>=self.numCols)
+                    (nx>=0)            and
+                    (nx<self.numRows)  and
+                    (ny>=0)            and
+                    (ny<self.numCols)
                 ):
-                continue
+                returnVal += [(nx,ny)]
             
-            returnVal += [(nx,ny)]
         return returnVal
     
     def _TwoHopNeighborhood(self,x,y):
@@ -219,16 +229,15 @@ class Navigation(object):
                 (x+2,y-2),(x+2,y-1),(x+2,y  ),(x+2,y+1),(x+2,y+2)
             ]:
             
-            # do not consider cells outside the grid
+            # only consider cells inside the grid
             if  (
-                    (nx<0)         or
-                    (nx>=self.numRows)  or
-                    (ny<0)         or
-                    (ny>=self.numCols)
+                    (nx>=0)            and
+                    (nx<self.numRows)  and
+                    (ny>=0)            and
+                    (ny<self.numCols)
                 ):
-                continue
-            
-            returnVal += [(nx,ny)]
+                returnVal += [(nx,ny)]
+                
         return returnVal
 
 class NavigationDistributed(Navigation):
@@ -399,8 +408,7 @@ class NavigationRama(Navigation):
                     max_numUnexploredNeighbors  = None
                     for (fx,fy) in frontierCells:
                         rDistToFc               = self._distance((fx,fy),(rx,ry))
-                        numHigherRankNeighbors  = self._numHigherRankNeighbors(fx,fy,self.discoMap)
-                        numUnexploredNeighbors  = self._numUnexploredNeighbors(fx,fy,self.discoMap)
+                        (numHigherRankNeighbors,numUnexploredNeighbors)  = self._numHigherRankAndUnexploredNeighbors(fx,fy,self.discoMap)
                         if  (
                                 mr_idx==None                   or
                                 rDistToFc<mr_distToFc          or
@@ -559,23 +567,19 @@ class NavigationRama(Navigation):
         if pos2:
             return self.rankMaps[pos1][pos2]
     
-    def _numHigherRankNeighbors(self,x,y,discoMap):
-        returnVal = 0
+    def _numHigherRankAndUnexploredNeighbors(self,x,y,discoMap):
+        numHigherRankNeighbors = 0
+        numUnexploredNeighbors = 0
         rankMap = self.rankMaps[self.startPos] # shorthand
         for (nx,ny) in self._OneHopNeighborhood(x,y):
             if  (
                     discoMap[nx][ny]==1 and
                     rankMap[(nx,ny)]>rankMap[(x,y)]
                 ):
-                returnVal += 1
-        return returnVal
-    
-    def _numUnexploredNeighbors(self,x,y,discoMap):
-        returnVal = 0
-        for (nx,ny) in self._OneHopNeighborhood(x,y):
+                numHigherRankNeighbors += 1
             if discoMap[nx][ny]==-1:
-                returnVal += 1
-        return returnVal
+                numUnexploredNeighbors += 1
+        return (numHigherRankNeighbors,numUnexploredNeighbors)
 
 #======== core simulator
 
@@ -611,7 +615,8 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         kpis['numTicks'] += 1
         
         # print
-        printGrid(discoMap,startPos,robotPositions,kpis)#,rankMapStart)
+        if UI:
+            printGrid(discoMap,startPos,robotPositions,kpis)#,rankMapStart)
         
         #input()
     
@@ -623,11 +628,11 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
 
 def main():
 
-    numRobots      = 1
+    numRobots      = NUM_ROBOTS
     NavAlgClasses  = [
         NavigationRama,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     kpis           = []
 
@@ -637,11 +642,15 @@ def main():
     # execute the simulation for each navigation algorithm
     for NavAlgClass in NavAlgClasses:
         
-        # run single run
-        kpis_run   = singleExploration(grid,startPos,NavAlgClass,numRobots)
+        for r in range(NUMRUNS):
         
-        # collect KPIs
-        kpis      += [kpis_run]
+            # run single run
+            start_time = time.time()
+            kpis_run   = singleExploration(grid,startPos,NavAlgClass,numRobots)
+            print('run {0} in {1:.03f} s'.format(r,time.time()-start_time))
+            
+            # collect KPIs
+            kpis      += [kpis_run]
 
     print(kpis)
     print('Done.')
