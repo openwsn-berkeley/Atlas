@@ -2,20 +2,28 @@
 simulation of navigation algorithms for micro-robots
 '''
 
+#=== built-in
 import os
 import time
 import random
+#=== local
+import scenarios
 
 #============================ defines =========================================
 
 #=== settings
 
-NUM_ROBOTS         = 10
-NUM_ROWS           = 10
-NUM_COLS           = 10
+NUM_ROBOTS         = 50
+NUM_ROWS           = 20
+NUM_COLS           = 20
 OBSTACLE_DENSITY   = 0.05
 UI                 = True
 NUMRUNS            = 1
+SCENARIOS          = [
+    scenarios.SCENARIO_MINI_EMPTY_SPACE,
+    scenarios.SCENARIO_MINI_RAMA_CANONICAL,
+    scenarios.SCENARIO_MINI_OFFICE_FLOOR,
+]
 
 #=== defines
 
@@ -40,7 +48,7 @@ HEADING_ALL        = [
 
 #============================ helper functions ================================
 
-def genGrid():
+def genGridRandom():
     rows  = NUM_ROWS
     cols  = NUM_COLS
     grid  = []
@@ -56,34 +64,31 @@ def genGrid():
     sy = int(cols/2)
     startPos = (sx,sy)
     grid[sx][sy] = 1 # avoid invalid grid with obstacle at start position
-    '''
-    grid = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    ]
-    startPos = (10,20)
-    '''
+    return (grid,startPos)
+
+def genGridDrawing(drawing):
+    grid      = []
+    startPos  = None
+    row       = 0
+    col       = 0
+    for line in drawing.splitlines():
+        if not line.startswith('#'):
+            continue
+        grid += [[]]
+        for c in line:
+            if   c=='#':
+                grid[-1] += [0]
+            elif c==' ':
+                grid[-1] += [1]
+            elif c=='S':
+                grid[-1] += [1]
+                assert startPos==None
+                startPos = (row,col)
+            else:
+                raise SystemError()
+            col += 1
+        row += 1
+        col  = 0
     return (grid,startPos)
 
 def printGrid(discoMap,startPos,robotPositions,kpis,rankMapStart=None):
@@ -636,21 +641,23 @@ def main():
     ]
     kpis           = []
 
-    # create a scenario
-    (grid,startPos) = genGrid()
-    
-    # execute the simulation for each navigation algorithm
-    for NavAlgClass in NavAlgClasses:
+    for scenario in SCENARIOS:
         
-        for r in range(NUMRUNS):
+        # create the realMap
+        (realMap,startPos) = genGridDrawing(scenario)
         
-            # run single run
-            start_time = time.time()
-            kpis_run   = singleExploration(grid,startPos,NavAlgClass,numRobots)
-            print('run {0} in {1:.03f} s'.format(r,time.time()-start_time))
+        # execute the simulation for each navigation algorithm
+        for NavAlgClass in NavAlgClasses:
             
-            # collect KPIs
-            kpis      += [kpis_run]
+            for r in range(NUMRUNS):
+            
+                # run single run
+                start_time = time.time()
+                kpis_run   = singleExploration(realMap,startPos,NavAlgClass,numRobots)
+                print('run {0} in {1:.03f} s'.format(r,time.time()-start_time))
+                
+                # collect KPIs
+                kpis      += [kpis_run]
 
     print(kpis)
     print('Done.')
