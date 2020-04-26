@@ -2,6 +2,11 @@
 simulation of navigation algorithms for micro-robots
 '''
 
+'''
+FIXME: collect heatmap of cell occupancy during one run.
+FIXME: collect CDF of cells explored, on many runs.
+'''
+
 #=== built-in
 import os
 import time
@@ -14,16 +19,17 @@ import scenarios
 #=== settings
 
 NUM_ROBOTS         = 50
-NUM_ROWS           = 20
-NUM_COLS           = 20
-OBSTACLE_DENSITY   = 0.05
 UI                 = True
 NUMRUNS            = 1
 SCENARIOS          = [
-    scenarios.SCENARIO_MINI_EMPTY_SPACE,
-    scenarios.SCENARIO_MINI_RAMA_CANONICAL,
-    scenarios.SCENARIO_MINI_OFFICE_FLOOR,
+    'SCENARIO_MINI_EMPTY_SPACE',
+    'SCENARIO_MINI_RAMA_CANONICAL',
+    'SCENARIO_MINI_OFFICE_FLOOR',
 ]
+# for randomly-generated scenarios
+NUM_ROWS           = 20
+NUM_COLS           = 20
+OBSTACLE_DENSITY   = 0.05
 
 #=== defines
 
@@ -592,13 +598,14 @@ class NavigationRama(Navigation):
 calculates steps taken from source to destination
 '''
 
-def singleExploration(grid,startPos,NavAlgClass,numRobots):
-    navAlg         = NavAlgClass(grid,startPos,numRobots)
+def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
+    navAlg         = NavAlgClass(realMap,startPos,numRobots)
     robotPositions = [startPos]*numRobots
     kpis           = {
-        'navAlg':    NavAlgClass.__name__,
-        'numTicks':  0,
-        'numSteps':  0,
+        'scenarioName': scenarioName,
+        'navAlg':       NavAlgClass.__name__,
+        'numTicks':     0,
+        'numSteps':     0,
     }
     
     while True:
@@ -625,7 +632,7 @@ def singleExploration(grid,startPos,NavAlgClass,numRobots):
         
         #input()
     
-    kpis['stats'] = navAlg.getStats()
+    kpis['navStats'] = navAlg.getStats()
     
     return kpis
 
@@ -644,7 +651,7 @@ def main():
     for scenario in SCENARIOS:
         
         # create the realMap
-        (realMap,startPos) = genGridDrawing(scenario)
+        (realMap,startPos) = genGridDrawing(getattr(scenarios,scenario))
         
         # execute the simulation for each navigation algorithm
         for NavAlgClass in NavAlgClasses:
@@ -653,7 +660,7 @@ def main():
             
                 # run single run
                 start_time = time.time()
-                kpis_run   = singleExploration(realMap,startPos,NavAlgClass,numRobots)
+                kpis_run   = singleExploration(scenario,realMap,startPos,NavAlgClass,numRobots)
                 print('run {0} in {1:.03f} s'.format(r,time.time()-start_time))
                 
                 # collect KPIs
