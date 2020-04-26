@@ -12,6 +12,7 @@ import os
 import time
 import random
 import math
+import pprint
 #=== third-party
 #=== local
 import scenarios
@@ -53,6 +54,10 @@ HEADING_ALL        = [
     HEADING_W,
     HEADING_NW,
 ]
+
+#============================ variables =======================================
+
+pp =  pprint.PrettyPrinter()
 
 #============================ helper functions ================================
 
@@ -785,7 +790,7 @@ def main():
                 # collect KPIs
                 kpis      += [kpis_run]
 
-    print(kpis)
+    pp.pprint(kpis)
     print('Done.')
 
 if __name__=='__main__':
