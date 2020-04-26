@@ -24,10 +24,9 @@ NUM_ROBOTS         = 5
 UI                 = True
 NUMRUNS            = 1
 SCENARIOS          = [
-    'SCENARIO_MINI_RAMA_CANONICAL',
     #'SCENARIO_MINI_EMPTY_SPACE',
     #'SCENARIO_MINI_RAMA_CANONICAL',
-    #'SCENARIO_MINI_OFFICE_FLOOR',
+    'SCENARIO_MINI_OFFICE_FLOOR',
 ]
 # for randomly-generated scenarios
 NUM_ROWS           = 20
@@ -755,8 +754,8 @@ def main():
     NavAlgClasses  = [
         #NavigationRandomWalk,
         #NavigationBallistic,
-        NavigationRama,
-        #NavigationAtlas,
+        #NavigationRama,
+        NavigationAtlas,
     ]
     kpis           = []
 
