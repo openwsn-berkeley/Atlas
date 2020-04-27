@@ -15,7 +15,7 @@ import math
 import pprint
 #=== third-party
 #=== local
-import scenarios
+import AtlasScenarios
 
 #============================ defines =========================================
 
@@ -723,10 +723,10 @@ def main():
     ]
     kpis           = []
 
-    for scenario in SCENARIOS:
+    for scenarioName in SCENARIOS:
         
         # create the realMap
-        (realMap,startPos) = genRealMapDrawing(getattr(scenarios,scenario))
+        (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
         
         # execute the simulation for each navigation algorithm
         for NavAlgClass in NavAlgClasses:
@@ -735,7 +735,7 @@ def main():
             
                 # run single run
                 start_time = time.time()
-                kpis_run   = singleExploration(scenario,realMap,startPos,NavAlgClass,numRobots)
+                kpis_run   = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
                 print('run {0} in {1:.03f} s'.format(r,time.time()-start_time))
                 
                 # collect KPIs
