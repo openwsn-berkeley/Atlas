@@ -757,7 +757,7 @@ def main():
                 # collect KPIs
                 kpis      += [kpis_run]
     
-    with open('AtlasLog_{0}.json'.format(time.strftime("%y  %m%d%H%M%S")).format(),'w') as f:
+    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S")).format(),'w') as f:
         f.write(json.dumps(kpis))
     pp.pprint(kpis)
     print('Done.')
