@@ -21,14 +21,14 @@ import scenarios
 
 #=== settings
 
-NUM_ROBOTS         = 20
+NUM_ROBOTS         = 1
 UI                 = True
-NUMRUNS            = 1
+NUMRUNS            = 5
 SCENARIOS          = [
-    #'SCENARIO_OFFICE_FLOOR',
+    'SCENARIO_OFFICE_FLOOR',
     #'SCENARIO_RAMA_CANONICAL',
     #'SCENARIO_EMPTY_SPACE',
-    'SCENARIO_MINI_OFFICE_FLOOR',
+    #'SCENARIO_MINI_OFFICE_FLOOR',
     #'SCENARIO_MINI_RAMA_CANONICAL',
     #'SCENARIO_MINI_OFFICE_FLOOR',
 ]
@@ -740,7 +740,7 @@ def main():
 
     numRobots      = NUM_ROBOTS
     NavAlgClasses  = [
-        NavigationRama,
+        #NavigationRama,
         NavigationAtlas,
         #NavigationRandomWalk,
         #NavigationBallistic,
