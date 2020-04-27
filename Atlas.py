@@ -12,6 +12,7 @@ import os
 import time
 import random
 import math
+import json
 import pprint
 #=== third-party
 #=== local
@@ -21,21 +22,22 @@ import AtlasScenarios
 
 #=== settings
 
-NUM_ROBOTS         = 10
+NUM_ROBOTS         = 50
 UI                 = True
 NUMRUNS            = 1
 SCENARIOS          = [
-    #'SCENARIO_OFFICE_FLOOR',
-    #'SCENARIO_RAMA_CANONICAL',
-    #'SCENARIO_EMPTY_SPACE',
-    'SCENARIO_MINI_OFFICE_FLOOR',
-    'SCENARIO_MINI_RAMA_CANONICAL',
-    'SCENARIO_MINI_EMPTY_SPACE',
+    'SCENARIO_OFFICE_FLOOR',
+    'SCENARIO_RAMA_CANONICAL',
+    'SCENARIO_EMPTY_SPACE',
+    #'SCENARIO_MINI_OFFICE_FLOOR',
+    #'SCENARIO_MINI_RAMA_CANONICAL',
+    #'SCENARIO_MINI_EMPTY_SPACE',
 ]
+COLLECT_HEATMAP    = True
 
 #=== defines
 
-VERSION            = (1,0)
+VERSION            = (1,5)
 
 HEADING_N          = 'N'
 HEADING_NE         = 'NE'
@@ -58,7 +60,7 @@ HEADING_ALL        = [
 
 #============================ variables =======================================
 
-pp =  pprint.PrettyPrinter()
+pp =  pprint.PrettyPrinter(compact=True)
 
 #============================ helper functions ================================
 
@@ -667,9 +669,19 @@ calculates steps taken from source to destination
 '''
 
 def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
-    navAlg         = NavAlgClass(realMap,startPos,numRobots)
-    robotPositions = [startPos]*numRobots
-    kpis           = {
+    navAlg              = NavAlgClass(realMap,startPos,numRobots)
+    robotPositions      = [startPos]*numRobots
+    if COLLECT_HEATMAP:
+        heatmap         = []
+        for (x,row) in enumerate(realMap):
+            heatmap    += [[]]
+            for (y,cell) in enumerate(row):
+                if cell==0:
+                    heatmap[-1]+=[-1]
+                else:
+                    heatmap[-1]+=[0]
+        (sx,sy)         = startPos
+    kpis                = {
         'scenarioName': scenarioName,
         'navAlg':       NavAlgClass.__name__,
         'numTicks':     0,
@@ -695,6 +707,9 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
             (cx,cy) = robotPositions[i]
             if (nx,ny)!= (cx,cy):
                 kpis['numSteps'] += 1
+            if COLLECT_HEATMAP:
+                assert heatmap[nx][ny]>=0
+                heatmap[nx][ny] += 1
             robotPositions[i] = nextRobotPositions[i]
         
         # update KPIs
@@ -706,6 +721,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         #input()
     
+    kpis['heatmap']  = heatmap
     kpis['navStats'] = navAlg.getStats()
     
     return kpis
@@ -740,10 +756,11 @@ def main():
                 
                 # collect KPIs
                 kpis      += [kpis_run]
-
+    
+    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S")).format(),'w') as f:
+        f.write(json.dumps(kpis))
     pp.pprint(kpis)
     print('Done.')
 
 if __name__=='__main__':
     main()
-    #cProfile.run('main()')
