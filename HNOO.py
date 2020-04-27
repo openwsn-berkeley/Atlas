@@ -21,13 +21,16 @@ import scenarios
 
 #=== settings
 
-NUM_ROBOTS         = 5
+NUM_ROBOTS         = 20
 UI                 = True
 NUMRUNS            = 1
 SCENARIOS          = [
-    #'SCENARIO_MINI_EMPTY_SPACE',
-    #'SCENARIO_MINI_RAMA_CANONICAL',
+    #'SCENARIO_OFFICE_FLOOR',
+    #'SCENARIO_RAMA_CANONICAL',
+    #'SCENARIO_EMPTY_SPACE',
     'SCENARIO_MINI_OFFICE_FLOOR',
+    #'SCENARIO_MINI_RAMA_CANONICAL',
+    #'SCENARIO_MINI_OFFICE_FLOOR',
 ]
 # for randomly-generated scenarios
 NUM_ROWS           = 20
@@ -581,7 +584,7 @@ class NavigationAtlas(NavigationCentralized):
                 
                 # pick move robot (mv) and frontier cell (fc) to move towards
                 #   Rules (most important first):
-                #     - robot as close as possible to frontier
+                #     - robot as close as possible to one of the target frontier cells
                 #     - robot as close as possible to start position
                 #     - frontier cell with many neighbors with a higher rank (avoids cutting corners)
                 #     - frontier cell with many unexplored neighbors
@@ -696,6 +699,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         'navAlg':       NavAlgClass.__name__,
         'numTicks':     0,
         'numSteps':     0,
+        'numRobots':    numRobots,
     }
     
     while True:
@@ -736,10 +740,10 @@ def main():
 
     numRobots      = NUM_ROBOTS
     NavAlgClasses  = [
+        NavigationRama,
+        NavigationAtlas,
         #NavigationRandomWalk,
         #NavigationBallistic,
-        NavigationRama,
-        #NavigationAtlas,
     ]
     kpis           = []
 
