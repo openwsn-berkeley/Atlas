@@ -15,29 +15,27 @@ import math
 import pprint
 #=== third-party
 #=== local
-import scenarios
+import AtlasScenarios
 
 #============================ defines =========================================
 
 #=== settings
 
-NUM_ROBOTS         = 1
+NUM_ROBOTS         = 10
 UI                 = True
-NUMRUNS            = 5
+NUMRUNS            = 1
 SCENARIOS          = [
-    'SCENARIO_OFFICE_FLOOR',
+    #'SCENARIO_OFFICE_FLOOR',
     #'SCENARIO_RAMA_CANONICAL',
     #'SCENARIO_EMPTY_SPACE',
-    #'SCENARIO_MINI_OFFICE_FLOOR',
-    #'SCENARIO_MINI_RAMA_CANONICAL',
-    #'SCENARIO_MINI_OFFICE_FLOOR',
+    'SCENARIO_MINI_OFFICE_FLOOR',
+    'SCENARIO_MINI_RAMA_CANONICAL',
+    'SCENARIO_MINI_EMPTY_SPACE',
 ]
-# for randomly-generated scenarios
-NUM_ROWS           = 20
-NUM_COLS           = 20
-OBSTACLE_DENSITY   = 0.05
 
 #=== defines
+
+VERSION            = (1,0)
 
 HEADING_N          = 'N'
 HEADING_NE         = 'NE'
@@ -63,29 +61,6 @@ HEADING_ALL        = [
 pp =  pprint.PrettyPrinter()
 
 #============================ helper functions ================================
-
-def genRealMapRandom():
-    rows           = NUM_ROWS
-    cols           = NUM_COLS
-    
-    # realMap
-    realMap        = []
-    for row in range(rows):
-        thisRow    = []
-        for col in range(cols):
-            if random.random()<OBSTACLE_DENSITY:
-                thisRow += [0]
-            else:
-                thisRow += [1]
-        realMap   += [thisRow]
-    
-    # startPos
-    sx      = int(rows/2)
-    sy      = int(cols/2)
-    startPos = (sx,sy)
-    realMap[sx][sy] = 1 # avoid invalid realMap with obstacle at start position
-    
-    return (realMap,startPos)
 
 def genRealMapDrawing(drawing):
     realMap   = []
@@ -700,6 +675,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         'numTicks':     0,
         'numSteps':     0,
         'numRobots':    numRobots,
+        'version':      '.'.join([str(n) for n in VERSION]),
     }
     
     while True:
@@ -740,17 +716,17 @@ def main():
 
     numRobots      = NUM_ROBOTS
     NavAlgClasses  = [
-        #NavigationRama,
+        NavigationRama,
         NavigationAtlas,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     kpis           = []
 
-    for scenario in SCENARIOS:
+    for scenarioName in SCENARIOS:
         
         # create the realMap
-        (realMap,startPos) = genRealMapDrawing(getattr(scenarios,scenario))
+        (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
         
         # execute the simulation for each navigation algorithm
         for NavAlgClass in NavAlgClasses:
@@ -759,7 +735,7 @@ def main():
             
                 # run single run
                 start_time = time.time()
-                kpis_run   = singleExploration(scenario,realMap,startPos,NavAlgClass,numRobots)
+                kpis_run   = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
                 print('run {0} in {1:.03f} s'.format(r,time.time()-start_time))
                 
                 # collect KPIs
