@@ -19,14 +19,14 @@ import AtlasScenarios
 #=== settings
 
 SCENARIOS          = [
-    'SCENARIO_OFFICE_FLOOR',
-    'SCENARIO_RAMA_CANONICAL',
-    'SCENARIO_EMPTY_SPACE',
-    #'SCENARIO_MINI_OFFICE_FLOOR',
-    #'SCENARIO_MINI_RAMA_CANONICAL',
-    #'SCENARIO_MINI_EMPTY_SPACE',
-    #'SCENARIO_TINY_1',
-    #'SCENARIO_TINY_2',
+    'scenario_floorplan',
+    'scenario_canonical',
+    'scenario_empty',
+    #'scenario_mini_floorplan',
+    #'scenario_mini_canonical',
+    #'scenario_mini_empty',
+    #'scenario_tiny_1',
+    #'scenario_tiny_2',
 ]
 NUM_ROBOTS         = [10,25,50,100]
 NUMCYCLES          = 100

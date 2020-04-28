@@ -1,4 +1,4 @@
-SCENARIO_EMPTY_SPACE = '''
+scenario_empty = '''
 ################################################################################
 #                                                                              #
 #                                                                              #
@@ -26,7 +26,7 @@ SCENARIO_EMPTY_SPACE = '''
 ################################################################################
 '''
 
-SCENARIO_RAMA_CANONICAL = '''
+scenario_canonical = '''
 ################################################################################
 #                                                                              #
 #                                                                              #
@@ -53,7 +53,7 @@ SCENARIO_RAMA_CANONICAL = '''
 ################################################################################
 '''
 
-SCENARIO_OFFICE_FLOOR = '''
+scenario_floorplan = '''
 ################################################################################
 #          #            #            #                     #            #      #
 #          #            #            #                     #            #      #
@@ -80,7 +80,7 @@ SCENARIO_OFFICE_FLOOR = '''
 ################################################################################
 '''
 
-SCENARIO_MINI_EMPTY_SPACE = '''
+scenario_mini_empty = '''
 ###################
 #                 #
 #                 #
@@ -94,7 +94,7 @@ SCENARIO_MINI_EMPTY_SPACE = '''
 ###################
 '''
 
-SCENARIO_MINI_RAMA_CANONICAL = '''
+scenario_mini_canonical = '''
 ###################
 #                 #
 #                 #
@@ -108,7 +108,7 @@ SCENARIO_MINI_RAMA_CANONICAL = '''
 ###################
 '''
 
-SCENARIO_MINI_OFFICE_FLOOR = '''
+scenario_mini_floorplan = '''
 ###################
 #        #        #
 #        #        #
@@ -122,7 +122,7 @@ SCENARIO_MINI_OFFICE_FLOOR = '''
 ###################
 '''
 
-SCENARIO_TINY_1 = '''
+scenario_tiny_1 = '''
 ###########
 #         #
 #         #
@@ -132,7 +132,7 @@ SCENARIO_TINY_1 = '''
 ###########
 '''
 
-SCENARIO_TINY_2 = '''
+scenario_tiny_2 = '''
 ###########
 #         #
 #   #     #
