@@ -28,13 +28,13 @@ SCENARIOS          = [
     #'scenario_tiny_1',
     #'scenario_tiny_2',
 ]
-NUM_ROBOTS         = [10,25,50,100]
-NUMCYCLES          = 100
+NUM_ROBOTS         = [10,20,30,40,50,60,70,80,90,100]
+NUMCYCLES          = 200
 UI                 = False
 
 #=== defines
 
-VERSION            = (1,5)
+VERSION            = (1,6)
 
 HEADING_N          = 'N'
 HEADING_NE         = 'NE'
@@ -431,7 +431,7 @@ class NavigationCentralized(Navigation):
             self.stats[k] = 0
         self.stats[k] += 1
 
-class NavigationRama(NavigationCentralized):
+class NavigationRamaithitima(NavigationCentralized):
     
     def think(self, robotPositions):
         
@@ -749,7 +749,7 @@ def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobot
 def main():
 
     NavAlgClasses  = [
-        NavigationRama,
+        NavigationRamaithitima,
         NavigationAtlas,
         NavigationRandomWalk,
         NavigationBallistic,
