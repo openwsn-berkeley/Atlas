@@ -27,8 +27,8 @@ SCENARIOS          = [
     #'SCENARIO_TINY_1',
     #'SCENARIO_TINY_2',
 ]
-NUM_ROBOTS         = [20]
-NUMRUNS            = 2
+NUM_ROBOTS         = [1,10,25,50,100]
+NUMRUNS            = 100
 UI                 = False
 COLLECT_HEATMAP    = True
 COLLECT_PROFILE    = True
