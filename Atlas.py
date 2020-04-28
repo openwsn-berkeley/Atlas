@@ -22,16 +22,18 @@ import AtlasScenarios
 
 #=== settings
 
-NUM_ROBOTS         = 50
+NUM_ROBOTS         = [5,10]
 UI                 = True
-NUMRUNS            = 1
+NUMRUNS            = 2
 SCENARIOS          = [
-    'SCENARIO_OFFICE_FLOOR',
-    'SCENARIO_RAMA_CANONICAL',
-    'SCENARIO_EMPTY_SPACE',
+    #'SCENARIO_OFFICE_FLOOR',
+    #'SCENARIO_RAMA_CANONICAL',
+    #'SCENARIO_EMPTY_SPACE',
     #'SCENARIO_MINI_OFFICE_FLOOR',
     #'SCENARIO_MINI_RAMA_CANONICAL',
     #'SCENARIO_MINI_EMPTY_SPACE',
+    'SCENARIO_TINY_1',
+    'SCENARIO_TINY_2',
 ]
 COLLECT_HEATMAP    = True
 
@@ -730,7 +732,6 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
 
 def main():
 
-    numRobots      = NUM_ROBOTS
     NavAlgClasses  = [
         NavigationRama,
         NavigationAtlas,
@@ -738,24 +739,31 @@ def main():
         NavigationBallistic,
     ]
     kpis           = []
-
-    for scenarioName in SCENARIOS:
-        
-        # create the realMap
-        (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
-        
-        # execute the simulation for each navigation algorithm
-        for NavAlgClass in NavAlgClasses:
+    
+    for numRobots in NUM_ROBOTS:
+    
+        for scenarioName in SCENARIOS:
             
-            for r in range(NUMRUNS):
+            # create the realMap
+            (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
             
-                # run single run
-                start_time = time.time()
-                kpis_run   = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
-                print('run {0} in {1:.03f} s'.format(r,time.time()-start_time))
+            # execute the simulation for each navigation algorithm
+            for NavAlgClass in NavAlgClasses:
                 
-                # collect KPIs
-                kpis      += [kpis_run]
+                for runId in range(NUMRUNS):
+                
+                    # run single run
+                    start_time         = time.time()
+                    kpis_run           = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
+                    print('run {0} in {1:.03f} s'.format(runId,time.time()-start_time))
+                    
+                    # collect KPIs
+                    kpis_run['runId']  = runId
+                    kpis              += [kpis_run]
+                    
+                    # only 1 run for Atlas (deterministic)
+                    if NavAlgClass==NavigationAtlas:
+                        break
     
     with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S")).format(),'w') as f:
         f.write(json.dumps(kpis))
