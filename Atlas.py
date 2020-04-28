@@ -17,9 +17,6 @@ import AtlasScenarios
 
 #=== settings
 
-NUM_ROBOTS         = [20]
-UI                 = True
-NUMRUNS            = 2
 SCENARIOS          = [
     #'SCENARIO_OFFICE_FLOOR',
     #'SCENARIO_RAMA_CANONICAL',
@@ -30,6 +27,9 @@ SCENARIOS          = [
     #'SCENARIO_TINY_1',
     #'SCENARIO_TINY_2',
 ]
+NUM_ROBOTS         = [20]
+NUMRUNS            = 2
+UI                 = True
 COLLECT_HEATMAP    = True
 COLLECT_PROFILE    = True
 
@@ -758,18 +758,18 @@ def main():
     ]
     kpis           = []
     
-    for numRobots in NUM_ROBOTS:
-    
-        for scenarioName in SCENARIOS:
-            
-            # create the realMap
-            (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
-            
-            # execute the simulation for each navigation algorithm
-            for NavAlgClass in NavAlgClasses:
+    for runId in range(NUMRUNS):
+        
+        for numRobots in NUM_ROBOTS:
+        
+            for scenarioName in SCENARIOS:
                 
-                for runId in range(NUMRUNS):
+                # create the realMap
+                (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
                 
+                # execute the simulation for each navigation algorithm
+                for NavAlgClass in NavAlgClasses:
+                    
                     # run single run
                     start_time         = time.time()
                     kpis_run           = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
