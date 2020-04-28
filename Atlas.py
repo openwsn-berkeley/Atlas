@@ -1,10 +1,5 @@
 '''
-simulation of navigation algorithms for micro-robots
-'''
-
-'''
-FIXME: collect heatmap of cell occupancy during one run.
-FIXME: collect CDF of cells explored, on many runs.
+Atlas: Exploration and Mapping with a Sparse Swarm of Networked IoT Robots
 '''
 
 #=== built-in
@@ -14,6 +9,7 @@ import random
 import math
 import json
 import pprint
+import datetime
 #=== third-party
 #=== local
 import AtlasScenarios
@@ -22,9 +18,6 @@ import AtlasScenarios
 
 #=== settings
 
-NUM_ROBOTS         = [5,10]
-UI                 = True
-NUMRUNS            = 2
 SCENARIOS          = [
     #'SCENARIO_OFFICE_FLOOR',
     #'SCENARIO_RAMA_CANONICAL',
@@ -35,6 +28,9 @@ SCENARIOS          = [
     'SCENARIO_TINY_1',
     'SCENARIO_TINY_2',
 ]
+NUM_ROBOTS         = [1,2,3,4,5,6,7,8,9,10]
+NUMCYCLES          = 100
+UI                 = False
 COLLECT_HEATMAP    = True
 
 #=== defines
@@ -62,7 +58,7 @@ HEADING_ALL        = [
 
 #============================ variables =======================================
 
-pp =  pprint.PrettyPrinter(compact=True)
+pp =  pprint.PrettyPrinter(depth=3,compact=True)
 
 #============================ helper functions ================================
 
@@ -251,8 +247,9 @@ class NavigationDistributed(Navigation):
 
     def think(self, robotPositions):
         
-        # returnVal
+        # local variables
         nextRobotPositions   = []
+        numExplored          = 0
         
         # determine whether we're done exploring
         self._determineDoneExploring()
@@ -266,6 +263,8 @@ class NavigationDistributed(Navigation):
             for (nx,ny) in self._OneHopNeighborhood(rx,ry):
                 
                 # populate the discovered map
+                if self.discoMap[nx][ny]==-1:
+                    numExplored += 1
                 if   self.realMap[nx][ny] == 0:
                     self.discoMap[nx][ny]=0
                 elif self.realMap[nx][ny] == 1:
@@ -284,7 +283,7 @@ class NavigationDistributed(Navigation):
             else:
                 nextRobotPositions += [(rx,ry)]
         
-        return (nextRobotPositions,self.discoMap,None)
+        return (nextRobotPositions,self.discoMap,numExplored,None)
     
     def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
         raise SystemError()
@@ -440,6 +439,9 @@ class NavigationRama(NavigationCentralized):
         # store params
         nextRobotPositions   = robotPositions[:] # many a local copy
         
+        # local variables
+        numExplored          = 0
+        
         # determine whether we're done exploring
         self._determineDoneExploring()
         
@@ -499,12 +501,14 @@ class NavigationRama(NavigationCentralized):
         
         # update the discoMap
         for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+            if self.discoMap[nx][ny]==-1:
+                numExplored += 1
             if   self.realMap[nx][ny]==0:
                 self.discoMap[nx][ny]=0
             elif self.realMap[nx][ny]==1:
                 self.discoMap[nx][ny]=1
         
-        return (nextRobotPositions,self.discoMap,None)
+        return (nextRobotPositions,self.discoMap,numExplored,None)
 
 class NavigationAtlas(NavigationCentralized):
     
@@ -516,6 +520,7 @@ class NavigationAtlas(NavigationCentralized):
         # local variables
         robotsMoved               = []
         frontierCellsTargeted     = []
+        numExplored               = 0
         (sx,sy)                   = self.startPos # shorthand
         
         # determine whether we're done exploring
@@ -643,12 +648,16 @@ class NavigationAtlas(NavigationCentralized):
             
             # update the discoMap
             for (x,y) in self._OneHopNeighborhood(mx_next,my_next):
+                if self.discoMap[x][y]==-1:
+                    numExplored += 1
                 if   self.realMap[x][y] == 0:
                     self.discoMap[x][y]=0
                 elif self.realMap[x][y] == 1:
                     self.discoMap[x][y]=1
+                else:
+                    raise SystemError()
         
-        return (robotPositions,self.discoMap,self.rankMaps[self.startPos])
+        return (robotPositions,self.discoMap,numExplored,self.rankMaps[self.startPos])
     
     def _numHigherRankAndUnexploredNeighbors(self,x,y,discoMap):
         numHigherRankNeighbors = 0
@@ -670,20 +679,24 @@ class NavigationAtlas(NavigationCentralized):
 calculates steps taken from source to destination
 '''
 
-def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
-    navAlg              = NavAlgClass(realMap,startPos,numRobots)
-    robotPositions      = [startPos]*numRobots
-    if COLLECT_HEATMAP:
-        heatmap         = []
+def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots):
+    navAlg                   = NavAlgClass(realMap,startPos,numRobots)
+    robotPositions           = [startPos]*numRobots
+    if cycleId==0: # collect heatmap only on first cycle
+        heatmap              = []
         for (x,row) in enumerate(realMap):
-            heatmap    += [[]]
+            heatmap         += [[]]
             for (y,cell) in enumerate(row):
                 if cell==0:
-                    heatmap[-1]+=[-1]
+                    heatmap[-1]  += [-1]
                 else:
-                    heatmap[-1]+=[0]
-        (sx,sy)         = startPos
-    kpis                = {
+                    heatmap[-1]  += [ 0]
+        (sx,sy)              = startPos
+    
+    numExplored          = 0
+    profile              = []
+    
+    kpis                     = {
         'scenarioName': scenarioName,
         'navAlg':       NavAlgClass.__name__,
         'numTicks':     0,
@@ -696,7 +709,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         # think
         try:
-            (nextRobotPositions,discoMap,rankMapStart)   = navAlg.think(robotPositions)
+            (nextRobotPositions,discoMap,numNewExplored,rankMapStart)   = navAlg.think(robotPositions)
         except MappingDoneSuccess:
             kpis['mappingoutcome'] = 'success'
             break
@@ -707,15 +720,17 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         # move
         for (i,(nx,ny)) in enumerate(nextRobotPositions):
             (cx,cy) = robotPositions[i]
-            if (nx,ny)!= (cx,cy):
+            if (nx,ny) != (cx,cy):
                 kpis['numSteps'] += 1
-            if COLLECT_HEATMAP:
+            if cycleId==0: # collect heatmap only on first cycle
                 assert heatmap[nx][ny]>=0
                 heatmap[nx][ny] += 1
             robotPositions[i] = nextRobotPositions[i]
         
         # update KPIs
-        kpis['numTicks'] += 1
+        kpis['numTicks']    += 1
+        numExplored         += numNewExplored
+        profile             += [numExplored]
         
         # print
         if UI:
@@ -723,8 +738,10 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         #input()
     
-    kpis['heatmap']  = heatmap
-    kpis['navStats'] = navAlg.getStats()
+    if cycleId==0: # collect heatmap only on first cycle
+        kpis['heatmap']      = heatmap
+    kpis['profile']          = profile
+    kpis['navStats']         = navAlg.getStats()
     
     return kpis
 
@@ -738,36 +755,55 @@ def main():
         NavigationRandomWalk,
         NavigationBallistic,
     ]
-    kpis           = []
     
-    for numRobots in NUM_ROBOTS:
+    startTime = time.time()
     
-        for scenarioName in SCENARIOS:
+    for cycleId in range(NUMCYCLES):
+        
+        cycleStart = time.time()
+        
+        for numRobots in NUM_ROBOTS:
             
-            # create the realMap
-            (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
-            
-            # execute the simulation for each navigation algorithm
-            for NavAlgClass in NavAlgClasses:
+            for scenarioName in SCENARIOS:
+
+                # create the realMap
+                (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
                 
-                for runId in range(NUMRUNS):
-                
+                # execute the simulation for each navigation algorithm
+                for NavAlgClass in NavAlgClasses:
+                    
+                    # only 1 cycle for Atlas (deterministic)
+                    if NavAlgClass==NavigationAtlas and cycleId>0:
+                        continue
+                    
+                    kpis               = []
+                    
                     # run single run
                     start_time         = time.time()
-                    kpis_run           = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
-                    print('run {0} in {1:.03f} s'.format(runId,time.time()-start_time))
+                    kpis               = singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots)
+                    print(
+                        'cycleId={0:>3} numRobots={1:>3} scenarioName={2:>30} NavAlgClass={3:>30} done in {4:>8.03f} s'.format(
+                            cycleId,
+                            numRobots,
+                            scenarioName,
+                            NavAlgClass.__name__,
+                            time.time()-start_time,
+                        )
+                    )
                     
-                    # collect KPIs
-                    kpis_run['runId']  = runId
-                    kpis              += [kpis_run]
-                    
-                    # only 1 run for Atlas (deterministic)
-                    if NavAlgClass==NavigationAtlas:
-                        break
+                    # log KPIs
+                    kpis['cycleId']   = cycleId
+                    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S",time.localtime(startTime))).format(),'a') as f:
+                        f.write(json.dumps(kpis)+'\n')
+        
+        print(
+            '   full cycle {0:>3} done in {1:>10.03f} s (simulation has been running for {2})'.format(
+                cycleId,
+                time.time()-cycleStart,
+                str(datetime.timedelta(seconds=time.time()-startTime)),
+            )
+        )
     
-    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S")).format(),'w') as f:
-        f.write(json.dumps(kpis))
-    pp.pprint(kpis)
     print('Done.')
 
 if __name__=='__main__':
