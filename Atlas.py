@@ -19,19 +19,18 @@ import AtlasScenarios
 #=== settings
 
 SCENARIOS          = [
-    #'SCENARIO_OFFICE_FLOOR',
-    #'SCENARIO_RAMA_CANONICAL',
-    #'SCENARIO_EMPTY_SPACE',
+    'SCENARIO_OFFICE_FLOOR',
+    'SCENARIO_RAMA_CANONICAL',
+    'SCENARIO_EMPTY_SPACE',
     #'SCENARIO_MINI_OFFICE_FLOOR',
     #'SCENARIO_MINI_RAMA_CANONICAL',
     #'SCENARIO_MINI_EMPTY_SPACE',
-    'SCENARIO_TINY_1',
-    'SCENARIO_TINY_2',
+    #'SCENARIO_TINY_1',
+    #'SCENARIO_TINY_2',
 ]
-NUM_ROBOTS         = [1,2,3,4,5,6,7,8,9,10]
+NUM_ROBOTS         = [10,25,50,100]
 NUMCYCLES          = 100
 UI                 = False
-COLLECT_HEATMAP    = True
 
 #=== defines
 
@@ -679,10 +678,10 @@ class NavigationAtlas(NavigationCentralized):
 calculates steps taken from source to destination
 '''
 
-def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots):
+def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots,collectHeatmap):
     navAlg                   = NavAlgClass(realMap,startPos,numRobots)
     robotPositions           = [startPos]*numRobots
-    if cycleId==0: # collect heatmap only on first cycle
+    if collectHeatmap:
         heatmap              = []
         for (x,row) in enumerate(realMap):
             heatmap         += [[]]
@@ -722,7 +721,7 @@ def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobot
             (cx,cy) = robotPositions[i]
             if (nx,ny) != (cx,cy):
                 kpis['numSteps'] += 1
-            if cycleId==0: # collect heatmap only on first cycle
+            if collectHeatmap:
                 assert heatmap[nx][ny]>=0
                 heatmap[nx][ny] += 1
             robotPositions[i] = nextRobotPositions[i]
@@ -738,7 +737,7 @@ def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobot
         
         #input()
     
-    if cycleId==0: # collect heatmap only on first cycle
+    if collectHeatmap:
         kpis['heatmap']      = heatmap
     kpis['profile']          = profile
     kpis['navStats']         = navAlg.getStats()
@@ -758,51 +757,58 @@ def main():
     
     startTime = time.time()
     
-    for cycleId in range(NUMCYCLES):
-        
-        cycleStart = time.time()
-        
-        for numRobots in NUM_ROBOTS:
+    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S",time.localtime(startTime))).format(),'a') as f:
+    
+        for cycleId in range(NUMCYCLES):
             
-            for scenarioName in SCENARIOS:
-
-                # create the realMap
-                (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
+            cycleStart = time.time()
+            
+            for numRobots in NUM_ROBOTS:
                 
-                # execute the simulation for each navigation algorithm
-                for NavAlgClass in NavAlgClasses:
+                if cycleId==0 and numRobots==max(NUM_ROBOTS):
+                    collectHeatmap = True
+                else:
+                    collectHeatmap = False
+                
+                for scenarioName in SCENARIOS:
+
+                    # create the realMap
+                    (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
                     
-                    # only 1 cycle for Atlas (deterministic)
-                    if NavAlgClass==NavigationAtlas and cycleId>0:
-                        continue
-                    
-                    kpis               = []
-                    
-                    # run single run
-                    start_time         = time.time()
-                    kpis               = singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots)
-                    print(
-                        'cycleId={0:>3} numRobots={1:>3} scenarioName={2:>30} NavAlgClass={3:>30} done in {4:>8.03f} s'.format(
-                            cycleId,
-                            numRobots,
-                            scenarioName,
-                            NavAlgClass.__name__,
-                            time.time()-start_time,
+                    # execute the simulation for each navigation algorithm
+                    for NavAlgClass in NavAlgClasses:
+                        
+                        # only 1 cycle for Atlas (deterministic)
+                        if NavAlgClass==NavigationAtlas and cycleId>0:
+                            continue
+                        
+                        kpis               = []
+                        
+                        # run single run
+                        start_time         = time.time()
+                        kpis               = singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots,collectHeatmap)
+                        print(
+                            'cycleId={0:>3} numRobots={1:>3} scenarioName={2:>30} NavAlgClass={3:>30} done in {4:>8.03f} s'.format(
+                                cycleId,
+                                numRobots,
+                                scenarioName,
+                                NavAlgClass.__name__,
+                                time.time()-start_time,
+                            )
                         )
-                    )
-                    
-                    # log KPIs
-                    kpis['cycleId']   = cycleId
-                    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S",time.localtime(startTime))).format(),'a') as f:
+                        
+                        # log KPIs
+                        kpis['cycleId']   = cycleId
                         f.write(json.dumps(kpis)+'\n')
-        
-        print(
-            '   full cycle {0:>3} done in {1:>10.03f} s (simulation has been running for {2})'.format(
-                cycleId,
-                time.time()-cycleStart,
-                str(datetime.timedelta(seconds=time.time()-startTime)),
+                        f.flush()
+            
+            print(
+                '   full cycle {0:>3} done in {1:>10.03f} s (simulation has been running for {2})'.format(
+                    cycleId,
+                    time.time()-cycleStart,
+                    str(datetime.timedelta(seconds=time.time()-startTime)),
+                )
             )
-        )
     
     print('Done.')
 
