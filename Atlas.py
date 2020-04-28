@@ -1,10 +1,5 @@
 '''
-simulation of navigation algorithms for micro-robots
-'''
-
-'''
-FIXME: collect heatmap of cell occupancy during one run.
-FIXME: collect CDF of cells explored, on many runs.
+Atlas: Exploration and Mapping with a Sparse Swarm of Networked IoT Robots
 '''
 
 #=== built-in
@@ -22,18 +17,18 @@ import AtlasScenarios
 
 #=== settings
 
-NUM_ROBOTS         = [5,10]
+NUM_ROBOTS         = [20]
 UI                 = True
-NUMRUNS            = 2
+NUMRUNS            = 1
 SCENARIOS          = [
     #'SCENARIO_OFFICE_FLOOR',
     #'SCENARIO_RAMA_CANONICAL',
     #'SCENARIO_EMPTY_SPACE',
-    #'SCENARIO_MINI_OFFICE_FLOOR',
-    #'SCENARIO_MINI_RAMA_CANONICAL',
-    #'SCENARIO_MINI_EMPTY_SPACE',
-    'SCENARIO_TINY_1',
-    'SCENARIO_TINY_2',
+    'SCENARIO_MINI_OFFICE_FLOOR',
+    'SCENARIO_MINI_RAMA_CANONICAL',
+    'SCENARIO_MINI_EMPTY_SPACE',
+    #'SCENARIO_TINY_1',
+    #'SCENARIO_TINY_2',
 ]
 COLLECT_HEATMAP    = True
 COLLECT_PROFILE    = True
@@ -63,7 +58,7 @@ HEADING_ALL        = [
 
 #============================ variables =======================================
 
-pp =  pprint.PrettyPrinter(compact=True)
+pp =  pprint.PrettyPrinter(depth=3,compact=True)
 
 #============================ helper functions ================================
 
@@ -698,6 +693,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
                     heatmap[-1]  += [ 0]
         (sx,sy)              = startPos
     if COLLECT_PROFILE:
+        numExplored          = 0
         profile              = []
     
     kpis                     = {
@@ -713,7 +709,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         # think
         try:
-            (nextRobotPositions,discoMap,numExplored,rankMapStart)   = navAlg.think(robotPositions)
+            (nextRobotPositions,discoMap,numNewExplored,rankMapStart)   = navAlg.think(robotPositions)
         except MappingDoneSuccess:
             kpis['mappingoutcome'] = 'success'
             break
@@ -733,6 +729,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         # update KPIs
         kpis['numTicks']    += 1
+        numExplored         += numNewExplored
         profile             += [numExplored]
         
         # print
