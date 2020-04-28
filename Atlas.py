@@ -18,18 +18,18 @@ import AtlasScenarios
 #=== settings
 
 SCENARIOS          = [
-    #'SCENARIO_OFFICE_FLOOR',
-    #'SCENARIO_RAMA_CANONICAL',
-    #'SCENARIO_EMPTY_SPACE',
-    'SCENARIO_MINI_OFFICE_FLOOR',
-    'SCENARIO_MINI_RAMA_CANONICAL',
-    'SCENARIO_MINI_EMPTY_SPACE',
+    'SCENARIO_OFFICE_FLOOR',
+    'SCENARIO_RAMA_CANONICAL',
+    'SCENARIO_EMPTY_SPACE',
+    #'SCENARIO_MINI_OFFICE_FLOOR',
+    #'SCENARIO_MINI_RAMA_CANONICAL',
+    #'SCENARIO_MINI_EMPTY_SPACE',
     #'SCENARIO_TINY_1',
     #'SCENARIO_TINY_2',
 ]
 NUM_ROBOTS         = [20]
 NUMRUNS            = 2
-UI                 = True
+UI                 = False
 COLLECT_HEATMAP    = True
 COLLECT_PROFILE    = True
 
@@ -759,6 +759,9 @@ def main():
     kpis           = []
     
     for runId in range(NUMRUNS):
+        
+        cycleStart = time.time()
+        
         for numRobots in NUM_ROBOTS:
             for scenarioName in SCENARIOS:
 
@@ -768,22 +771,37 @@ def main():
                 # execute the simulation for each navigation algorithm
                 for NavAlgClass in NavAlgClasses:
                     
+                    # only 1 run for Atlas (deterministic)
+                    if NavAlgClass==NavigationAtlas and runId>0:
+                        continue
+                    
                     # run single run
                     start_time         = time.time()
                     kpis_run           = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
-                    print('run {0} in {1:.03f} s'.format(runId,time.time()-start_time))
+                    print(
+                        'runId={0:>3} numRobots={1:>3} scenarioName={2:>30} NavAlgClass={3:>30} done in {4:>8.03f} s'.format(
+                            runId,
+                            numRobots,
+                            scenarioName,
+                            NavAlgClass.__name__,
+                            time.time()-start_time,
+                        )
+                    )
                     
                     # collect KPIs
                     kpis_run['runId']  = runId
                     kpis              += [kpis_run]
-                    
-                    # only 1 run for Atlas (deterministic)
-                    if NavAlgClass==NavigationAtlas:
-                        break
+        
+        print(
+            '   full run {0:>3} done in {1:>10.03f} s'.format(
+                runId,
+                time.time()-cycleStart,
+            )
+        )
     
     with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S")).format(),'w') as f:
         f.write(json.dumps(kpis))
-    pp.pprint(kpis)
+    #pp.pprint(kpis)
     print('Done.')
 
 if __name__=='__main__':
