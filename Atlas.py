@@ -36,6 +36,7 @@ SCENARIOS          = [
     'SCENARIO_TINY_2',
 ]
 COLLECT_HEATMAP    = True
+COLLECT_PROFILE    = True
 
 #=== defines
 
@@ -251,8 +252,9 @@ class NavigationDistributed(Navigation):
 
     def think(self, robotPositions):
         
-        # returnVal
+        # local variables
         nextRobotPositions   = []
+        numExplored          = 0
         
         # determine whether we're done exploring
         self._determineDoneExploring()
@@ -266,6 +268,8 @@ class NavigationDistributed(Navigation):
             for (nx,ny) in self._OneHopNeighborhood(rx,ry):
                 
                 # populate the discovered map
+                if self.discoMap[nx][ny]==-1:
+                    numExplored += 1
                 if   self.realMap[nx][ny] == 0:
                     self.discoMap[nx][ny]=0
                 elif self.realMap[nx][ny] == 1:
@@ -284,7 +288,7 @@ class NavigationDistributed(Navigation):
             else:
                 nextRobotPositions += [(rx,ry)]
         
-        return (nextRobotPositions,self.discoMap,None)
+        return (nextRobotPositions,self.discoMap,numExplored,None)
     
     def _pickNextPosition(self,ridx,rx,ry,validNextPositions):
         raise SystemError()
@@ -440,6 +444,9 @@ class NavigationRama(NavigationCentralized):
         # store params
         nextRobotPositions   = robotPositions[:] # many a local copy
         
+        # local variables
+        numExplored          = 0
+        
         # determine whether we're done exploring
         self._determineDoneExploring()
         
@@ -499,12 +506,14 @@ class NavigationRama(NavigationCentralized):
         
         # update the discoMap
         for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+            if self.discoMap[nx][ny]==-1:
+                numExplored += 1
             if   self.realMap[nx][ny]==0:
                 self.discoMap[nx][ny]=0
             elif self.realMap[nx][ny]==1:
                 self.discoMap[nx][ny]=1
         
-        return (nextRobotPositions,self.discoMap,None)
+        return (nextRobotPositions,self.discoMap,numExplored,None)
 
 class NavigationAtlas(NavigationCentralized):
     
@@ -516,6 +525,7 @@ class NavigationAtlas(NavigationCentralized):
         # local variables
         robotsMoved               = []
         frontierCellsTargeted     = []
+        numExplored               = 0
         (sx,sy)                   = self.startPos # shorthand
         
         # determine whether we're done exploring
@@ -643,12 +653,16 @@ class NavigationAtlas(NavigationCentralized):
             
             # update the discoMap
             for (x,y) in self._OneHopNeighborhood(mx_next,my_next):
+                if self.discoMap[x][y]==-1:
+                    numExplored += 1
                 if   self.realMap[x][y] == 0:
                     self.discoMap[x][y]=0
                 elif self.realMap[x][y] == 1:
                     self.discoMap[x][y]=1
+                else:
+                    raise SystemError()
         
-        return (robotPositions,self.discoMap,self.rankMaps[self.startPos])
+        return (robotPositions,self.discoMap,numExplored,self.rankMaps[self.startPos])
     
     def _numHigherRankAndUnexploredNeighbors(self,x,y,discoMap):
         numHigherRankNeighbors = 0
@@ -671,19 +685,22 @@ calculates steps taken from source to destination
 '''
 
 def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
-    navAlg              = NavAlgClass(realMap,startPos,numRobots)
-    robotPositions      = [startPos]*numRobots
+    navAlg                   = NavAlgClass(realMap,startPos,numRobots)
+    robotPositions           = [startPos]*numRobots
     if COLLECT_HEATMAP:
-        heatmap         = []
+        heatmap              = []
         for (x,row) in enumerate(realMap):
-            heatmap    += [[]]
+            heatmap         += [[]]
             for (y,cell) in enumerate(row):
                 if cell==0:
-                    heatmap[-1]+=[-1]
+                    heatmap[-1]  += [-1]
                 else:
-                    heatmap[-1]+=[0]
-        (sx,sy)         = startPos
-    kpis                = {
+                    heatmap[-1]  += [ 0]
+        (sx,sy)              = startPos
+    if COLLECT_PROFILE:
+        profile              = []
+    
+    kpis                     = {
         'scenarioName': scenarioName,
         'navAlg':       NavAlgClass.__name__,
         'numTicks':     0,
@@ -696,7 +713,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         # think
         try:
-            (nextRobotPositions,discoMap,rankMapStart)   = navAlg.think(robotPositions)
+            (nextRobotPositions,discoMap,numExplored,rankMapStart)   = navAlg.think(robotPositions)
         except MappingDoneSuccess:
             kpis['mappingoutcome'] = 'success'
             break
@@ -707,7 +724,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         # move
         for (i,(nx,ny)) in enumerate(nextRobotPositions):
             (cx,cy) = robotPositions[i]
-            if (nx,ny)!= (cx,cy):
+            if (nx,ny) != (cx,cy):
                 kpis['numSteps'] += 1
             if COLLECT_HEATMAP:
                 assert heatmap[nx][ny]>=0
@@ -715,7 +732,8 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
             robotPositions[i] = nextRobotPositions[i]
         
         # update KPIs
-        kpis['numTicks'] += 1
+        kpis['numTicks']    += 1
+        profile             += [numExplored]
         
         # print
         if UI:
@@ -723,8 +741,11 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         #input()
     
-    kpis['heatmap']  = heatmap
-    kpis['navStats'] = navAlg.getStats()
+    if COLLECT_HEATMAP:
+        kpis['heatmap']      = heatmap
+    if COLLECT_PROFILE:
+        kpis['profile']      = profile
+    kpis['navStats']         = navAlg.getStats()
     
     return kpis
 
