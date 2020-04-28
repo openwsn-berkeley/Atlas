@@ -19,7 +19,7 @@ import AtlasScenarios
 
 NUM_ROBOTS         = [20]
 UI                 = True
-NUMRUNS            = 1
+NUMRUNS            = 2
 SCENARIOS          = [
     #'SCENARIO_OFFICE_FLOOR',
     #'SCENARIO_RAMA_CANONICAL',

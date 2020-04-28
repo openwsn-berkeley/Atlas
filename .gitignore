@@ -2,5 +2,5 @@
 /*.png
 /__pycache__
 /*.json
-/*.eps
 /.ipynb_checkpoints
+*.eps
