@@ -759,11 +759,9 @@ def main():
     kpis           = []
     
     for runId in range(NUMRUNS):
-        
         for numRobots in NUM_ROBOTS:
-        
             for scenarioName in SCENARIOS:
-                
+
                 # create the realMap
                 (realMap,startPos) = genRealMapDrawing(getattr(AtlasScenarios,scenarioName))
                 
