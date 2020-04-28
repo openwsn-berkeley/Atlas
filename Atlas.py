@@ -9,6 +9,7 @@ import random
 import math
 import json
 import pprint
+import datetime
 #=== third-party
 #=== local
 import AtlasScenarios
@@ -18,20 +19,19 @@ import AtlasScenarios
 #=== settings
 
 SCENARIOS          = [
-    'SCENARIO_OFFICE_FLOOR',
-    'SCENARIO_RAMA_CANONICAL',
-    'SCENARIO_EMPTY_SPACE',
+    #'SCENARIO_OFFICE_FLOOR',
+    #'SCENARIO_RAMA_CANONICAL',
+    #'SCENARIO_EMPTY_SPACE',
     #'SCENARIO_MINI_OFFICE_FLOOR',
     #'SCENARIO_MINI_RAMA_CANONICAL',
     #'SCENARIO_MINI_EMPTY_SPACE',
-    #'SCENARIO_TINY_1',
-    #'SCENARIO_TINY_2',
+    'SCENARIO_TINY_1',
+    'SCENARIO_TINY_2',
 ]
-NUM_ROBOTS         = [1,10,25,50,100]
-NUMRUNS            = 100
+NUM_ROBOTS         = [1,2,3,4,5,6,7,8,9,10]
+NUMCYCLES          = 100
 UI                 = False
 COLLECT_HEATMAP    = True
-COLLECT_PROFILE    = True
 
 #=== defines
 
@@ -679,10 +679,10 @@ class NavigationAtlas(NavigationCentralized):
 calculates steps taken from source to destination
 '''
 
-def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
+def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots):
     navAlg                   = NavAlgClass(realMap,startPos,numRobots)
     robotPositions           = [startPos]*numRobots
-    if COLLECT_HEATMAP:
+    if cycleId==0: # collect heatmap only on first cycle
         heatmap              = []
         for (x,row) in enumerate(realMap):
             heatmap         += [[]]
@@ -692,9 +692,9 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
                 else:
                     heatmap[-1]  += [ 0]
         (sx,sy)              = startPos
-    if COLLECT_PROFILE:
-        numExplored          = 0
-        profile              = []
+    
+    numExplored          = 0
+    profile              = []
     
     kpis                     = {
         'scenarioName': scenarioName,
@@ -722,7 +722,7 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
             (cx,cy) = robotPositions[i]
             if (nx,ny) != (cx,cy):
                 kpis['numSteps'] += 1
-            if COLLECT_HEATMAP:
+            if cycleId==0: # collect heatmap only on first cycle
                 assert heatmap[nx][ny]>=0
                 heatmap[nx][ny] += 1
             robotPositions[i] = nextRobotPositions[i]
@@ -738,10 +738,9 @@ def singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots):
         
         #input()
     
-    if COLLECT_HEATMAP:
+    if cycleId==0: # collect heatmap only on first cycle
         kpis['heatmap']      = heatmap
-    if COLLECT_PROFILE:
-        kpis['profile']      = profile
+    kpis['profile']          = profile
     kpis['navStats']         = navAlg.getStats()
     
     return kpis
@@ -756,13 +755,15 @@ def main():
         NavigationRandomWalk,
         NavigationBallistic,
     ]
-    kpis           = []
     
-    for runId in range(NUMRUNS):
+    startTime = time.time()
+    
+    for cycleId in range(NUMCYCLES):
         
         cycleStart = time.time()
         
         for numRobots in NUM_ROBOTS:
+            
             for scenarioName in SCENARIOS:
 
                 # create the realMap
@@ -771,16 +772,18 @@ def main():
                 # execute the simulation for each navigation algorithm
                 for NavAlgClass in NavAlgClasses:
                     
-                    # only 1 run for Atlas (deterministic)
-                    if NavAlgClass==NavigationAtlas and runId>0:
+                    # only 1 cycle for Atlas (deterministic)
+                    if NavAlgClass==NavigationAtlas and cycleId>0:
                         continue
+                    
+                    kpis               = []
                     
                     # run single run
                     start_time         = time.time()
-                    kpis_run           = singleExploration(scenarioName,realMap,startPos,NavAlgClass,numRobots)
+                    kpis               = singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobots)
                     print(
-                        'runId={0:>3} numRobots={1:>3} scenarioName={2:>30} NavAlgClass={3:>30} done in {4:>8.03f} s'.format(
-                            runId,
+                        'cycleId={0:>3} numRobots={1:>3} scenarioName={2:>30} NavAlgClass={3:>30} done in {4:>8.03f} s'.format(
+                            cycleId,
                             numRobots,
                             scenarioName,
                             NavAlgClass.__name__,
@@ -788,20 +791,19 @@ def main():
                         )
                     )
                     
-                    # collect KPIs
-                    kpis_run['runId']  = runId
-                    kpis              += [kpis_run]
+                    # log KPIs
+                    kpis['cycleId']   = cycleId
+                    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S",time.localtime(startTime))).format(),'a') as f:
+                        f.write(json.dumps(kpis)+'\n')
         
         print(
-            '   full run {0:>3} done in {1:>10.03f} s'.format(
-                runId,
+            '   full cycle {0:>3} done in {1:>10.03f} s (simulation has been running for {2})'.format(
+                cycleId,
                 time.time()-cycleStart,
+                str(datetime.timedelta(seconds=time.time()-startTime)),
             )
         )
     
-    with open('AtlasLog_{0}.json'.format(time.strftime("%y%m%d%H%M%S")).format(),'w') as f:
-        f.write(json.dumps(kpis))
-    #pp.pprint(kpis)
     print('Done.')
 
 if __name__=='__main__':
