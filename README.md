@@ -19,3 +19,12 @@ Each major release contains the source code, the log file captured after a long 
 
 In the `Atlas.py`, set `UI` to `True` to turn on the map view.
 This significantly slows down the simulation.
+
+## Contributors
+
+[Razanne Abu-Aisheh](https://www.linkedin.com/in/razanne-abu-aisheh-602b06105/),
+[Thomas Watteyne](http://www.thomaswatteyne.com),
+[Francesco Bronzino](https://www.bell-labs.com/usr/francesco.bronzino),
+[Myriana Rifai](https://www.linkedin.com/in/myriana-rifai-5b6b40b1/),
+[Brian Kilberg](https://www.linkedin.com/in/brian-kilberg/),
+[Kris Pister](https://bamlab.berkeley.edu/).
