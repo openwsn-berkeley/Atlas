@@ -1,30 +1,30 @@
-# HNOO (Hybrid Navigation - Online Offline)
-Python simulation of multiple navigation approaches to reach hybrid navigation solution.
+# Atlas: Exploration and Mapping with a Sparse Swarm of Networked IoT Robots
 
-Running simulation:
+![](static/ui.png)
 
-- you need Python 3.x installed
-- install dependencies: pip install -r requirements.txt
-- to run, python HNOO.py
-- script finished with "Done."
-- when finished, HNOO.log contains log file, HNOO.png the histogram
+## Releases
 
-Benchmarking
-------------
+Each major release contains the source code, the log file captured after a long simulation run, and the resulting plots.
 
-NUM_ROBOTS         = 10
-NUM_ROWS           = 40
-NUM_COLS           = 40
-OBSTACLE_DENSITY   = 0.05
+## Reproducing a Simulation
 
-NavigationRama:
-run 0 in 36.676 s
-run 1 in 36.904 s
-run 2 in 37.322 s
-run 3 in 40.192 s
-run 4 in 41.431 s
-run 5 in 41.183 s
-run 6 in 41.275 s
-run 7 in 40.679 s
-run 8 in 39.646 s
-run 9 in 41.764 s
+- Install [Python 3.x](https://www.python.org/downloads/)
+- Install Python dependencies: `pip install -r requirements.txt`
+- start a simulation: `python Atlas.py`
+- Depending on the settings of the simulation, this can take several hours. The simulation ends with "Done."
+- When finished, `AtlasLog_<timestamp>.json` contains the following log file for all runs
+- Open `DrawResults.ipynb` using [Jupyter Notebook](https://jupyter.org/) to re-create the plots.
+
+## Turning on the Map View
+
+In the `Atlas.py`, set `UI` to `True` to turn on the map view.
+This significantly slows down the simulation.
+
+## Contributors
+
+[Razanne Abu-Aisheh](https://www.linkedin.com/in/razanne-abu-aisheh-602b06105/),
+[Thomas Watteyne](http://www.thomaswatteyne.com),
+[Francesco Bronzino](https://www.bell-labs.com/usr/francesco.bronzino),
+[Myriana Rifai](https://www.linkedin.com/in/myriana-rifai-5b6b40b1/),
+[Brian Kilberg](https://www.linkedin.com/in/brian-kilberg/),
+[Kris Pister](https://bamlab.berkeley.edu/).
