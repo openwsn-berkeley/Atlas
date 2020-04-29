@@ -34,7 +34,7 @@ UI                 = False
 
 #=== defines
 
-VERSION            = (1,6)
+VERSION            = (1,1)
 
 HEADING_N          = 'N'
 HEADING_NE         = 'NE'
