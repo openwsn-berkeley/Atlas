@@ -6,7 +6,7 @@
 
 Each major release contains the source code, the log file captured after a long simulation run, and the resulting plots.
 
-## Reproduing a Simulation
+## Reproducing a Simulation
 
 - Install [Python 3.x](https://www.python.org/downloads/)
 - Install Python dependencies: `pip install -r requirements.txt`
