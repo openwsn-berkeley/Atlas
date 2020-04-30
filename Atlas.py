@@ -437,84 +437,6 @@ class NavigationCentralized(Navigation):
 
 class NavigationRamaithitima(NavigationCentralized):
     
-    def think(self, robotPositions):
-        
-        # store params
-        nextRobotPositions   = robotPositions[:] # many a local copy
-        
-        # local variables
-        numExplored          = 0
-        
-        # determine whether we're done exploring
-        self._determineDoneExploring()
-        
-        # identify robots at the frontier
-        frontierBots = []
-        for (ridx,(rx,ry)) in enumerate(robotPositions):
-            
-            # check that robot has frontier in its 2-neighborhood
-            closeToFrontier = False
-            for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
-                if self.discoMap[nx][ny]==-1:
-                    closeToFrontier = True
-                    break
-            if closeToFrontier==False:
-                continue
-            
-            # check that robot has open space in its 1-neighborhood that's further than itself
-            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-                if (
-                    self.realMap[nx][ny]==1         and  # open position (not wall)
-                    ((nx,ny) not in robotPositions) and  # no robot there
-                    (nx,ny)!=self.startPos          and  # not the start position
-                    self._distance(self.startPos,(nx,ny))>self._distance(self.startPos,(rx,ry))
-                ):
-                    frontierBots += [ridx]
-                    break
-        
-        # break if couldn't find any further robot to move
-        if frontierBots==[]:
-            raise MappingDoneIncomplete()
-        
-        # pick a frontierBot
-        distanceToStart = {}
-        for (ridx,(x,y)) in enumerate(robotPositions):
-            if ridx not in frontierBots:
-                continue
-            distanceToStart[ridx] = self._distance(self.startPos,(x,y))
-        frontierBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-        
-        # pick a cell for a new Robot
-        (fx,fy) = robotPositions[frontierBot]
-        while True:
-            (rx,ry) = random.choice(self._OneHopNeighborhood(fx,fy))
-            if  (
-                    self.realMap[rx][ry]==1            and
-                    ((rx,ry) not in robotPositions)    and
-                    (rx,ry)!=self.startPos
-                ):
-                break
-        
-        # pick a robot to move and change its position
-        distanceToStart = {}
-        for (ridx,(x,y)) in enumerate(robotPositions):
-            distanceToStart[ridx] = self._distance(self.startPos,(x,y))
-        newBot = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-        nextRobotPositions[newBot] = (rx,ry)
-        
-        # update the discoMap
-        for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-            if self.discoMap[nx][ny]==-1:
-                numExplored += 1
-            if   self.realMap[nx][ny]==0:
-                self.discoMap[nx][ny]=0
-            elif self.realMap[nx][ny]==1:
-                self.discoMap[nx][ny]=1
-        
-        return (nextRobotPositions,self.discoMap,numExplored,None)
-
-class NavigationRamaithitima2(NavigationCentralized):
-    
     def __init__(self,realMap,startPos,numRobots):
         NavigationCentralized.__init__(self,realMap,startPos,numRobots)
         self.targetFrontierbots   = []
@@ -923,8 +845,7 @@ def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobot
 def main():
 
     NavAlgClasses  = [
-        NavigationRamaithitima2,
-        #NavigationRamaithitima,
+        NavigationRamaithitima,
         #NavigationAtlas,
         #NavigationRandomWalk,
         #NavigationBallistic,
