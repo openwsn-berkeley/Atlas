@@ -19,17 +19,17 @@ import AtlasScenarios
 #=== settings
 
 SCENARIOS          = [
-    #'scenario_floorplan',
+    'scenario_floorplan',
     #'scenario_canonical',
     #'scenario_empty',
-    'scenario_mini_floorplan',
+    #'scenario_mini_floorplan',
     #'scenario_mini_canonical',
     #'scenario_mini_empty',
     #'scenario_tiny_1',
     #'scenario_tiny_2',
 ]
-NUM_ROBOTS         = [50]
-NUMCYCLES          = 100
+NUM_ROBOTS         = [100]
+NUMCYCLES          = 1
 UI                 = True
 
 #=== defines
@@ -217,6 +217,7 @@ class Navigation(object):
                 ):
                 returnVal += [(nx,ny)]
             
+        random.shuffle(returnVal)
         return returnVal
     
     def _TwoHopNeighborhood(self,x,y):
@@ -237,7 +238,8 @@ class Navigation(object):
                     (ny<self.numCols)
                 ):
                 returnVal += [(nx,ny)]
-                
+        
+        random.shuffle(returnVal)
         return returnVal
 
 #=== distributed
@@ -576,31 +578,28 @@ class NavigationRamaithitima2(NavigationCentralized):
     def _findFrontierBotIdxs(self,robotPositions,exceptIdxs=[]):
         returnVal = []
         
+        self.frontierBotNextHops = {}
+        
         for (ridx,(rx,ry)) in enumerate(robotPositions):
             
             # don't consider robots in exceptIdxs
             if ridx in exceptIdxs:
                 continue
             
-            # check that robot has the frontier in its 2-neighborhood
-            closeToFrontier = False
+            # check that robot has the frontier in its reachable 2-neighborhood
             for (nx,ny) in self._TwoHopNeighborhood(rx,ry):
-                if self.discoMap[nx][ny]==-1:
-                    closeToFrontier = True
-                    break
-            if closeToFrontier==False:
-                continue
-            
-            # check that robot has open space in its 1-neighborhood that's further than itself
-            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-                if (
-                    self.realMap[nx][ny]==1         and  # open position (not wall)
-                    ((nx,ny) not in robotPositions) and  # no robot there
-                    (nx,ny)!=self.startPos          and  # not the start position
-                    self._distance(self.startPos,(nx,ny))>self._distance(self.startPos,(rx,ry))
-                ):
-                    returnVal += [ridx]
-                    break
+                if  self.discoMap[nx][ny]==-1:
+                    nr       = set(self._OneHopNeighborhood(rx,ry))
+                    nn       = set(self._OneHopNeighborhood(nx,ny))
+                    inter    = nr.intersection(nn)
+                    nexthops = []
+                    for (x,y) in inter:
+                        if self.realMap[x][y]==1:
+                            nexthops += [(x,y)]
+                    if nexthops:
+                        self.frontierBotNextHops[ridx] = random.choice(nexthops)
+                        returnVal += [ridx]
+                        break
         
         return returnVal
     
@@ -611,20 +610,12 @@ class NavigationRamaithitima2(NavigationCentralized):
         for ridx in candidateRobotIdxs:
             (x,y) = newRobotPositions[ridx] # shorthand
             distanceToStart[ridx] = self._distance(self.startPos,(x,y))
+        #closestBotIdx = random.choice([(f,d) for (f,d) in distanceToStart.items() if d==min(distanceToStart.values())])[0]
         closestBotIdx = sorted(distanceToStart.items(), key=lambda item: item[1])[0][0]
-        
-        # move the closestBot to a cell further from start position
-        (cx,cy) = newRobotPositions[closestBotIdx] # shorthand
-        while True:
-            (nx,ny) = random.choice(self._OneHopNeighborhood(cx,cy))
-            if  (
-                    self.realMap[nx][ny]==1             and # open
-                    ((nx,ny) not in newRobotPositions)  and # no robots
-                    (nx,ny)!=self.startPos              and # not start position
-                    self._distance(self.startPos,(nx,ny))>self._distance(self.startPos,(cx,cy))
-                ):
-                newRobotPositions[closestBotIdx] = (nx,ny)
-                break
+
+        # move the closestBot
+        (nx,ny) = self.frontierBotNextHops[closestBotIdx]
+        newRobotPositions[closestBotIdx] = (nx,ny)
         
         # update the discoMap
         moreExplored = 0
@@ -656,23 +647,12 @@ class NavigationRamaithitima2(NavigationCentralized):
             if ridx in robotsMovedIdxs:
                 continue
             
-            # find closest frontier robots
+            # pick a random closest frontier robot
             distances = {}
             for fidx in self.targetFrontierbots:
                 distances[fidx] = self._distance(newRobotPositions[ridx],newRobotPositions[fidx])
             targetFrontierIdx = sorted(distances.items(), key=lambda item: item[1])[0][0]
-            '''
-            targetFrontierIdx = None
-            maxdistance       = None
-            for fidx in self.targetFrontierbots:
-                thisdistance  = self._distance(self.startPos,newRobotPositions[fidx])
-                if  (
-                        targetFrontierIdx==None or
-                        thisdistance>maxdistance
-                    ):
-                        targetFrontierIdx = fidx
-                        maxdistance = thisdistance
-            '''
+            #targetFrontierIdx = random.choice([(f,d) for (f,d) in distances.items() if d==min(distances.values())])[0]
             
             # attempt to move closer to target frontier robot
             (fx,fy) = newRobotPositions[targetFrontierIdx] # shorthand
@@ -943,7 +923,7 @@ def main():
 
     NavAlgClasses  = [
         NavigationRamaithitima2,
-        NavigationRamaithitima,
+        #NavigationRamaithitima,
         #NavigationAtlas,
         #NavigationRandomWalk,
         #NavigationBallistic,
