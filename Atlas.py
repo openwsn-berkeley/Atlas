@@ -20,17 +20,17 @@ import AtlasScenarios
 
 SCENARIOS          = [
     'scenario_floorplan',
-    #'scenario_canonical',
-    #'scenario_empty',
+    'scenario_canonical',
+    'scenario_empty',
     #'scenario_mini_floorplan',
     #'scenario_mini_canonical',
     #'scenario_mini_empty',
     #'scenario_tiny_1',
     #'scenario_tiny_2',
 ]
-NUM_ROBOTS         = [100]
-NUMCYCLES          = 1
-UI                 = True
+NUM_ROBOTS         = [10,20,30,40,50,60,70,80,90,100]
+NUMCYCLES          = 200
+UI                 = False
 
 #=== defines
 
@@ -846,9 +846,9 @@ def main():
 
     NavAlgClasses  = [
         NavigationRamaithitima,
-        #NavigationAtlas,
-        #NavigationRandomWalk,
-        #NavigationBallistic,
+        NavigationAtlas,
+        NavigationRandomWalk,
+        NavigationBallistic,
     ]
     
     startTime = time.time()
