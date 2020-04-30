@@ -200,7 +200,7 @@ class Navigation(object):
         if fullDiscoMap:
             raise MappingDoneSuccess
     
-    def _OneHopNeighborhood(self,x,y):
+    def _OneHopNeighborhood(self,x,y,shuffle=True):
         returnVal = []
         for (nx,ny) in [
                 (x-1,y-1),(x-1,y  ),(x-1,y+1),
@@ -216,8 +216,9 @@ class Navigation(object):
                     (ny<self.numCols)
                 ):
                 returnVal += [(nx,ny)]
-            
-        random.shuffle(returnVal)
+        
+        if shuffle:
+            random.shuffle(returnVal)
         return returnVal
     
     def _TwoHopNeighborhood(self,x,y):
@@ -727,7 +728,7 @@ class NavigationAtlas(NavigationCentralized):
                     if self.discoMap[x][y]!=1:
                         continue
                     # check wether this cell has unexplored neighbor cells
-                    for (nx,ny) in self._OneHopNeighborhood(x,y):
+                    for (nx,ny) in self._OneHopNeighborhood(x,y,shuffle=False):
                         if self.discoMap[nx][ny]==-1:
                             frontierCells += [((x,y),self._distance((sx,sy),(x,y)))]
                             break
@@ -796,7 +797,7 @@ class NavigationAtlas(NavigationCentralized):
                 (mx_cur, my_cur)       = robotPositions[mr_idx] # shorthand
                 (mx_next,my_next)      = (None,None)
                 min_dist               = None
-                for (x,y) in self._OneHopNeighborhood(mx_cur,my_cur):
+                for (x,y) in self._OneHopNeighborhood(mx_cur,my_cur,shuffle=False):
                     if (
                         self.realMap[x][y]==1           and
                         (x,y) not in robotPositions     and
@@ -819,7 +820,7 @@ class NavigationAtlas(NavigationCentralized):
             robotsMoved           += [mr_idx]
             
             # update the discoMap
-            for (x,y) in self._OneHopNeighborhood(mx_next,my_next):
+            for (x,y) in self._OneHopNeighborhood(mx_next,my_next,shuffle=False):
                 if self.discoMap[x][y]==-1:
                     numExplored += 1
                 if   self.realMap[x][y] == 0:
@@ -835,7 +836,7 @@ class NavigationAtlas(NavigationCentralized):
         numHigherRankNeighbors = 0
         numUnexploredNeighbors = 0
         rankMap = self.rankMaps[self.startPos] # shorthand
-        for (nx,ny) in self._OneHopNeighborhood(x,y):
+        for (nx,ny) in self._OneHopNeighborhood(x,y,shuffle=False):
             if  (
                     discoMap[nx][ny]==1 and
                     rankMap[(nx,ny)]>rankMap[(x,y)]
