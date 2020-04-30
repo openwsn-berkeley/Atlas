@@ -19,17 +19,17 @@ import AtlasScenarios
 #=== settings
 
 SCENARIOS          = [
-    'scenario_floorplan',
+    #'scenario_floorplan',
     #'scenario_canonical',
     #'scenario_empty',
-    #'scenario_mini_floorplan',
+    'scenario_mini_floorplan',
     #'scenario_mini_canonical',
     #'scenario_mini_empty',
     #'scenario_tiny_1',
     #'scenario_tiny_2',
 ]
-NUM_ROBOTS         = [100]
-NUMCYCLES          = 1
+NUM_ROBOTS         = [50]
+NUMCYCLES          = 100
 UI                 = True
 
 #=== defines
@@ -335,6 +335,7 @@ class NavigationBallistic(NavigationDistributed):
 #=== centralized
 
 class NavigationCentralized(Navigation):
+    
     def __init__(self,realMap,startPos,numRobots):
         Navigation.__init__(self,realMap,startPos,numRobots)
         self.shouldvisits         = {}
@@ -511,6 +512,10 @@ class NavigationRamaithitima(NavigationCentralized):
 
 class NavigationRamaithitima2(NavigationCentralized):
     
+    def __init__(self,realMap,startPos,numRobots):
+        NavigationCentralized.__init__(self,realMap,startPos,numRobots)
+        self.targetFrontierbots   = []
+    
     def think(self, robotPositions):
         
         # store params
@@ -523,11 +528,11 @@ class NavigationRamaithitima2(NavigationCentralized):
         # determine whether we're done exploring
         self._determineDoneExploring()
         
-        # step 2: move all non-frontier robot
+        # step 0: move all non-frontier robot
         catchup = False
         moved   = True
         while moved:
-            (moved,newRobotPositions,robotsMovedIdxs,numExplored) = self._moveNonFrontierBotIdxs(newRobotPositions,robotsMovedIdxs,numExplored)
+            (moved,newRobotPositions,robotsMovedIdxs,numExplored) = self._moveNonFrontierBot(newRobotPositions,robotsMovedIdxs,numExplored)
             if moved:
                 catchup = True
         
@@ -536,11 +541,12 @@ class NavigationRamaithitima2(NavigationCentralized):
             moved = True
             while moved:
                 (moved,newRobotPositions,robotsMovedIdxs,numExplored) = self._moveFrontierBot(newRobotPositions,robotsMovedIdxs,numExplored)
+            self.targetFrontierbots = self._findFrontierBotIdxs(newRobotPositions)
             
             # step 2: move all non-frontier robot
             moved = True
             while moved:
-                (moved,newRobotPositions,robotsMovedIdxs,numExplored) = self._moveNonFrontierBotIdxs(newRobotPositions,robotsMovedIdxs,numExplored)
+                (moved,newRobotPositions,robotsMovedIdxs,numExplored) = self._moveNonFrontierBot(newRobotPositions,robotsMovedIdxs,numExplored)
         
         # break if couldn't move any robot
         if robotsMovedIdxs==[]:
@@ -558,7 +564,7 @@ class NavigationRamaithitima2(NavigationCentralized):
                 break
             
             # move the robot closest to the start position
-            (i,e,newRobotPositions) = self._moveClosestRobot(frontierBotIdxs,newRobotPositions)
+            (i,e,newRobotPositions) = self._moveClosestFrontierbot(frontierBotIdxs,newRobotPositions)
             
             moved             = True
             robotsMovedIdxs  += [i]
@@ -598,54 +604,9 @@ class NavigationRamaithitima2(NavigationCentralized):
         
         return returnVal
     
-    def _moveNonFrontierBotIdxs(self,newRobotPositions,robotsMovedIdxs,numExplored):
-        moved = False
-        while True:
-            
-            # find all new frontier robots
-            nonfrontierBotIdxs = self._findMovableNonFrontierBotIdxs(newRobotPositions,robotsMovedIdxs)
-            if not nonfrontierBotIdxs:
-                break
-            
-            # move the robot closest to the start position
-            (i,e,newRobotPositions) = self._moveClosestRobot(nonfrontierBotIdxs,newRobotPositions)
-            
-            moved             = True
-            robotsMovedIdxs  += [i]
-            numExplored      += e
-            
-            break
-        return (moved,newRobotPositions,robotsMovedIdxs,numExplored)
+    def _moveClosestFrontierbot(self,candidateRobotIdxs,newRobotPositions):
         
-    def _findMovableNonFrontierBotIdxs(self,robotPositions,exceptIdxs):
-        
-        returnVal       = []
-        frontierbotIdxs = self._findFrontierBotIdxs(robotPositions)
-        for (ridx,(rx,ry)) in enumerate(robotPositions):
-            
-            # don't consider frontier robots
-            if ridx in frontierbotIdxs:
-                continue
-            
-            # don't robots in the exceptIdxs
-            if ridx in exceptIdxs:
-                continue
-            
-            # check that robot has open space in its 1-neighborhood that's further than itself
-            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
-                if (
-                    self.realMap[nx][ny]==1         and  # open position (not wall)
-                    ((nx,ny) not in robotPositions) and  # no robot there
-                    (nx,ny)!=self.startPos          and  # not the start position
-                    self._distance(self.startPos,(nx,ny))>self._distance(self.startPos,(rx,ry))
-                ):
-                    returnVal += [ridx]
-                    break
-        return returnVal
-    
-    def _moveClosestRobot(self,candidateRobotIdxs,newRobotPositions):
-        
-        # pick the robot closest to start position
+        # pick the robot closest to the start position
         distanceToStart = {}
         for ridx in candidateRobotIdxs:
             (x,y) = newRobotPositions[ridx] # shorthand
@@ -676,6 +637,70 @@ class NavigationRamaithitima2(NavigationCentralized):
                 self.discoMap[x][y]=1
         
         return (closestBotIdx,moreExplored,newRobotPositions)
+    
+    def _moveNonFrontierBot(self,newRobotPositions,robotsMovedIdxs,numExplored):
+        moved = False
+        
+        # iterate through all robots until could move one
+        for (ridx,(rx,ry)) in enumerate(newRobotPositions):
+        
+            # break if no more frontierbots
+            if not self.targetFrontierbots:
+                break
+            
+            # don't consider frontier robots
+            if ridx in self.targetFrontierbots:
+                continue
+            
+            # don't consider robots already explored
+            if ridx in robotsMovedIdxs:
+                continue
+            
+            # find closest frontier robots
+            distances = {}
+            for fidx in self.targetFrontierbots:
+                distances[fidx] = self._distance(newRobotPositions[ridx],newRobotPositions[fidx])
+            targetFrontierIdx = sorted(distances.items(), key=lambda item: item[1])[0][0]
+            '''
+            targetFrontierIdx = None
+            maxdistance       = None
+            for fidx in self.targetFrontierbots:
+                thisdistance  = self._distance(self.startPos,newRobotPositions[fidx])
+                if  (
+                        targetFrontierIdx==None or
+                        thisdistance>maxdistance
+                    ):
+                        targetFrontierIdx = fidx
+                        maxdistance = thisdistance
+            '''
+            
+            # attempt to move closer to target frontier robot
+            (fx,fy) = newRobotPositions[targetFrontierIdx] # shorthand
+            for (nx,ny) in self._OneHopNeighborhood(rx,ry):
+                if  (
+                        self.realMap[nx][ny]==1             and # open
+                        ((nx,ny) not in newRobotPositions)  and # no robots
+                        (nx,ny)!=self.startPos              and # not start position
+                        self._distance((nx,ny),(fx,fy))<self._distance((rx,ry),(fx,fy))
+                    ):
+                    
+                    # move robot
+                    newRobotPositions[ridx]    = (nx,ny)
+                    moved                      = True
+                    robotsMovedIdxs           += [ridx]
+                    
+                    # update the discoMap
+                    for (x,y) in self._OneHopNeighborhood(nx,ny):
+                        if self.discoMap[x][y]==-1:
+                            numExplored += 1
+                        if   self.realMap[x][y]==0:
+                            self.discoMap[x][y]=0
+                        elif self.realMap[x][y]==1:
+                            self.discoMap[x][y]=1
+                    
+                    break
+        
+        return (moved,newRobotPositions,robotsMovedIdxs,numExplored)
 
 class NavigationAtlas(NavigationCentralized):
     
@@ -917,8 +942,8 @@ def singleExploration(cycleId,scenarioName,realMap,startPos,NavAlgClass,numRobot
 def main():
 
     NavAlgClasses  = [
-        NavigationRamaithitima,
         NavigationRamaithitima2,
+        NavigationRamaithitima,
         #NavigationAtlas,
         #NavigationRandomWalk,
         #NavigationBallistic,
