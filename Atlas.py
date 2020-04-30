@@ -629,6 +629,8 @@ class NavigationAtlas(NavigationCentralized):
             self.stats['cache_avglength']   = float(sum(l))/len(l)
             raise
         
+        #=== step 1. Move robots towards frontiercells
+        
         while True:
             if self.firstIteration:
                 # this is my first iteration: put robot 0 in the start position
@@ -640,8 +642,8 @@ class NavigationAtlas(NavigationCentralized):
             else:
                 # I already have robots in the area
                 
-                # identify all frontierCells
-                frontierCells = []
+                # identify all remaining frontierCells
+                allFrontierCellsAndDistance = []
                 for (x,y) in self.allCellsIdx:
                     # don't consider the same call twice
                     if (x,y) in frontierCellsTargeted:
@@ -652,14 +654,16 @@ class NavigationAtlas(NavigationCentralized):
                     # check wether this cell has unexplored neighbor cells
                     for (nx,ny) in self._OneHopNeighborhood(x,y,shuffle=False):
                         if self.discoMap[nx][ny]==-1:
-                            frontierCells += [((x,y),self._distance((sx,sy),(x,y)))]
+                            allFrontierCellsAndDistance += [((x,y),self._distance((sx,sy),(x,y)))]
                             break
                 
+                # abort if no more frontier cells
+                if not allFrontierCellsAndDistance:
+                    break
+                
                 # keep only frontierCells with lowest rank
-                frontierCells = [
-                    fc[0] for fc in frontierCells
-                    if fc[1]==sorted(frontierCells, key=lambda item: item[1])[0][1]
-                ]
+                minRankFrontier = sorted(allFrontierCellsAndDistance, key=lambda item: item[1])[0][1]
+                frontierCells   = [c for (c,d) in allFrontierCellsAndDistance if d==minRankFrontier]
                 
                 # pick move robot (mv) and frontier cell (fc) to move towards
                 #   Rules (most important first):
@@ -751,6 +755,81 @@ class NavigationAtlas(NavigationCentralized):
                     self.discoMap[x][y]=1
                 else:
                     raise SystemError()
+        
+        #=== step 2. Move remaining robots to center of gravity of frontiercells
+        
+        while True: # fake loop
+            
+            # identify all frontierCells
+            frontierCells = []
+            for (x,y) in self.allCellsIdx:
+                # consider only open cells
+                if self.discoMap[x][y]!=1:
+                    continue
+                # check wether this cell has unexplored neighbor cells
+                for (nx,ny) in self._OneHopNeighborhood(x,y,shuffle=False):
+                    if self.discoMap[nx][ny]==-1:
+                        frontierCells += [(x,y)]
+                        break
+            
+            # abort if no frontiercell (end of mapping)
+            if frontierCells==[]:
+                break
+            
+            # compute CG coordinates
+            cgxs = [x for (x,y) in frontierCells]
+            cgx  = int(float(sum(cgxs))/len(cgxs))
+            cgys = [y for (x,y) in frontierCells]
+            cgy  = int(float(sum(cgys))/len(cgys))
+            
+            # artificially move CG if falls on wall (distance calculation would fails)
+            if self.realMap[cgx][cgy]==0:
+                (cgx,cgy) = frontierCells[0]
+            
+            # move robots
+            for (ridx,(rx,ry)) in enumerate(robotPositions):
+                
+                # don't move the ones already moved in step 1
+                if ridx in robotsMoved:
+                    continue
+                
+                # pick new position
+                (xcur, ycur)       = robotPositions[ridx] # shorthand
+                (xnext,ynext)      = (None,None)
+                min_dist           = None
+                for (nx,ny) in self._OneHopNeighborhood(xcur,ycur,shuffle=True):
+                    if (
+                        self.realMap[nx][ny]==1         and # no walls
+                        (nx,ny) not in robotPositions   and # no robots
+                        (
+                            min_dist==None or
+                            self._distance((nx,ny),(cgx,cgy))<min_dist
+                        )
+                    ):
+                        min_dist = self._distance((nx,ny),(cgx,cgy))
+                        (xnext,ynext) = (nx,ny)
+                
+                # abort if no way forward
+                if min_dist==None:
+                    continue
+                
+                # move moveRobot
+                robotPositions[ridx]   = (xnext,ynext)
+                robotsMoved           += [ridx]
+                
+                # update the discoMap
+                for (x,y) in self._OneHopNeighborhood(xnext,ynext,shuffle=False):
+                    if self.discoMap[x][y]==-1:
+                        numExplored += 1
+                    if   self.realMap[x][y] == 0:
+                        self.discoMap[x][y]=0
+                    elif self.realMap[x][y] == 1:
+                        self.discoMap[x][y]=1
+                    else:
+                        raise SystemError()
+            
+            # end of fake loop
+            break
         
         return (robotPositions,self.discoMap,numExplored,self.rankMaps[self.startPos])
     
