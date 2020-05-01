@@ -1,6 +1,6 @@
 # Atlas: Exploration and Mapping with a Sparse Swarm of Networked IoT Robots
 
-![](static/ui.png)
+![](static/ui.gif)
 
 ## Releases
 
