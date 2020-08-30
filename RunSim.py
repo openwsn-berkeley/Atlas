@@ -52,7 +52,7 @@ def oneSim(simSetting):
     # create the SimEngine
     simEngine      = SimEngine.SimEngine(floorplan,dotBots)
     
-    # start the UI
+    # start the UI (call last)
     simUI          = SimUI.SimUI()
 
 #============================ main ============================================
