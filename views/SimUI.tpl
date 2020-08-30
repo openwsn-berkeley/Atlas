@@ -4,23 +4,24 @@
 <title>{{pagetitle}}</title>
 
 <link   rel="stylesheet" href="/static/dotbotsim.css">
+<script src="/static/d3.min.js"></script>
 <script src="/static/jquery-3.5.1.min.js" charset="utf-8"></script>
 <script src="/static/dotbotsim.js" charset="utf-8"></script>
 
 <h1  id="pagetitle">{{pagetitle}}</h1>
-<div id="floorplan" on></div>
+<svg id="floorplan"></svg>
 <div id="playbutton"></div>
 <div id="pausebutton"></div>
-<div id="versionLabel"><p>{{version}}</p></div>
+<div id="versionLabel"><p>version {{version}}</p></div>
 
 <script id="js">
     $(document).ready(function() {
         gettingThingsInPlace();
         getFloorplan();
-        getRobotPositions();
+        getDotBots();
         // periodically refresh
         setInterval(function() {
-            getRobotPositions()
+            getDotBots()
         }, 1000);
     });
 </script>

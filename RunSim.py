@@ -56,7 +56,7 @@ def oneSim(simSetting):
     simEngine      = SimEngine.SimEngine(floorplan,dotBots)
     
     # start the UI (call last)
-    simUI          = SimUI.SimUI()
+    simUI          = SimUI.SimUI(floorplan)
     
     input('Press Enter to close simulation.')
 

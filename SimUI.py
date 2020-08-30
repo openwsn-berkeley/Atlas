@@ -1,6 +1,7 @@
 # built-in
 import threading
 import webbrowser
+import random
 # third-party
 import bottle
 # local
@@ -13,14 +14,17 @@ class SimUI(object):
     
     TCPPORT = 8080
     
-    def __init__(self):
+    def __init__(self,floorplan):
     
+        # store params
+        self.floorplan = floorplan
+        
         # start web server
         self.websrv   = bottle.Bottle()
         self.websrv.route('/',                        'GET',    self._webhandle_root_GET)
         self.websrv.route('/static/<filename>',       'GET',    self._webhandle_static_GET)
         self.websrv.route('/floorplan.json',          'GET',    self._webhandle_floorplan_GET)
-        self.websrv.route('/robotpositions.json',     'GET',    self._webhandle_robotpositions_GET)
+        self.websrv.route('/dotbots.json',            'GET',    self._webhandle_dotbots_GET)
         self.websrv.route('/play',                    'POST',   self._webhandle_play_POST)
         self.websrv.route('/pause',                   'POST',   self._webhandle_pause_POST)
         webthread = threading.Thread(
@@ -49,7 +53,7 @@ class SimUI(object):
     def _webhandle_root_GET(self):
         return bottle.template(
             'SimUI',
-            pagetitle   = 'DotBotSim',
+            pagetitle   = 'DotBot Simulator',
             version     = SimVersion.formatVersion(),
         )
     
@@ -57,12 +61,15 @@ class SimUI(object):
         return bottle.static_file(filename, root='static/')
     
     def _webhandle_floorplan_GET(self):
-        print('TODO floorplan')
-        return {'message': 'TODO floorplan'}
+        return self.floorplan.getJSON()
     
-    def _webhandle_robotpositions_GET(self):
-        print('TODO robotpositions')
-        return {'message': 'TODO robotpositions'}
+    def _webhandle_dotbots_GET(self):
+        return {
+            'dotbots': [
+                {'x': random.randint(0,400),'y': random.randint(0,300)},
+                {'x': random.randint(0,400),'y': random.randint(0,300)},
+            ]
+        }
         
     def _webhandle_play_POST(self):
         print('TODO play')
