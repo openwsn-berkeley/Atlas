@@ -3,9 +3,10 @@ class SimEngine(object):
     '''
     Discrete-event simulation engine for a swarm of DotBots.
     '''
-    def __init__(self,config):
+    def __init__(self,dotBots):
         
         # store params
+        dotBots           = dotBots
         
         # local variables
         self.currentTime  = 0
