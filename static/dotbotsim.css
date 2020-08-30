@@ -1,0 +1,25 @@
+#pagetitle {
+    background-color: yellow;
+}
+
+#floorplan {
+    background-color: red;
+    width:            1000px;
+    height:            600px;
+}
+
+#playbutton {
+    background-color: blue;
+    width:            100px;
+    height:            50px;
+}
+
+#pausebutton {
+    background-color: orange;
+    width:            100px;
+    height:            50px;
+}
+
+#versionLabel {
+    background-color: green;
+}

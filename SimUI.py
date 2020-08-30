@@ -4,6 +4,7 @@ import webbrowser
 # third-party
 import bottle
 # local
+import SimVersion
 
 class SimUI(object):
     '''
@@ -16,10 +17,12 @@ class SimUI(object):
     
         # start web server
         self.websrv   = bottle.Bottle()
-        self.websrv.route('/',                   'GET',    self._webhandle_root_GET)
-        self.websrv.route('/static/<filename>',  'GET',    self._webhandle_static_GET)
-        self.websrv.route('/start',              'POST',   self._webhandle_start_POST)
-        self.websrv.route('/pause',              'POST',   self._webhandle_pause_POST)
+        self.websrv.route('/',                        'GET',    self._webhandle_root_GET)
+        self.websrv.route('/static/<filename>',       'GET',    self._webhandle_static_GET)
+        self.websrv.route('/floorplan.json',          'GET',    self._webhandle_floorplan_GET)
+        self.websrv.route('/robotpositions.json',     'GET',    self._webhandle_robotpositions_GET)
+        self.websrv.route('/play',                    'POST',   self._webhandle_play_POST)
+        self.websrv.route('/pause',                   'POST',   self._webhandle_pause_POST)
         webthread = threading.Thread(
             target = self._bottle_try_running_forever,
             args   = (self.websrv.run,),
@@ -44,16 +47,28 @@ class SimUI(object):
     #=== web handles
     
     def _webhandle_root_GET(self):
-        return bottle.static_file('index.html', root='static/')
+        return bottle.template(
+            'SimUI',
+            pagetitle   = 'DotBotSim',
+            version     = SimVersion.formatVersion(),
+        )
     
     def _webhandle_static_GET(self,filename):
         return bottle.static_file(filename, root='static/')
+    
+    def _webhandle_floorplan_GET(self):
+        print('TODO floorplan')
+        return {'message': 'TODO floorplan'}
+    
+    def _webhandle_robotpositions_GET(self):
+        print('TODO robotpositions')
+        return {'message': 'TODO robotpositions'}
         
-    def _webhandle_start_POST(self):
-        raise NotImplementedError()
+    def _webhandle_play_POST(self):
+        print('TODO play')
     
     def _webhandle_pause_POST(self):
-        raise NotImplementedError()
+        print('TODO pause')
     
     #=== web server admin
     
