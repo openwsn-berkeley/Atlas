@@ -57,6 +57,8 @@ def oneSim(simSetting):
     
     # start the UI (call last)
     simUI          = SimUI.SimUI()
+    
+    input('Press Enter to close simulation.')
 
 #============================ main ============================================
 
