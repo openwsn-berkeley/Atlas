@@ -27,20 +27,29 @@ def oneSim(simSetting):
     Run a single simulation.
     '''
     
-    # create the Floorplan
-    flootplan = Floorplan(simSetting['floorplanDrawing'])
+    # create the floorplan
+    floorplan      = Floorplan(simSetting['floorplanDrawing'])
     
     # create the DotBots
-    dotBots = []
+    dotBots        = []
     for dotBotId in range(simSetting['numDotBots']):
-        dotBots += [DotBot(dotBotId)]
+        dotBots   += [DotBot(dotBotId)]
     
-    # drop the DotBots at their initial position
+    # drop the DotBots on the floorplan at their initial position
     for dotBot in dotBots:
         dotBot.setInitialPosition(simSetting['initialPosition'])
     
+    # create the orchestrator
+    orchestrator   = Orchestrator()
+    
+    # create the wireless communication between the DotBots and the orchestrator
+    wireless       = Wireless()
+    
     # create the SimEngine
-    simEngine = SimEngine(dotBots)
+    simEngine      = SimEngine(floorplan,dotBots)
+    
+    # start the UI
+    simUI          = SimUI()
 
 #============================ main ============================================
 
