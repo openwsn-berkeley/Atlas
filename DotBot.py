@@ -1,3 +1,6 @@
+# built-in
+# third-party
+# local
 
 class DotBot(object):
     '''
