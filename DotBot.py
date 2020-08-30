@@ -1,3 +1,4 @@
+
 class DotBot(object):
     '''
     A single DotBot.
