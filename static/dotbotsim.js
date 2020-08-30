@@ -1,3 +1,5 @@
+var scaleFactor = 1;
+
 function coordinates2pixels(x,y) {
     return (10*x,10*y)
 }
@@ -20,19 +22,24 @@ function getFloorplan() {
 function drawFloorplan(floorplan) {
     var svg = d3.select("#floorplan");
     
+    console.log(floorplan);
+    
+    // determine scalefactor such that map fill entire width of screen
+    scaleFactor = ($('body').innerWidth()-50) / floorplan.width;
+    
     // scale map to fill up screen
-    svg.attr("width",  400)
-       .attr("height", 300);
+    svg.attr("width",  scaleFactor*floorplan.width)
+       .attr("height", scaleFactor*floorplan.height);
     
     // position walls
-    /*
-    svg.append("rect")
-        .attr("id","svglegend")
-        .attr("x",      100)
-        .attr("y",      50)
-        .attr("width",  200)
-        .attr("height", 100)
-    */
+    svg.selectAll("rect")
+        .data(floorplan.obstacles)
+        .enter().append("rect")
+            .attr("x",      function(d) { return scaleFactor*d.x; })
+            .attr("y",      function(d) { return scaleFactor*d.y; })
+            .attr("width",  function(d) { return scaleFactor*d.width; })
+            .attr("height", function(d) { return scaleFactor*d.height; })
+            .attr("class",  "obstacle");
 }
 
 function getDotBots() {
@@ -49,11 +56,12 @@ function drawDotBots(dotbots) {
     // position DotBots
     circle
         .transition()
-            .attr("cx", function(d) { return d.x; })
-            .attr("cy", function(d) { return d.y; });
+            .attr("cx", function(d) { return scaleFactor*d.x; })
+            .attr("cy", function(d) { return scaleFactor*d.y; });
     circle
         .enter().append("circle")
-            .attr("cx", function(d) { return d.x; })
-            .attr("cy", function(d) { return d.y; })
-            .attr("r", 2.5);
+            .attr("cx", function(d) { return scaleFactor*d.x; })
+            .attr("cy", function(d) { return scaleFactor*d.y; })
+            .attr("class", "dotbot")
+            .attr("r", scaleFactor*0.2);
 }

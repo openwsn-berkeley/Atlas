@@ -1,4 +1,5 @@
 # built-in
+import random
 # third-party
 # local
 
@@ -63,7 +64,10 @@ class DotBot(object):
         
         \post updates attributes position and positionTimestamp
         '''
-        raise NotImplementedError
+        return (
+            29*random.random(),
+             7*random.random(),
+        )
     
     #======================== private =========================================
     

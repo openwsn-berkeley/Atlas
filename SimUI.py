@@ -1,7 +1,6 @@
 # built-in
 import threading
 import webbrowser
-import random
 # third-party
 import bottle
 # local
@@ -14,10 +13,11 @@ class SimUI(object):
     
     TCPPORT = 8080
     
-    def __init__(self,floorplan):
+    def __init__(self,floorplan,dotbots):
     
         # store params
         self.floorplan = floorplan
+        self.dotbots   = dotbots
         
         # start web server
         self.websrv   = bottle.Bottle()
@@ -64,12 +64,13 @@ class SimUI(object):
         return self.floorplan.getJSON()
     
     def _webhandle_dotbots_GET(self):
-        return {
-            'dotbots': [
-                {'x': random.randint(0,400),'y': random.randint(0,300)},
-                {'x': random.randint(0,400),'y': random.randint(0,300)},
-            ]
+        returnVal = {
+            'dotbots': []
         }
+        for dotbot in self.dotbots:
+            (x,y) = dotbot.getPosition()
+            returnVal['dotbots'] += [{'x': x, 'y': y}]
+        return returnVal
         
     def _webhandle_play_POST(self):
         print('TODO play')

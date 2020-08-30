@@ -24,3 +24,13 @@
 #versionLabel {
     background-color: green;
 }
+
+.dotbot {
+    fill:             red;
+    stroke:           black;
+    stroke-width:     1px;
+}
+
+.obstacle {
+    fill:             #aaaaaa;
+}

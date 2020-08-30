@@ -12,16 +12,16 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       1,
+        'numDotBots':       10,
         'floorplanDrawing': # 1m per character
 '''
-########################
-#                      #
-#                      #
-#                      #
-#                      #
-#                      #
-########################
+#############################
+#                           #
+#                           #
+#                           #
+#     ######                #
+#                           #
+#############################
 ''',
         'initialPosition':  (24,3),
     }
@@ -56,7 +56,7 @@ def oneSim(simSetting):
     simEngine      = SimEngine.SimEngine(floorplan,dotBots)
     
     # start the UI (call last)
-    simUI          = SimUI.SimUI(floorplan)
+    simUI          = SimUI.SimUI(floorplan,dotBots)
     
     input('Press Enter to close simulation.')
 

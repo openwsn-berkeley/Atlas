@@ -8,18 +8,28 @@ class Floorplan(object):
     '''
     
     def __init__(self,drawing):
-        pass
+    
+        # local variables
+        (self.width,self.height,self.obstacles) = self._parseDrawing(drawing)
     
     #======================== public ==========================================
     
     def getJSON(self):
         return {
-            'width':     50, # meters
-            'height':    20, # meters
-            'walls':     [
-                [( 0, 0),(25, 1)],
-                [(25,10),(26,20)],
-            ],
+            'width':     self.width,
+            'height':    self.height,
+            'obstacles': self.obstacles,
         }
     
     #======================== private =========================================
+    
+    def _parseDrawing(self,drawing):
+        lines     = [line for line in drawing.splitlines() if line]
+        width     = max([len(line) for line in lines])
+        height    = len(lines)
+        obstacles = []
+        for (y,line) in enumerate(lines):
+            for (x,c) in enumerate(line):
+                if c=='#':
+                    obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}]
+        return (width,height,obstacles)
