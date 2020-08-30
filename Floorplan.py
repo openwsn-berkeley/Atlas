@@ -5,7 +5,7 @@ class Floorplan(object):
     '''
     
     def __init__(self,drawing):
-        raise NotImplementedError()
+        pass
     
     #======================== public ==========================================
     

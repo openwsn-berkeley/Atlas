@@ -20,14 +20,15 @@ class DotBot(object):
     
     #=== public "remote control" interface of the DotBot
     
-    def setInitialPosition(self,x,y)
+    def setInitialPosition(self,pos):
         '''
         Call exactly once at start of simulation to exactly place the DotBot at its initial position.
         '''
         assert self.position==None
+        (x,y) = pos
         self.position = (x,y)
     
-    def setHeading(self,heading)
+    def setHeading(self,heading):
         '''
         Change the heading of the DotBot.
         Actual heading affected by self.headingInaccuracy

@@ -1,5 +1,9 @@
+import Floorplan
 import DotBot
+import Orchestrator
+import Wireless
 import SimEngine
+import SimUI
 
 #============================ defines =========================================
 
@@ -28,28 +32,28 @@ def oneSim(simSetting):
     '''
     
     # create the floorplan
-    floorplan      = Floorplan(simSetting['floorplanDrawing'])
+    floorplan      = Floorplan.Floorplan(simSetting['floorplanDrawing'])
     
     # create the DotBots
     dotBots        = []
     for dotBotId in range(simSetting['numDotBots']):
-        dotBots   += [DotBot(dotBotId)]
+        dotBots   += [DotBot.DotBot(dotBotId)]
     
     # drop the DotBots on the floorplan at their initial position
     for dotBot in dotBots:
         dotBot.setInitialPosition(simSetting['initialPosition'])
     
     # create the orchestrator
-    orchestrator   = Orchestrator()
+    orchestrator   = Orchestrator.Orchestrator()
     
     # create the wireless communication between the DotBots and the orchestrator
-    wireless       = Wireless()
+    wireless       = Wireless.Wireless()
     
     # create the SimEngine
-    simEngine      = SimEngine(floorplan,dotBots)
+    simEngine      = SimEngine.SimEngine(floorplan,dotBots)
     
     # start the UI
-    simUI          = SimUI()
+    simUI          = SimUI.SimUI()
 
 #============================ main ============================================
 
