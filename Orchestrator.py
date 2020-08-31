@@ -35,7 +35,7 @@ class Orchestrator(object):
         '''
         for dotbot in self.dotbotsview:
             dotbot['heading'] = random.randint(0,359)
-            dotbot['speed']   = 2*random.random()
+            dotbot['speed']   = 1
         
         self._sendDownstreamCommands()
     

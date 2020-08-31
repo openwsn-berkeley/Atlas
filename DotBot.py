@@ -23,10 +23,12 @@ class DotBot(object):
         self.x                    = None  # the "real" position, sometimes in the past. Set to None to ensure single initialization
         self.y                    = None
         self.posTs                = 0     # timestamp, in s, of when was at position
-        self.heading              = 0     # the heading, a float between 0 and 360 degrees (0 indicates North)
+        self.headingRequested     = 0     # the heading, a float between 0 and 360 degrees (0 indicates North) as requested by the orchestrator
         self.headingInaccuracy    = 0     # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
-        self.speed                = 0     # speed, in m/s, the DotBot is going at
+        self.headingActual        = 0     # actual heading, taking into account inaccuracy
+        self.speedRequested       = 0     # speed, in m/s, as requested by the orchestrator
         self.speedInaccuracy      = 0     # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
+        self.speedActual          = 0     # actual speed, taking into account inaccuracy
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
@@ -47,6 +49,14 @@ class DotBot(object):
         '''
         Received a packet from the orchestrator
         '''
+        
+        # disregard duplicate command
+        if packet[self.dotBotId]['heading']==self.headingRequested and packet[self.dotBotId]['speed']==self.speedRequested:
+            return
+        
+        # remember what I was asked
+        self.headingRequested     = packet[self.dotBotId]['heading']
+        self.speedRequested       = packet[self.dotBotId]['speed']
         
         # apply heading and speed from packet
         self._setHeading(packet[self.dotBotId]['heading'])
@@ -72,8 +82,8 @@ class DotBot(object):
         return {
             'x':           self.x,
             'y':           self.y,
-            'heading':     self.heading,
-            'speed':       self.speed,
+            'heading':     self.headingActual,
+            'speed':       self.speedActual,
             'next_bump_x': self.next_bump_x,
             'next_bump_y': self.next_bump_y,
         }
@@ -93,7 +103,7 @@ class DotBot(object):
         self.posTs                = self.next_bump_ts
         
         # stop moving
-        self.speed                = 0
+        self.speedActual          = 0
         
         # report bump to orchestrator
         self.wireless.toOrchestrator({
@@ -110,9 +120,9 @@ class DotBot(object):
         assert heading>=0
         assert heading<360
         if self.headingInaccuracy: # cut computation in two cases for efficiency
-            self.heading = heading + (-1+(2*random.random()))*self.headingInaccuracy
+            self.headingActual = heading + (-1+(2*random.random()))*self.headingInaccuracy
         else:
-            self.heading = heading
+            self.headingActual = heading
     
     def _setSpeed(self,speed):
         '''
@@ -121,13 +131,13 @@ class DotBot(object):
         Assumes applying new speed is infinitely fast.
         '''
         if self.speedInaccuracy: # cut computation in two cases for efficiency
-            self.speed = speed + (-1+(2*random.random()))*self.speedInaccuracy
+            self.speedActual = speed + (-1+(2*random.random()))*self.speedInaccuracy
         else:
-            self.speed = speed
+            self.speedActual = speed
     
     def _computeNextBump(self):
         
-        if   self.heading in [ 90,270]:
+        if   self.headingActual in [ 90,270]:
             # horizontal edge case
             
             north_x      = None # doesn't cross
@@ -135,7 +145,7 @@ class DotBot(object):
             west_y       = self.y
             east_y       = self.y
             
-        elif self.heading in [  0,180]:
+        elif self.headingActual in [  0,180]:
             # vertical edge case
             
             north_x      = self.x
@@ -147,7 +157,7 @@ class DotBot(object):
             # general case
              
             # find equation of trajectory as y = a*x + b
-            a = math.tan(math.radians(self.heading-90))
+            a = math.tan(math.radians(self.headingActual-90))
             b = self.y - (a*self.x)
             
             # compute intersection points with 4 walls
@@ -173,7 +183,7 @@ class DotBot(object):
         # pick the correct intersection point given the heading of the robot
         (x_int0,y_int0) = valid_intersections[0]
         (x_int1,y_int1) = valid_intersections[1]
-        if    self.heading==0:
+        if    self.headingActual==0:
             # going up
             
             # pick top-most intersection
@@ -181,7 +191,7 @@ class DotBot(object):
                 (bump_x,bump_y) = (x_int0,y_int0)
             else:
                 (bump_x,bump_y) = (x_int1,y_int1)
-        elif ( 0<self.heading and self.heading<180 ):
+        elif ( 0<self.headingActual and self.headingActual<180 ):
             # going right
             
             # pick right-most intersection
@@ -189,7 +199,7 @@ class DotBot(object):
                 (bump_x,bump_y) = (x_int0,y_int0)
             else:
                 (bump_x,bump_y) = (x_int1,y_int1)
-        elif  self.heading==180:
+        elif  self.headingActual==180:
             # going down
             
             # pick bottom-most intersection
@@ -208,7 +218,7 @@ class DotBot(object):
         
         # compute time to bump
         distance   = math.sqrt( (self.x-bump_x)**2 + (self.y-bump_y)**2 )
-        timetobump = distance/self.speed
+        timetobump = distance/self.speedActual
         bump_ts    = self.posTs+timetobump
         
         return (bump_x,bump_y,bump_ts)
