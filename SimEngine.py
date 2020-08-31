@@ -47,7 +47,7 @@ class SimEngine(object):
         execute next event in list of events
         '''
         
-        raise NotImplementedError()
+        self._handleNextEvent()
     
     def commandPlay(self):
         '''
@@ -64,3 +64,11 @@ class SimEngine(object):
         raise NotImplementedError()
     
     #======================== private =========================================
+    
+    def _handleNextEvent(self):
+        assert self.events
+        
+        (ts,cb) = self.events.pop(0)
+        
+        self._currentTime = ts
+        cb()

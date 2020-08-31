@@ -1,4 +1,5 @@
 # built-in
+import random
 # third-party
 # local
 import SimEngine
@@ -56,7 +57,7 @@ class Orchestrator(object):
             {
                 'heading': dotbot['heading'],
                 'speed':   dotbot['speed'],
-            } for dotbot in self.dotbots
+            } for dotbot in self.dotbotsview
         ]
         
         # hand over to wireless

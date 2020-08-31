@@ -116,6 +116,6 @@ class DotBot(object):
         else:
             self.speed = speed
     
-    def _computeNextCollision(self):
+    def _computeNextBump(self):
         raise NotImplementedError()
     
