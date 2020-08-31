@@ -34,6 +34,12 @@ def oneSim(simSetting):
     Run a single simulation.
     '''
     
+    # create the wireless communication
+    wireless       = Wireless.Wireless()
+    
+    # create the SimEngine
+    simEngine      = SimEngine.SimEngine()
+    
     # create the floorplan
     floorplan      = Floorplan.Floorplan(simSetting['floorplanDrawing'])
     
@@ -43,17 +49,15 @@ def oneSim(simSetting):
         dotBots   += [DotBot.DotBot(dotBotId)]
     
     # drop the DotBots on the floorplan at their initial position
+    (x,y) = simSetting['initialPosition']
     for dotBot in dotBots:
-        dotBot.setInitialPosition(simSetting['initialPosition'])
+        dotBot.setInitialPosition(x,y)
     
     # create the orchestrator
-    orchestrator   = Orchestrator.Orchestrator()
+    orchestrator   = Orchestrator.Orchestrator([simSetting['initialPosition']]*len(dotBots))
     
-    # create the wireless communication between the DotBots and the orchestrator
-    wireless       = Wireless.Wireless()
-    
-    # create the SimEngine
-    simEngine      = SimEngine.SimEngine(floorplan,dotBots)
+    # indicate the elements to the singletons
+    wireless.indicateElements(dotBots,orchestrator)
     
     # start the UI (call last)
     simUI          = SimUI.SimUI(floorplan,dotBots)

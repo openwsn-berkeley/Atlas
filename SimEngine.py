@@ -6,17 +6,32 @@ class SimEngine(object):
     '''
     Discrete-event simulation engine for a swarm of DotBots.
     '''
-    def __init__(self,floorplan,dotBots):
+    
+    # singleton pattern
+    _instance   = None
+    _init       = False
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(SimEngine, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
+    
+    def __init__(self):
         
-        # store params
-        floorplan         = floorplan
-        dotBots           = dotBots
+        # singleton patterm
+        if self._init:
+            return
+        self._init = True
         
         # local variables
-        self.currentTime  = 0
+        self._currentTime  = 0
         self.events       = []
     
     #======================== public ==========================================
+    
+    #=== from other elements in simulator
+    
+    def currentTime(self):
+        return self._currentTime
     
     #=== commands from the GUI
     

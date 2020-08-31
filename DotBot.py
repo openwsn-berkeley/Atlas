@@ -2,6 +2,8 @@
 import random
 # third-party
 # local
+import SimEngine
+import Wireless
 
 class DotBot(object):
     '''
@@ -9,30 +11,88 @@ class DotBot(object):
     '''
     
     def __init__(self,dotBotId):
+        
         # store params
         self.dotBotId             = dotBotId
         
         # local variables
-        self.position             = None  # the "real" position, sometimes in the past a (x,y) tuple. Set to None to ensure single initialization
-        self.positionTimestamp    = 0     # timestamp, in s, of when was at position
+        self.simEngine            = SimEngine.SimEngine()
+        self.wireless             = Wireless.Wireless()
+        self.x                    = None  # the "real" position, sometimes in the past. Set to None to ensure single initialization
+        self.y                    = None
+        self.posTs                = 0     # timestamp, in s, of when was at position
         self.heading              = 0     # the heading, a float between 0 and 360 degrees (0 indicates North)
         self.headingInaccuracy    = 0     # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
         self.speed                = 0     # speed, in m/s, the DotBot is going at
         self.speedInaccuracy      = 0     # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
     
     #======================== public ==========================================
-    
-    #=== public "remote control" interface of the DotBot
-    
-    def setInitialPosition(self,pos):
+        
+    def setInitialPosition(self,x,y):
         '''
         Call exactly once at start of simulation to exactly place the DotBot at its initial position.
         '''
-        assert self.position==None
-        (x,y) = pos
-        self.position = (x,y)
+        assert self.x==None
+        assert self.y==None
+        self.x = x
+        self.y = y
+        self.posTs = self.simEngine.currentTime()
     
-    def setHeading(self,heading):
+    def fromOrchestrator(self,packet):
+        '''
+        Received a packet from the orchestrator
+        '''
+        
+        # apply heading and speed from packet
+        self._setHeading(packet[self.dotBotId]['heading'])
+        self._setSpeed(  packet[self.dotBotId]['speed'])
+        
+        # compute when/where next bump will happen
+        (x,y,ts) = self._computeNextBump()
+        
+        # remember
+        self.nextBumpx  = x
+        self.nextBumpy  = y
+        self.nextBumpTs = ts
+        
+        # schedule
+        self.simEngine.schedule(self.nextBumpTs,self._bump)
+    
+    def getPosition(self):
+        '''
+        "Backdoor" functions used by the simulation engine to compute where the DotBot is now.
+        
+        \post updates attributes position and posTs
+        '''
+        return (
+            29*random.random(),
+             7*random.random(),
+        )
+    
+    #======================== private =========================================
+    
+    def _bump(self):
+        '''
+        Bump sensor triggered
+        '''
+        
+        assert self.simEngine.currentTime()==self.nextBumpTs
+        
+        # update my position
+        self.x                    = self.nextBumpx
+        self.y                    = self.nextBumpy
+        self.posTs                = self.simEngine.currentTime()
+        
+        # stop moving
+        self.speed                = 0
+        
+        # report bump to orchestrator
+        self.wireless.toOrchestrator({
+            'dotBotId': self.dotBotId,
+            'bumpTs':   self.simEngine.currentTime(),
+        })
+    
+    def _setHeading(self,heading):
         '''
         Change the heading of the DotBot.
         Actual heading affected by self.headingInaccuracy
@@ -45,7 +105,7 @@ class DotBot(object):
         else:
             self.heading = heading
     
-    def setSpeed(self,speed):
+    def _setSpeed(self,speed):
         '''
         Change the speed of the DotBot.
         Actual speed affected by self.speedInaccuracy
@@ -56,19 +116,6 @@ class DotBot(object):
         else:
             self.speed = speed
     
-    #=== "backdoor" functions used by the simulation engine
-    
-    def getPosition(self):
-        '''
-        Compute where the DotBot is now.
-        
-        \post updates attributes position and positionTimestamp
-        '''
-        return (
-            29*random.random(),
-             7*random.random(),
-        )
-    
-    #======================== private =========================================
-    
+    def _computeNextCollision(self):
+        raise NotImplementedError()
     
