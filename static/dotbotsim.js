@@ -52,21 +52,21 @@ function getDotBots() {
 function drawDotBots(dotbots) {
     var svg    = d3.select("#floorplan");
     
-    // position pathtobump
+    // position collisionpath
     var line   = svg.selectAll("line")
         .data(dotbots);
     line
         .attr("x1", function(d) { return scaleFactor*d.x; })
         .attr("y1", function(d) { return scaleFactor*d.y; })
-        .attr("x2", function(d) { return scaleFactor*d.next_bump_x; })
-        .attr("y2", function(d) { return scaleFactor*d.next_bump_y; });
+        .attr("x2", function(d) { return d.next_bump_x === null ? scaleFactor*d.x : scaleFactor*d.next_bump_x; })
+        .attr("y2", function(d) { return d.next_bump_y === null ? scaleFactor*d.y : scaleFactor*d.next_bump_y; });
     line
         .enter().append("line")
             .attr("x1", function(d) { return scaleFactor*d.x; })
             .attr("y1", function(d) { return scaleFactor*d.y; })
-            .attr("x2", function(d) { return scaleFactor*d.next_bump_x; })
-            .attr("y2", function(d) { return scaleFactor*d.next_bump_y; })
-            .attr("class", "pathtobump");
+            .attr("x2", function(d) { return d.next_bump_x === null ? scaleFactor*d.x : scaleFactor*d.next_bump_x; })
+            .attr("y2", function(d) { return d.next_bump_y === null ? scaleFactor*d.y : scaleFactor*d.next_bump_y; })
+            .attr("class", "collisionpath");
     
     // position DotBots
     var circle = svg.selectAll("circle")

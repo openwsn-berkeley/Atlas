@@ -15,13 +15,13 @@ SIMSETTINGS = [
         'numDotBots':       1,
         'floorplanDrawing': # 1m per character
 '''
-#############################
-#                           #
-#                           #
-#                           #
-#     ######                #
-#                           #
-#############################
+                             
+                             
+                             
+        #                    
+                             
+                             
+                             
 ''',
         'initialPosition':  (24,3),
     }

@@ -37,7 +37,7 @@
     stroke-width:     1px;
 }
 
-.pathtobump {
+.collisionpath {
     stroke:           blue;
     stroke-width:     1px;
     stroke-dasharray: 2;

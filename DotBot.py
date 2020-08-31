@@ -54,7 +54,6 @@ class DotBot(object):
         
         # compute when/where next bump will happen
         (bump_x,bump_y,bump_ts) = self._computeNextBump()
-        print(self.dotBotId,bump_x,bump_y,bump_ts)
         
         # remember
         self.next_bump_x  = bump_x
