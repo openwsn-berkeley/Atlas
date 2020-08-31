@@ -1,5 +1,6 @@
 # built-in
 import random
+import math
 # third-party
 # local
 import SimEngine
@@ -44,11 +45,15 @@ class Orchestrator(object):
         A DotBot indicates its bump sensor was activated at a certain time
         '''
         
+        dotbot = self.dotbotsview[msg['dotBotId']] # shorthand
+        
         # compute new theoretical position
-        # TODO
+        dotbot['x']         += (msg['bumpTs']-dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
+        dotbot['y']         += (msg['bumpTs']-dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
+        dotbot['posTs']      = msg['bumpTs']
         
         # adjust the heading of the DotBot which bumped
-        self.dotbotsview[msg['dotBotId']]['heading'] = random.randint(0,359)
+        dotbot['heading']    = random.randint(0,359)
         
         self._sendDownstreamCommands()
     
