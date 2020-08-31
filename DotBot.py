@@ -1,5 +1,6 @@
 # built-in
 import random
+import math
 # third-party
 # local
 import SimEngine
@@ -10,10 +11,11 @@ class DotBot(object):
     A single DotBot.
     '''
     
-    def __init__(self,dotBotId):
+    def __init__(self,dotBotId,floorplan):
         
         # store params
         self.dotBotId             = dotBotId
+        self.floorplan            = floorplan
         
         # local variables
         self.simEngine            = SimEngine.SimEngine()
@@ -25,6 +27,9 @@ class DotBot(object):
         self.headingInaccuracy    = 0     # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
         self.speed                = 0     # speed, in m/s, the DotBot is going at
         self.speedInaccuracy      = 0     # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
+        self.next_bump_x          = None  # coordinate the DotBot will bump into next
+        self.next_bump_y          = None
+        self.next_bump_ts         = None  # time at which DotBot will bump
     
     #======================== public ==========================================
         
@@ -48,26 +53,31 @@ class DotBot(object):
         self._setSpeed(  packet[self.dotBotId]['speed'])
         
         # compute when/where next bump will happen
-        (x,y,ts) = self._computeNextBump()
+        (bump_x,bump_y,bump_ts) = self._computeNextBump()
+        print(self.dotBotId,bump_x,bump_y,bump_ts)
         
         # remember
-        self.nextBumpx  = x
-        self.nextBumpy  = y
-        self.nextBumpTs = ts
+        self.next_bump_x  = bump_x
+        self.next_bump_y  = bump_y
+        self.next_bump_ts = bump_ts
         
         # schedule
-        self.simEngine.schedule(self.nextBumpTs,self._bump)
+        self.simEngine.schedule(self.next_bump_ts,self._bump)
     
-    def getPosition(self):
+    def getAttitude(self):
         '''
         "Backdoor" functions used by the simulation engine to compute where the DotBot is now.
         
         \post updates attributes position and posTs
         '''
-        return (
-            29*random.random(),
-             7*random.random(),
-        )
+        return {
+            'x':           self.x,
+            'y':           self.y,
+            'heading':     self.heading,
+            'speed':       self.speed,
+            'next_bump_x': self.next_bump_x,
+            'next_bump_y': self.next_bump_y,
+        }
     
     #======================== private =========================================
     
@@ -76,12 +86,12 @@ class DotBot(object):
         Bump sensor triggered
         '''
         
-        assert self.simEngine.currentTime()==self.nextBumpTs
+        assert self.simEngine.currentTime()==self.next_bump_ts
         
         # update my position
-        self.x                    = self.nextBumpx
-        self.y                    = self.nextBumpy
-        self.posTs                = self.simEngine.currentTime()
+        self.x                    = self.next_bump_x
+        self.y                    = self.next_bump_y
+        self.posTs                = self.next_bump_ts
         
         # stop moving
         self.speed                = 0
@@ -117,5 +127,84 @@ class DotBot(object):
             self.speed = speed
     
     def _computeNextBump(self):
-        raise NotImplementedError()
-    
+        
+        if   self.heading in [ 90,270]:
+            # horizontal edge case
+            
+            north_x      = None # doesn't cross
+            south_x      = None # doesn't cross
+            west_y       = self.y
+            east_y       = self.y
+            
+        elif self.heading in [  0,180]:
+            # vertical edge case
+            
+            north_x      = self.x
+            south_x      = self.x
+            west_y       = None # doesn't cross
+            east_y       = None # doesn't cross
+        
+        else:
+            # general case
+             
+            # find equation of trajectory as y = a*x + b
+            a = math.tan(self.heading)
+            b = self.y - (a/self.x)
+            print(a,b)
+            
+            # compute intersection points with 4 walls
+            if a:
+                north_x = (0                    -b)/a # intersection with North wall (y=0)
+                south_x = (self.floorplan.height-b)/a # intersection with South wall (y=self.floorplan.height)
+            else:
+                north_x = None
+                south_x = None
+            west_y      = 0*a+b                       # intersection with West wall (x=0)
+            east_y      = self.floorplan.width*a+b    # intersection with West wall (x=self.floorplan.width)
+        
+        # pick the two intersection points on the floorplan perimeter
+        valid_intersections = []
+        if (north_x!=None and 0<=north_x and north_x<=self.floorplan.width):
+            valid_intersections += [(north_x,0)]
+        if (south_x!=None and 0<=south_x and south_x<=self.floorplan.width):
+            valid_intersections += [(south_x,self.floorplan.height)]
+        if (west_y!=None  and 0<=west_y  and west_y<=self.floorplan.height):
+            valid_intersections += [(0,west_y)]
+        if (east_y!=None  and 0<=east_y  and east_y<=self.floorplan.height):
+            valid_intersections += [(self.floorplan.height,east_y)]
+        assert len(valid_intersections)==2
+        
+        # pick the correct intersection point given the heading of the robot
+        (x_int0,y_int0) = valid_intersections[0]
+        (x_int1,y_int1) = valid_intersections[1]
+        if   (  0<=self.heading and self.heading<90 ):
+            # first quadrant
+            if (self.x<=x_int0 and y_int0<=self.y):     # x higher, y lower
+                (bump_x,bump_y) = (x_int0,y_int0)
+            else:
+                (bump_x,bump_y) = (x_int1,y_int1)
+        elif ( 90<=self.heading and self.heading<180):
+            # first quadrant
+            if (self.x<=x_int0 and self.y<=y_int0):     # x higher, y higher
+                (bump_x,bump_y) = (x_int0,y_int0)
+            else:
+                (bump_x,bump_y) = (x_int1,y_int1)
+        elif (180<=self.heading and self.heading<270):
+            # third quadrant
+            if (x_int0<=self.x and self.y<=y_int0):     # x lower, y higher
+                (bump_x,bump_y) = (x_int0,y_int0)
+            else:
+                (bump_x,bump_y) = (x_int1,y_int1)
+        else:
+            # forth quadrant
+            if (x_int0<=self.x and y_int0<=self.y):     # x lower, y lower
+                (bump_x,bump_y) = (x_int0,y_int0)
+            else:
+                (bump_x,bump_y) = (x_int1,y_int1)
+        
+        # compute time to bump
+        distance   = math.sqrt( (self.x-bump_x)**2 + (self.y-bump_y)**2 )
+        timetobump = distance/self.speed
+        bump_ts    = self.posTs+timetobump
+        
+        return (bump_x,bump_y,bump_ts)

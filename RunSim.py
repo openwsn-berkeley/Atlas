@@ -12,7 +12,7 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       10,
+        'numDotBots':       1,
         'floorplanDrawing': # 1m per character
 '''
 #############################
@@ -46,7 +46,7 @@ def oneSim(simSetting):
     # create the DotBots
     dotBots        = []
     for dotBotId in range(simSetting['numDotBots']):
-        dotBots   += [DotBot.DotBot(dotBotId)]
+        dotBots   += [DotBot.DotBot(dotBotId,floorplan)]
     
     # drop the DotBots on the floorplan at their initial position
     (x,y) = simSetting['initialPosition']

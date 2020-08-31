@@ -73,8 +73,7 @@ class SimUI(object):
             'dotbots': []
         }
         for dotbot in self.dotbots:
-            (x,y) = dotbot.getPosition()
-            returnVal['dotbots'] += [{'x': x, 'y': y}]
+            returnVal['dotbots'] += [dotbot.getAttitude()]
         return returnVal
      
     def _webhandle_next_POST(self):
