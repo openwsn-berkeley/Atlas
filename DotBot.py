@@ -108,7 +108,7 @@ class DotBot(object):
         Assumes applying new heading is infinitely fast.
         '''
         assert heading>=0
-        assert heading<=360
+        assert heading<360
         if self.headingInaccuracy: # cut computation in two cases for efficiency
             self.heading = heading + (-1+(2*random.random()))*self.headingInaccuracy
         else:
@@ -147,17 +147,13 @@ class DotBot(object):
             # general case
              
             # find equation of trajectory as y = a*x + b
-            a = math.tan(self.heading)
-            b = self.y - (a/self.x)
-            print(a,b)
+            a = math.tan(math.radians(self.heading-90))
+            b = self.y - (a*self.x)
+            print('{0},{1} heading {2} -> {3}*x + {4}'.format(self.x,self.y,self.heading,a,b)) # poipoipoi
             
             # compute intersection points with 4 walls
-            if a:
-                north_x = (0                    -b)/a # intersection with North wall (y=0)
-                south_x = (self.floorplan.height-b)/a # intersection with South wall (y=self.floorplan.height)
-            else:
-                north_x = None
-                south_x = None
+            north_x     = (0                    -b)/a # intersection with North wall (y=0)
+            south_x     = (self.floorplan.height-b)/a # intersection with South wall (y=self.floorplan.height)
             west_y      = 0*a+b                       # intersection with West wall (x=0)
             east_y      = self.floorplan.width*a+b    # intersection with West wall (x=self.floorplan.width)
         
@@ -170,36 +166,48 @@ class DotBot(object):
         if (west_y!=None  and 0<=west_y  and west_y<=self.floorplan.height):
             valid_intersections += [(0,west_y)]
         if (east_y!=None  and 0<=east_y  and east_y<=self.floorplan.height):
-            valid_intersections += [(self.floorplan.height,east_y)]
+            valid_intersections += [(self.floorplan.width,east_y)]
+        if len(valid_intersections)==3:
+            valid_intersections = list(set(valid_intersections)) # remove duplicates which appear if mote in corner
+        print('    valid_intersections {0}'.format(valid_intersections)) # poipoipoi
         assert len(valid_intersections)==2
         
         # pick the correct intersection point given the heading of the robot
         (x_int0,y_int0) = valid_intersections[0]
         (x_int1,y_int1) = valid_intersections[1]
-        if   (  0<=self.heading and self.heading<90 ):
-            # first quadrant
-            if (self.x<=x_int0 and y_int0<=self.y):     # x higher, y lower
+        if    self.heading==0:
+            # going up
+            
+            # pick top-most intersection
+            if y_int0<y_int1:
                 (bump_x,bump_y) = (x_int0,y_int0)
             else:
                 (bump_x,bump_y) = (x_int1,y_int1)
-        elif ( 90<=self.heading and self.heading<180):
-            # first quadrant
-            if (self.x<=x_int0 and self.y<=y_int0):     # x higher, y higher
+        elif ( 0<self.heading and self.heading<180 ):
+            # going right
+            
+            # pick right-most intersection
+            if x_int1<x_int0:
                 (bump_x,bump_y) = (x_int0,y_int0)
             else:
                 (bump_x,bump_y) = (x_int1,y_int1)
-        elif (180<=self.heading and self.heading<270):
-            # third quadrant
-            if (x_int0<=self.x and self.y<=y_int0):     # x lower, y higher
+        elif  self.heading==180:
+            # going down
+            
+            # pick bottom-most intersection
+            if y_int1<y_int0:
                 (bump_x,bump_y) = (x_int0,y_int0)
             else:
                 (bump_x,bump_y) = (x_int1,y_int1)
         else:
-            # forth quadrant
-            if (x_int0<=self.x and y_int0<=self.y):     # x lower, y lower
+            # going left
+            
+            # pick right-most intersection
+            if x_int0<x_int1:
                 (bump_x,bump_y) = (x_int0,y_int0)
             else:
                 (bump_x,bump_y) = (x_int1,y_int1)
+        print('    bump_x/y: {0},{1}'.format(bump_x,bump_y)) # poipoipoi
         
         # compute time to bump
         distance   = math.sqrt( (self.x-bump_x)**2 + (self.y-bump_y)**2 )

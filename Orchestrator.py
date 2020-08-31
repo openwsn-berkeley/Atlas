@@ -34,10 +34,8 @@ class Orchestrator(object):
         Simulation engine, start exploring
         '''
         for dotbot in self.dotbotsview:
-            #dotbot['heading'] = random.randint(230,300)
-            dotbot['heading'] = 0
-            #dotbot['speed']   = 2*random.random()
-            dotbot['speed']   = 1
+            dotbot['heading'] = 203
+            dotbot['speed']   = 2*random.random()
         
         self._sendDownstreamCommands()
     
@@ -45,7 +43,14 @@ class Orchestrator(object):
         '''
         A DotBot indicates its bump sensor was activated at a certain time
         '''
-        raise NotImplementedError()
+        
+        # compute new theoretical position
+        # TODO
+        
+        # adjust the heading of the DotBot which bumped
+        self.dotbotsview[msg['dotBotId']]['heading'] = random.randint(0,359)
+        
+        self._sendDownstreamCommands()
     
     #======================== private =========================================
     
