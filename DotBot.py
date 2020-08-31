@@ -79,6 +79,13 @@ class DotBot(object):
         
         \post updates attributes position and posTs
         '''
+        
+        # update position
+        now         = self.simEngine.currentTime() # shorthand
+        self.x     += (now-self.posTs)*math.cos(math.radians(self.headingActual-90))*self.speedActual
+        self.y     += (now-self.posTs)*math.sin(math.radians(self.headingActual-90))*self.speedActual
+        self.posTs  = now
+        
         return {
             'x':           self.x,
             'y':           self.y,
