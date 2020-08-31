@@ -9,6 +9,12 @@
     border-color:     black;
 }
 
+#nextbutton {
+    background-color: yellow;
+    width:            100px;
+    height:            50px;
+}
+
 #playbutton {
     background-color: blue;
     width:            100px;

@@ -4,6 +4,7 @@ import webbrowser
 # third-party
 import bottle
 # local
+import SimEngine
 import SimVersion
 
 class SimUI(object):
@@ -19,12 +20,16 @@ class SimUI(object):
         self.floorplan = floorplan
         self.dotbots   = dotbots
         
+        # local variables
+        self.simEngine = SimEngine.SimEngine()
+        
         # start web server
         self.websrv   = bottle.Bottle()
         self.websrv.route('/',                        'GET',    self._webhandle_root_GET)
         self.websrv.route('/static/<filename>',       'GET',    self._webhandle_static_GET)
         self.websrv.route('/floorplan.json',          'GET',    self._webhandle_floorplan_GET)
         self.websrv.route('/dotbots.json',            'GET',    self._webhandle_dotbots_GET)
+        self.websrv.route('/next',                    'POST',   self._webhandle_next_POST)
         self.websrv.route('/play',                    'POST',   self._webhandle_play_POST)
         self.websrv.route('/pause',                   'POST',   self._webhandle_pause_POST)
         webthread = threading.Thread(
@@ -71,12 +76,15 @@ class SimUI(object):
             (x,y) = dotbot.getPosition()
             returnVal['dotbots'] += [{'x': x, 'y': y}]
         return returnVal
-        
+     
+    def _webhandle_next_POST(self):
+        self.simEngine.commandNext()
+     
     def _webhandle_play_POST(self):
-        print('TODO play')
+        self.simEngine.commandPlay()
     
     def _webhandle_pause_POST(self):
-        print('TODO pause')
+        self.simEngine.commandPause()
     
     #=== web server admin
     

@@ -5,6 +5,9 @@ function coordinates2pixels(x,y) {
 }
 
 function gettingThingsInPlace() {
+    $("#nextbutton").click(function(){
+        $.post('next')
+    });
     $("#playbutton").click(function(){
         $.post('play')
     });

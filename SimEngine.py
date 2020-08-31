@@ -33,16 +33,30 @@ class SimEngine(object):
     def currentTime(self):
         return self._currentTime
     
+    def schedule(self,ts,cb):
+        # add new event
+        self.events += [(ts,cb)]
+        
+        # reorder list
+        self.events  = sorted(self.events, key = lambda e: e[0])
+    
     #=== commands from the GUI
     
-    def play(self):
+    def commandNext(self):
+        '''
+        execute next event in list of events
+        '''
+        
+        raise NotImplementedError()
+    
+    def commandPlay(self):
         '''
         (re)start the execution of the simulation
         '''
         
         raise NotImplementedError()
         
-    def pause(self):
+    def commandPause(self):
         '''
         pause the execution of the simulation
         '''

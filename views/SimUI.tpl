@@ -10,6 +10,7 @@
 
 <h1  id="pagetitle">{{pagetitle}}</h1>
 <svg id="floorplan"></svg>
+<div id="nextbutton">Next</div>
 <div id="playbutton">Play</div>
 <div id="pausebutton">Pause</div>
 <div id="versionLabel"><p>version {{version}}</p></div>
