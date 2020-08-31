@@ -34,7 +34,7 @@ class Orchestrator(object):
         Simulation engine, start exploring
         '''
         for dotbot in self.dotbotsview:
-            dotbot['heading'] = 203
+            dotbot['heading'] = random.randint(0,359)
             dotbot['speed']   = 2*random.random()
         
         self._sendDownstreamCommands()

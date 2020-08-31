@@ -80,7 +80,5 @@ function drawDotBots(dotbots) {
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; })
             .attr("class", "dotbot")
-            .attr("r", scaleFactor*0.2);
-    
-    
+            .attr("r", 6);
 }

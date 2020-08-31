@@ -149,7 +149,6 @@ class DotBot(object):
             # find equation of trajectory as y = a*x + b
             a = math.tan(math.radians(self.heading-90))
             b = self.y - (a*self.x)
-            print('{0},{1} heading {2} -> {3}*x + {4}'.format(self.x,self.y,self.heading,a,b)) # poipoipoi
             
             # compute intersection points with 4 walls
             north_x     = (0                    -b)/a # intersection with North wall (y=0)
@@ -169,7 +168,6 @@ class DotBot(object):
             valid_intersections += [(self.floorplan.width,east_y)]
         if len(valid_intersections)==3:
             valid_intersections = list(set(valid_intersections)) # remove duplicates which appear if mote in corner
-        print('    valid_intersections {0}'.format(valid_intersections)) # poipoipoi
         assert len(valid_intersections)==2
         
         # pick the correct intersection point given the heading of the robot
@@ -207,7 +205,6 @@ class DotBot(object):
                 (bump_x,bump_y) = (x_int0,y_int0)
             else:
                 (bump_x,bump_y) = (x_int1,y_int1)
-        print('    bump_x/y: {0},{1}'.format(bump_x,bump_y)) # poipoipoi
         
         # compute time to bump
         distance   = math.sqrt( (self.x-bump_x)**2 + (self.y-bump_y)**2 )

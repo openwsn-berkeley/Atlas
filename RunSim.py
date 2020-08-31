@@ -12,14 +12,14 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       1,
+        'numDotBots':       2,
         'floorplanDrawing': # 1m per character
 '''
 ..................
 ..................
 ..................
 ''',
-        'initialPosition':  (0,0),
+        'initialPosition':  (5,1),
     }
 ]
 
