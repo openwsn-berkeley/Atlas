@@ -92,7 +92,8 @@ class SimUI(object):
         self.simEngine.commandFrameforward()
      
     def _webhandle_play_POST(self):
-        self.simEngine.commandPlay(10.00) # FIXME get from UI
+        rxjson = bottle.request.json
+        self.simEngine.commandPlay(rxjson['speed'])
     
     def _webhandle_fastforward_POST(self):
         self.simEngine.commandFastforward()

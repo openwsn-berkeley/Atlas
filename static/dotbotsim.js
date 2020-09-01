@@ -14,7 +14,14 @@ function gettingThingsInPlace() {
         $.post('frameforward')
     });
     $("#playbutton").click(function(){
-        $.post('play')
+        $.ajax({
+            type:           "POST",
+            url:            'play',
+            contentType:    'application/json',
+            data:           JSON.stringify({
+                'speed':    10.00
+            })
+        });
     });
     $("#fastforwardbutton").click(function(){
         $.post('fastforward')
