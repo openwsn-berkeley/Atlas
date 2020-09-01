@@ -1,4 +1,6 @@
-var scaleFactor = 1;
+var scaleFactor  = 1;
+var dotbotcolors = d3.scaleOrdinal(d3.schemeCategory10).range();
+console.log(dotbotcolors);
 
 function coordinates2pixels(x,y) {
     return (10*x,10*y)
@@ -107,7 +109,8 @@ function drawDotBots(data) {
             .attr("y1", function(d) { return scaleFactor*d.y; })
             .attr("x2", function(d) { return d.next_bump_x === null ? scaleFactor*d.x : scaleFactor*d.next_bump_x; })
             .attr("y2", function(d) { return d.next_bump_y === null ? scaleFactor*d.y : scaleFactor*d.next_bump_y; })
-            .attr("class", "collisionpath");
+            .attr("class", "collisionpath")
+            .attr("stroke",function(d,i){return dotbotcolors[i%10];});
     
     // dotbots
     var dotbots = svg.selectAll(".dotbot")
@@ -121,6 +124,7 @@ function drawDotBots(data) {
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; })
             .attr("class", "dotbot")
+            .attr("fill",function(d,i){return dotbotcolors[i%10];})
             .attr("r", 6);
     
     // discoveredobstacles

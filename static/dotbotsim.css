@@ -11,9 +11,8 @@
     position:         absolute;
     top:              70px;
     background-color: white;
-    border-style:     solid;
-    border-width:     1px;
-    border-color:     black;
+    border-width:     0px;
+    background-color: #f0f0f0;
 }
 
 #nextbutton {
@@ -61,7 +60,7 @@
 }
 
 .discoveredobstacle {
-    fill:             green;
+    fill:             black;
 }
 
 .positionerror {
@@ -76,13 +75,10 @@
 }
 
 .collisionpath {
-    stroke:           blue;
     stroke-width:     1px;
     stroke-dasharray: 2;
 }
 
 .dotbot {
-    fill:             blue;
-    stroke:           black;
-    stroke-width:     1px;
+    stroke-width:     0px;
 }

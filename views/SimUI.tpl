@@ -24,6 +24,6 @@
         // periodically refresh
         setInterval(function() {
             getDotBots()
-        }, 1000);
+        }, 100);
     });
 </script>
