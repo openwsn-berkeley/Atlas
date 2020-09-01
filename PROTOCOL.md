@@ -1,10 +1,10 @@
-PROTOCOL.md
+	PROTOCOL.md
 
-Robot specs:
-	Very small in size
-	Walking speed : 1 metre/second
-	 
-Full cycle = 1 second : upstream -> move -> downstream
+	Robot specs:
+		Very small in size
+		Walking speed : 1 metre/second
+
+	Full cycle = 1 second : upstream -> move -> downstream
 
 	1. Upstream communication [robots to controller] 
 		a. Robots only communicate back to controller when they hit obstacle
@@ -28,4 +28,4 @@ Full cycle = 1 second : upstream -> move -> downstream
 		d. One frame contains all the 'headings' for the robots
 			i. 4 bits per robot [2 robots per byte]
 			ii. 9 heading posibilities [N, NW,NE,S,SW,SE,E,W,same position]
-255 bytes per packet -> this seets the limitation on the number of robots
+	255 bytes per packet -> this seets the limitation on the number of robots
