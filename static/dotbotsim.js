@@ -1,5 +1,10 @@
-var scaleFactor  = 1;
-var dotbotcolors = d3.scaleOrdinal(d3.schemeCategory10).range();
+var scaleFactor    = 1;
+var dotbotcolors   = d3.scaleOrdinal(d3.schemeCategory10).range();
+
+var playbuttonMinX     = 175
+var playbuttonMaxX     = 285
+var playbuttonMinSpeed =   1.00
+var playbuttonMaxSpeed =  10.00
 
 function coordinates2pixels(x,y) {
     return (10*x,10*y)
@@ -13,16 +18,7 @@ function gettingThingsInPlace() {
     $("#frameforwardbutton").click(function(){
         $.post('frameforward')
     });
-    $("#playbutton").click(function(){
-        $.ajax({
-            type:           "POST",
-            url:            'play',
-            contentType:    'application/json',
-            data:           JSON.stringify({
-                'speed':    10.00
-            })
-        });
-    });
+    $("#playbutton").mousedown(slideHandlerMouseDown);
     $("#fastforwardbutton").click(function(){
         $.post('fastforward')
     });
@@ -162,4 +158,54 @@ function drawDotBots(data) {
             .attr("cy", function(d) { return scaleFactor*d[1]; })
             .attr("class", "discoveredobstacle")
             .attr("r", 2);
+}
+
+function slideHandlerMouseDown(e) {
+    console.log('slideHandlerMouseDown');
+    // avoid default event
+    e = e || window.event;
+    e.preventDefault();
+    
+    // arm handlers
+    document.onmousemove = slideHandlerMouseMove;
+    document.onmouseup   = slideHandlerMouseUp;
+}
+
+function slideHandlerMouseMove(e) {
+    console.log('slideHandlerMouseMove');
+    // avoid default event
+    e = e || window.event;
+    e.preventDefault();
+    
+    // move
+    newX = e.clientX;
+    if (newX<playbuttonMinX) {newX=playbuttonMinX};
+    if (newX>playbuttonMaxX) {newX=playbuttonMaxX};
+    $("#playbutton").offset({ left: newX-25 });
+}
+
+function slideHandlerMouseUp(e) {
+    console.log('slideHandlerMouseUp');
+    // avoid default event
+    e = e || window.event;
+    e.preventDefault();
+    
+    // disarm handlers
+    document.onmousemove = null;
+    document.onmouseup   = null;
+    
+    // determine speed
+    buttonX = $("#playbutton").position().left+25;
+    portion = (buttonX-playbuttonMinX) / (playbuttonMaxX-playbuttonMinX)
+    speed   = playbuttonMinSpeed + portion*(playbuttonMaxSpeed-playbuttonMinSpeed);
+    
+    // send command
+    $.ajax({
+        type:           "POST",
+        url:            'play',
+        contentType:    'application/json',
+        data:           JSON.stringify({
+            'speed':    speed,
+        })
+    });
 }
