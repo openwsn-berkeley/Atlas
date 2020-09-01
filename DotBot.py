@@ -1,6 +1,7 @@
 # built-in
 import random
 import math
+import itertools
 # third-party
 # local
 import SimEngine
@@ -142,6 +143,11 @@ class DotBot(object):
         else:
             self.speedActual = speed
     
+    def _dist(self,pos1,pos2):
+        (x1,y1) = pos1
+        (x2,y2) = pos2
+        return math.sqrt( (x1-x2)**2 + (y1-y2)**2 )
+    
     def _computeNextBump(self):
         
         if   self.headingActual in [ 90,270]:
@@ -173,18 +179,28 @@ class DotBot(object):
             west_y      = 0*a+b                       # intersection with West wall (x=0)
             east_y      = self.floorplan.width*a+b    # intersection with West wall (x=self.floorplan.width)
         
+        # round
+        if north_x!=None: north_x = round(north_x,3)
+        if south_x!=None: south_x = round(south_x,3)
+        if  west_y!=None:  west_y = round(west_y,3)
+        if  east_y!=None:  east_y = round(east_y,3)
+        
         # pick the two intersection points on the floorplan perimeter
         valid_intersections = []
         if (north_x!=None and 0<=north_x and north_x<=self.floorplan.width):
-            valid_intersections += [(north_x,0)]
+            valid_intersections += [(             north_x,                    0)]
         if (south_x!=None and 0<=south_x and south_x<=self.floorplan.width):
-            valid_intersections += [(south_x,self.floorplan.height)]
+            valid_intersections += [(             south_x,self.floorplan.height)]
         if (west_y!=None  and 0<=west_y  and west_y<=self.floorplan.height):
-            valid_intersections += [(0,west_y)]
+            valid_intersections += [(                   0,               west_y)]
         if (east_y!=None  and 0<=east_y  and east_y<=self.floorplan.height):
-            valid_intersections += [(self.floorplan.width,east_y)]
-        if len(valid_intersections)==3:
-            valid_intersections = list(set(valid_intersections)) # remove duplicates which appear if mote in corner
+            valid_intersections += [(self.floorplan.width,               east_y)]
+        
+        # if mote than 2 valid points, pick the pair that is furthest appart
+        if len(valid_intersections)>2:
+            distances = [(self._dist(a,b),a,b) for (a,b) in itertools.product(valid_intersections,valid_intersections)]
+            distances = sorted(distances,key = lambda e: e[0])
+            valid_intersections = [distances[-1][1],distances[-1][2]]        
         assert len(valid_intersections)==2
         
         # pick the correct intersection point given the heading of the robot

@@ -55,18 +55,35 @@ class Orchestrator(object):
         dotbot['y']         += (msg['bumpTs']-dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
         dotbot['posTs']      = msg['bumpTs']
         
+        # round
+        dotbot['x']          = round(dotbot['x'],3)
+        dotbot['y']          = round(dotbot['y'],3)
+        
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into same wall)
-        if   math.isclose(dotbot['x'],                    0,abs_tol=10**-3):   # against West wall
-            dotbot['heading']    = random.randint(0,180)
-        elif math.isclose(dotbot['x'], self.floorplan.width,abs_tol=10**-3):   # against East wall
+        against_N_wall       = math.isclose(dotbot['y'],                    0,abs_tol=10**-3)
+        against_E_wall       = math.isclose(dotbot['x'], self.floorplan.width,abs_tol=10**-3)
+        against_S_wall       = math.isclose(dotbot['y'],self.floorplan.height,abs_tol=10**-3)
+        against_W_wall       = math.isclose(dotbot['x'],                    0,abs_tol=10**-3)
+        
+        if   against_N_wall and against_W_wall:            # NW corner
+            dotbot['heading']    = random.randint( 90,180)
+        elif against_N_wall and against_E_wall:            # NE corner
+            dotbot['heading']    = random.randint(180,270)
+        elif against_S_wall and against_E_wall:            # SE corner
+            dotbot['heading']    = random.randint(270,359)
+        elif against_S_wall and against_W_wall:            # SW corner
+            dotbot['heading']    = random.randint(  0, 90)
+        elif against_N_wall:                               # N  wall
+            dotbot['heading']    = random.randint( 90,270)
+        elif against_E_wall:                               # E  wall
             dotbot['heading']    = random.randint(180,359)
-        elif math.isclose(dotbot['y'],                    0,abs_tol=10**-3):   # against North wall
-            dotbot['heading']    = random.randint(90,270)
-        elif math.isclose(dotbot['y'],self.floorplan.height,abs_tol=10**-3):   # against South wall
+        elif against_S_wall:                               # S  wall
             dotbot['heading']    = random.randint(270,360+90)
             dotbot['heading']    = dotbot['heading']%360
-        else:                                    # in the middle of field
-            dotbot['heading']    = random.randint(0,359)
+        elif against_W_wall:                               # W  wall
+            dotbot['heading']    = random.randint(  0,180)
+        else:                                              # in the middle of field
+            dotbot['heading']    = random.randint(  0,359)
         
         # send commands to the robots
         self._sendDownstreamCommands()
