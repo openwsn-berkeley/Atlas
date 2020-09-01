@@ -28,6 +28,11 @@ class SimEngine(threading.Thread):
         self._currentTime         = 0
         self.events               = []
         self.semNumEvents         = threading.Semaphore(0)
+        self.dataLock             = threading.Lock()
+        self.nextClicked          = False
+        self.isPaused             = True
+        self.semIsRunning         = threading.Lock()
+        self.semIsRunning.acquire()
         
         # start thread
         threading.Thread.__init__(self)
@@ -40,12 +45,22 @@ class SimEngine(threading.Thread):
     def run(self):
         while True:
             
+            # wait for simulator to be running
+            self.semIsRunning.acquire()
+            self.semIsRunning.release()
+            
             # wait for at least one event
             self.semNumEvents.acquire()
             
             # handle
             self._handleNextEvent()
             time.sleep(0.050) # FIXME
+            
+            # is next was clicked, acquire
+            with self.dataLock:
+                if self.nextClicked==True:
+                    self.nextClicked = False
+                    self.semIsRunning.acquire()
     
     #======================== public ==========================================
     
@@ -71,21 +86,35 @@ class SimEngine(threading.Thread):
         execute next event in list of events
         '''
         
-        self._handleNextEvent()
+        # abort if not paused
+        with self.dataLock:
+            if not self.isPaused:
+                return
+        
+        with self.dataLock:
+            self.nextClicked = True
+        
+        self.semIsRunning.release()
     
     def commandPlay(self):
         '''
         (re)start the execution of the simulation
         '''
         
-        raise NotImplementedError()
+        with self.dataLock:
+            self.isPaused = False
+        
+        self.semIsRunning.release()
         
     def commandPause(self):
         '''
         pause the execution of the simulation
         '''
         
-        raise NotImplementedError()
+        with self.dataLock:
+            self.isPaused = True
+        
+        self.semIsRunning.acquire()
     
     #======================== private =========================================
     
