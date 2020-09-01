@@ -57,7 +57,6 @@ class SimEngine(threading.Thread):
             
             # handle
             self._handleNextEvent()
-            time.sleep(0.050) # FIXME
             
             # is next was clicked, acquire
             with self.dataLock:

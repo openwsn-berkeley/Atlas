@@ -56,7 +56,7 @@ class Orchestrator(object):
         dotbot['posTs']      = msg['bumpTs']
         
         # record the obstacle location
-        self.discoveredobstacles += [(dotbot['x'],dotbot['y'])]
+        #poipoipoiself.discoveredobstacles += [(dotbot['x'],dotbot['y'])]
         
         # round
         dotbot['x']          = round(dotbot['x'],3)
