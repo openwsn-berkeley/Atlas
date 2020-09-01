@@ -1,6 +1,7 @@
 # built-in
 import threading
 import time
+import datetime
 # third-party
 # local
 
@@ -25,7 +26,9 @@ class SimEngine(threading.Thread):
         self._init = True
         
         # local variables
-        self._currentTime         = 0
+        self._currentTime         = 0    # what time is it for the DotBots
+        self._runTime             = 0    # how many seconds has the computer been actively simulating?
+        self._runTimePlayTs       = None # timestamp of when the play button was pressed
         self.events               = []
         self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
@@ -69,6 +72,17 @@ class SimEngine(threading.Thread):
     def currentTime(self):
         return self._currentTime
     
+    def formatSimulatedTime(self):
+        returnVal  = []
+        returnVal += ['{0}'.format(str(datetime.timedelta(seconds=self._currentTime)).split('.')[0])]
+        if self._runTime>0 or self._runTimePlayTs!=None:
+            totalRuntime = self._runTime
+            if self._runTimePlayTs!=None:
+                totalRuntime+=time.time()-self._runTimePlayTs
+            returnVal += ['({0} x)'.format(int(self._currentTime / totalRuntime))]
+        returnVal = ' '.join(returnVal)
+        return returnVal
+    
     def schedule(self,ts,cb):
         # add new event
         self.events += [(ts,cb)]
@@ -102,6 +116,8 @@ class SimEngine(threading.Thread):
         '''
         
         with self.dataLock:
+            if self._runTimePlayTs == None:
+                self._runTimePlayTs = time.time()
             self.isPaused = False
         
         self.semIsRunning.release()
@@ -112,6 +128,9 @@ class SimEngine(threading.Thread):
         '''
         
         with self.dataLock:
+            if self._runTimePlayTs != None:
+                self._runTime      += time.time()-self._runTimePlayTs
+                self._runTimePlayTs = None
             self.isPaused = True
         
         self.semIsRunning.acquire()

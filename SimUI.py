@@ -1,7 +1,6 @@
 # built-in
 import threading
 import webbrowser
-import datetime
 import time
 # third-party
 import bottle
@@ -25,7 +24,6 @@ class SimUI(object):
         
         # local variables
         self.simEngine       = SimEngine.SimEngine()
-        self.startTs         = time.time()
         
         # start web server
         self.websrv          = bottle.Bottle()
@@ -79,10 +77,7 @@ class SimUI(object):
         returnVal = {
             'dotbots':             [],
             'discoveredobstacles': orchestratorView['discoveredobstacles'],
-            'simulatedTime':       '{0} ({1}x)'.format(
-                str(datetime.timedelta(seconds=simulatedTime)).split('.')[0],
-                int(simulatedTime / (time.time()-self.startTs)),
-            ),
+            'simulatedTime':       self.simEngine.formatSimulatedTime(),
         }
         for dotbot in self.dotbots:
             returnVal['dotbots'] += [dotbot.getAttitude()]
