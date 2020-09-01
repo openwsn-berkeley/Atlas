@@ -1,6 +1,8 @@
 # built-in
 import threading
 import webbrowser
+import datetime
+import time
 # third-party
 import bottle
 # local
@@ -23,6 +25,7 @@ class SimUI(object):
         
         # local variables
         self.simEngine       = SimEngine.SimEngine()
+        self.startTs         = time.time()
         
         # start web server
         self.websrv          = bottle.Bottle()
@@ -70,8 +73,14 @@ class SimUI(object):
         return self.floorplan.getJSON()
     
     def _webhandle_dotbots_GET(self):
+        simulatedTime = self.simEngine.currentTime()
+        
         returnVal = {
             'dotbots':          [],
+            'simulatedTime':    '{0} ({1}x)'.format(
+                datetime.timedelta(seconds=simulatedTime),
+                int(simulatedTime / (time.time()-self.startTs)),
+            ),
         }
         for dotbot in self.dotbots:
             returnVal['dotbots'] += [dotbot.getAttitude()]
