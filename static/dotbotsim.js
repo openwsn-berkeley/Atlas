@@ -11,17 +11,21 @@ function coordinates2pixels(x,y) {
 }
 
 function gettingThingsInPlace() {
-    // arming click events on buttons
+    // arming click events and tooltips on buttons
     $("#pausebutton").click(function(){
         $.post('pause')
     });
+    $("#pausebutton").attr('title', 'Pause the simulation.');
     $("#frameforwardbutton").click(function(){
         $.post('frameforward')
     });
+    $("#frameforwardbutton").attr('title', 'Advance the simulation by one event.');
     $("#playbutton").mousedown(slideHandlerMouseDown);
+    $("#playbutton").attr('title', 'Drag to set the play speed.');
     $("#fastforwardbutton").click(function(){
         $.post('fastforward')
     });
+    $("#fastforwardbutton").attr('title', 'Simulate as fast as possible.');
 }
 
 function getFloorplan() {
