@@ -1,8 +1,10 @@
 # built-in
+import threading
+import time
 # third-party
 # local
 
-class SimEngine(object):
+class SimEngine(threading.Thread):
     '''
     Discrete-event simulation engine for a swarm of DotBots.
     '''
@@ -23,8 +25,27 @@ class SimEngine(object):
         self._init = True
         
         # local variables
-        self._currentTime  = 0
-        self.events       = []
+        self._currentTime         = 0
+        self.events               = []
+        self.semNumEvents         = threading.Semaphore(0)
+        
+        # start thread
+        threading.Thread.__init__(self)
+        self.name                 = 'SimEngine'
+        self.daemon               = True
+        self.start()
+    
+    #======================== thread ==========================================
+    
+    def run(self):
+        while True:
+            
+            # wait for at least one event
+            self.semNumEvents.acquire()
+            
+            # handle
+            self._handleNextEvent()
+            #time.sleep(0.100)
     
     #======================== public ==========================================
     
@@ -39,6 +60,9 @@ class SimEngine(object):
         
         # reorder list
         self.events  = sorted(self.events, key = lambda e: e[0])
+        
+        # release semaphore
+        self.semNumEvents.release()
     
     #=== commands from the GUI
     
