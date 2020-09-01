@@ -122,4 +122,18 @@ function drawDotBots(data) {
             .attr("cy", function(d) { return scaleFactor*d.y; })
             .attr("class", "dotbot")
             .attr("r", 6);
+    
+    // discoveredobstacles
+    var discoveredobstacles = svg.selectAll(".discoveredobstacle")
+        .data(data.discoveredobstacles);
+    discoveredobstacles
+        .transition()
+            .attr("cx", function(d) { return scaleFactor*d[0]; })
+            .attr("cy", function(d) { return scaleFactor*d[1]; });
+    discoveredobstacles
+        .enter().append("circle")
+            .attr("cx", function(d) { return scaleFactor*d[0]; })
+            .attr("cy", function(d) { return scaleFactor*d[1]; })
+            .attr("class", "discoveredobstacle")
+            .attr("r", 2);
 }

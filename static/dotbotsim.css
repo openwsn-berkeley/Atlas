@@ -60,6 +60,10 @@
     fill:             #aaaaaa;
 }
 
+.discoveredobstacle {
+    fill:             green;
+}
+
 .positionerror {
     stroke:           red;
     stroke-width:     2px;

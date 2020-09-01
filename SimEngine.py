@@ -45,7 +45,7 @@ class SimEngine(threading.Thread):
             
             # handle
             self._handleNextEvent()
-            time.sleep(0.010)
+            time.sleep(0.010) # FIXME
     
     #======================== public ==========================================
     

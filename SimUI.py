@@ -75,16 +75,18 @@ class SimUI(object):
     def _webhandle_dotbots_GET(self):
         simulatedTime = self.simEngine.currentTime()
         
+        orchestratorView = self.orchestrator.getView()
         returnVal = {
-            'dotbots':          [],
-            'simulatedTime':    '{0} ({1}x)'.format(
+            'dotbots':             [],
+            'discoveredobstacles': orchestratorView['discoveredobstacles'],
+            'simulatedTime':       '{0} ({1}x)'.format(
                 str(datetime.timedelta(seconds=simulatedTime)).split('.')[0],
                 int(simulatedTime / (time.time()-self.startTs)),
             ),
         }
         for dotbot in self.dotbots:
             returnVal['dotbots'] += [dotbot.getAttitude()]
-        for (dotbot,orchestratorview) in zip(returnVal['dotbots'],self.orchestrator.getView()):
+        for (dotbot,orchestratorview) in zip(returnVal['dotbots'],orchestratorView['dotbots']):
             dotbot['orchestratorview_x'] = orchestratorview['x']
             dotbot['orchestratorview_y'] = orchestratorview['y']
         return returnVal

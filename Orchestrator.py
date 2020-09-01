@@ -29,7 +29,7 @@ class Orchestrator(object):
                 'speed':       0,
             } for (x,y) in self.positions
         ]
-        self.bumpsview = [] # the Orchestrator's internal view of the location of the obstacles
+        self.discoveredobstacles = [] # the Orchestrator's internal view of the location of the obstacles
     
     #======================== public ==========================================
     
@@ -54,6 +54,9 @@ class Orchestrator(object):
         dotbot['x']         += (msg['bumpTs']-dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
         dotbot['y']         += (msg['bumpTs']-dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
         dotbot['posTs']      = msg['bumpTs']
+        
+        # record the obstacle location
+        self.discoveredobstacles += [(dotbot['x'],dotbot['y'])]
         
         # round
         dotbot['x']          = round(dotbot['x'],3)
@@ -97,12 +100,15 @@ class Orchestrator(object):
             dotbot['y']     += (now-dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
             dotbot['posTs']  = now
     
-        return [
-            {
-                'x': e['x'],
-                'y': e['y'],
-            } for e in self.dotbotsview
-        ]
+        return {
+            'dotbots': [
+                {
+                    'x': e['x'],
+                    'y': e['y'],
+                } for e in self.dotbotsview
+            ],
+            'discoveredobstacles': self.discoveredobstacles,
+        }
     
     #======================== private =========================================
     
