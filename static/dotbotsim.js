@@ -31,7 +31,7 @@ function drawFloorplan(floorplan) {
     var svg = d3.select("#floorplan");
     
     // determine scalefactor such that map fill entire width of screen
-    scaleFactor = ($('body').innerWidth()-50) / floorplan.width;
+    scaleFactor = ($('body').innerWidth()-5) / floorplan.width;
     
     // scale map to fill up screen
     svg.attr("width",  scaleFactor*floorplan.width)

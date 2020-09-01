@@ -89,10 +89,10 @@ class SimUI(object):
         return returnVal
      
     def _webhandle_frameforward_POST(self):
-        self.simEngine.commandNext()
+        self.simEngine.commandFrameforward()
      
     def _webhandle_play_POST(self):
-        self.simEngine.commandPlay()
+        self.simEngine.commandPlay(10.00) # FIXME get from UI
     
     def _webhandle_fastforward_POST(self):
         self.simEngine.commandFastforward()

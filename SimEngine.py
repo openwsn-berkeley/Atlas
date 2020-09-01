@@ -33,6 +33,7 @@ class SimEngine(threading.Thread):
         # local variables
         self._currentTime         = 0    # what time is it for the DotBots
         self._mode                = self.MODE_PAUSE
+        self._playSpeed           = 1.00
         self._runTime             = 0    # how many seconds has the computer been actively simulating?
         self._runTimePlayTs       = None # timestamp of when the play button was pressed
         self.events               = []
@@ -62,11 +63,17 @@ class SimEngine(threading.Thread):
             # handle
             self._handleNextEvent()
             
-            # is next was clicked, acquire
-            with self.dataLock:
-                if self._mode==self.MODE_FRAMEFORWARD:
-                    self._mode=self.MODE_PAUSE
-                    self.semIsRunning.acquire()
+            # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
+            if self._mode==self.MODE_FRAMEFORWARD:
+                self._mode=self.MODE_PAUSE
+                self.semIsRunning.acquire()
+            
+            # wait if in MODE_PLAY
+            if self._mode==self.MODE_PLAY:
+                durSim  = self._currentTime-self._startTsSim
+                durReal = time.time()-self._startTsReal
+                if durReal*self._playSpeed<durSim:
+                    time.sleep( durSim - (durReal*self._playSpeed) )
     
     #======================== public ==========================================
     
@@ -107,7 +114,20 @@ class SimEngine(threading.Thread):
     
     #=== commands from the GUI
     
-    def commandNext(self):
+    def commandPause(self):
+        '''
+        pause the execution of the simulation
+        '''
+        
+        with self.dataLock:
+            if self._runTimePlayTs != None:
+                self._runTime      += time.time()-self._runTimePlayTs
+                self._runTimePlayTs = None
+            if self._mode != self.MODE_PAUSE:
+                self.semIsRunning.acquire()
+                self._mode = self.MODE_PAUSE
+    
+    def commandFrameforward(self):
         '''
         execute next event in list of events
         '''
@@ -122,42 +142,32 @@ class SimEngine(threading.Thread):
         
         self.semIsRunning.release()
     
+    def commandPlay(self,playSpeed):
+        '''
+        (re)start the execution of the simulation at moderate speed
+        '''
+        
+        with self.dataLock:
+            if self._mode == self.MODE_PAUSE:
+                self.semIsRunning.release()
+            if self._runTimePlayTs == None:
+                self._runTimePlayTs = time.time()
+            self._playSpeed   = playSpeed
+            self._startTsSim  = self._currentTime
+            self._startTsReal = time.time()
+            self._mode        = self.MODE_PLAY
+    
     def commandFastforward(self):
         '''
         (re)start the execution of the simulation at full speed
         '''
         
-        # abort if already in MODE_FASTFORWARD
         with self.dataLock:
-            if self._mode == self.MODE_FASTFORWARD:
-                return
-        
-        with self.dataLock:
+            if self._mode == self.MODE_PAUSE:
+                self.semIsRunning.release()
             if self._runTimePlayTs == None:
                 self._runTimePlayTs = time.time()
             self._mode = self.MODE_FASTFORWARD
-        
-        self.semIsRunning.release()
-    
-    def commandPlay(self):
-        '''
-        (re)start the execution of the simulation at moderate speed
-        '''
-        
-        pass
-        
-    def commandPause(self):
-        '''
-        pause the execution of the simulation
-        '''
-        
-        with self.dataLock:
-            if self._runTimePlayTs != None:
-                self._runTime      += time.time()-self._runTimePlayTs
-                self._runTimePlayTs = None
-            if self._mode != self.MODE_PAUSE:
-                self.semIsRunning.acquire()
-                self._mode = self.MODE_PAUSE
     
     #======================== private =========================================
     
