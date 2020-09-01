@@ -10,9 +10,9 @@
 
 <div id="pagetitle">{{pagetitle}}</div>
 <svg id="floorplan"></svg>
-<div id="nextbutton">Next</div>
-<div id="playbutton">Play</div>
-<div id="pausebutton">Pause</div>
+<img id="nextbutton"  src="/static/button_next.svg"/>
+<img id="playbutton"  src="/static/button_play_inactive.svg"/>
+<img id="pausebutton" src="/static/button_pause_inactive.svg"/>
 <div id="timelabel">poipoi</div>
 <div id="versionlabel">version {{version}}</div>
 
