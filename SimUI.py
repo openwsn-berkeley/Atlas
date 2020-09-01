@@ -31,7 +31,7 @@ class SimUI(object):
         self.websrv.route('/static/<filename>',       'GET',    self._webhandle_static_GET)
         self.websrv.route('/floorplan.json',          'GET',    self._webhandle_floorplan_GET)
         self.websrv.route('/dotbots.json',            'GET',    self._webhandle_dotbots_GET)
-        self.websrv.route('/next',                    'POST',   self._webhandle_next_POST)
+        self.websrv.route('/frameforward',            'POST',   self._webhandle_frameforward_POST)
         self.websrv.route('/play',                    'POST',   self._webhandle_play_POST)
         self.websrv.route('/fastforward',             'POST',   self._webhandle_fastforward_POST)
         self.websrv.route('/pause',                   'POST',   self._webhandle_pause_POST)
@@ -76,9 +76,10 @@ class SimUI(object):
         
         orchestratorView = self.orchestrator.getView()
         returnVal = {
+            'mode':                self.simEngine.mode(),
+            'simulatedTime':       self.simEngine.formatSimulatedTime(),
             'dotbots':             [],
             'discoveredobstacles': orchestratorView['discoveredobstacles'],
-            'simulatedTime':       self.simEngine.formatSimulatedTime(),
         }
         for dotbot in self.dotbots:
             returnVal['dotbots'] += [dotbot.getAttitude()]
@@ -87,7 +88,7 @@ class SimUI(object):
             dotbot['orchestratorview_y'] = orchestratorview['y']
         return returnVal
      
-    def _webhandle_next_POST(self):
+    def _webhandle_frameforward_POST(self):
         self.simEngine.commandNext()
      
     def _webhandle_play_POST(self):

@@ -1,6 +1,5 @@
 var scaleFactor  = 1;
 var dotbotcolors = d3.scaleOrdinal(d3.schemeCategory10).range();
-console.log(dotbotcolors);
 
 function coordinates2pixels(x,y) {
     return (10*x,10*y)
@@ -11,8 +10,8 @@ function gettingThingsInPlace() {
     $("#pausebutton").click(function(){
         $.post('pause')
     });
-    $("#nextbutton").click(function(){
-        $.post('next')
+    $("#frameforwardbutton").click(function(){
+        $.post('frameforward')
     });
     $("#playbutton").click(function(){
         $.post('play')
@@ -50,7 +49,7 @@ function drawFloorplan(floorplan) {
     
     // position buttons and labels
     $("#pagetitle").width(scaleFactor*floorplan.width);
-    $("#nextbutton").offset(        { top: scaleFactor*floorplan.height+ 70 });
+    $("#frameforwardbutton").offset({ top: scaleFactor*floorplan.height+ 70 });
     $("#fastforwardbutton").offset( { top: scaleFactor*floorplan.height+ 70 });
     $("#playbutton").offset(        { top: scaleFactor*floorplan.height+ 70 });
     $("#pausebutton").offset(       { top: scaleFactor*floorplan.height+ 70 });
@@ -71,6 +70,12 @@ function getDotBots() {
 
 function drawDotBots(data) {
     var svg    = d3.select("#floorplan");
+    
+    // mode
+    $("#pausebutton").css(        { opacity: data.mode=='pause'        ? 1.00 : 0.50 });
+    $("#frameforwardbutton").css( { opacity: data.mode=='frameforward' ? 1.00 : 0.50 });
+    $("#playbutton").css(         { opacity: data.mode=='play'         ? 1.00 : 0.50 });
+    $("#fastforwardbutton").css(  { opacity: data.mode=='fastforward'  ? 1.00 : 0.50 });
     
     // timelabel
     $("#timelabel").html(data.simulatedTime);
