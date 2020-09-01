@@ -49,12 +49,18 @@ function drawFloorplan(floorplan) {
             .attr("class",  "obstacle");
     
     // position buttons and labels
-    $("#nextbutton").offset(        { top: scaleFactor*floorplan.height+ 80 });
-    $("#fastforwardbutton").offset( { top: scaleFactor*floorplan.height+ 80 });
-    $("#playbutton").offset(        { top: scaleFactor*floorplan.height+ 80 });
-    $("#pausebutton").offset(       { top: scaleFactor*floorplan.height+ 80 });
-    $("#timelabel").offset(         { top: scaleFactor*floorplan.height+ 80 });
-    $("#versionlabel").offset(      { top: scaleFactor*floorplan.height+140 });
+    $("#pagetitle").width(scaleFactor*floorplan.width);
+    $("#nextbutton").offset(        { top: scaleFactor*floorplan.height+ 70 });
+    $("#fastforwardbutton").offset( { top: scaleFactor*floorplan.height+ 70 });
+    $("#playbutton").offset(        { top: scaleFactor*floorplan.height+ 70 });
+    $("#pausebutton").offset(       { top: scaleFactor*floorplan.height+ 70 });
+    $("#timelabel").offset(         { top: scaleFactor*floorplan.height+ 70 });
+    $("#versionlabel").offset(
+        {
+            top:  scaleFactor*floorplan.height+ 70,
+            left: scaleFactor*floorplan.width - 190,
+        },
+    );
 }
 
 function getDotBots() {

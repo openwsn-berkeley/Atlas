@@ -8,7 +8,7 @@
 <script src="/static/jquery-3.5.1.min.js" charset="utf-8"></script>
 <script src="/static/dotbotsim.js" charset="utf-8"></script>
 
-<div id="pagetitle">{{pagetitle}}</div>
+<div id="pagetitle"><strong>DOTBOT</strong>SIMULATOR</div>
 <svg id="floorplan"></svg>
 <img id="nextbutton"         src="/static/button_next.svg"/>
 <img id="fastforwardbutton"  src="/static/button_fastforward_inactive.svg"/>

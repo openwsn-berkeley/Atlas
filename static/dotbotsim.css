@@ -2,14 +2,18 @@
     position:         absolute;
     top:              10px;
     left:             10px;
-    width:            530px;
-    height:           50px;
-    background-color: yellow;
+    height:           40px;
+    font-style:       normal;
+    font-family:      Helvetica, sans-serif;
+    font-stretch:     condensed;
+    font-size:        40px;
+    text-align:       right;
 }
 
 #floorplan {
     position:         absolute;
-    top:              70px;
+    top:              60px;
+    left:             10px;
     background-color: white;
     border-width:     0px;
     background-color: #f0f0f0;
@@ -54,9 +58,10 @@
 #versionlabel {
     position:         absolute;
     left:             10px;
-    width:            530px;
+    width:            200px;
     height:           50px;
-    background-color: green;
+    text-align:       right;
+    font-family:      Helvetica, sans-serif;
 }
 
 .obstacle {
