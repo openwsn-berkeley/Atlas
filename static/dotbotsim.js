@@ -5,6 +5,7 @@ function coordinates2pixels(x,y) {
 }
 
 function gettingThingsInPlace() {
+    // arming click events on buttons
     $("#nextbutton").click(function(){
         $.post('next')
     });
@@ -41,20 +42,30 @@ function drawFloorplan(floorplan) {
             .attr("width",  function(d) { return scaleFactor*d.width; })
             .attr("height", function(d) { return scaleFactor*d.height; })
             .attr("class",  "obstacle");
+    
+    // position buttons and labels
+    $("#nextbutton").offset(   { top: scaleFactor*floorplan.height+ 80 });
+    $("#playbutton").offset(   { top: scaleFactor*floorplan.height+ 80 });
+    $("#pausebutton").offset(  { top: scaleFactor*floorplan.height+ 80 });
+    $("#timelabel").offset(    { top: scaleFactor*floorplan.height+ 80 });
+    $("#versionlabel").offset( { top: scaleFactor*floorplan.height+140 });
 }
 
 function getDotBots() {
     $.getJSON( "/dotbots.json", function( data ) {
-        drawDotBots(data.dotbots);
+        drawDotBots(data);
     });
 }
 
 function drawDotBots(data) {
     var svg    = d3.select("#floorplan");
     
+    // timelabel
+    $("#timelabel").html(data.simulatedTime);
+    
     // positionerror
     var positionerror  = svg.selectAll(".positionerror")
-        .data(data);
+        .data(data.dotbots);
     positionerror
         .attr("x1", function(d) { return scaleFactor*d.x; })
         .attr("y1", function(d) { return scaleFactor*d.y; })
@@ -70,7 +81,7 @@ function drawDotBots(data) {
     
     // orchestratorview
     var orchestratorview = svg.selectAll(".orchestratorview")
-        .data(data);
+        .data(data.dotbots);
     orchestratorview
         .transition()
             .attr("cx", function(d) { return scaleFactor*d.orchestratorview_x; })
@@ -84,7 +95,7 @@ function drawDotBots(data) {
     
     // collisionpath
     var collisionpaths  = svg.selectAll(".collisionpath")
-        .data(data);
+        .data(data.dotbots);
     collisionpaths
         .attr("x1", function(d) { return scaleFactor*d.x; })
         .attr("y1", function(d) { return scaleFactor*d.y; })
@@ -100,7 +111,7 @@ function drawDotBots(data) {
     
     // dotbots
     var dotbots = svg.selectAll(".dotbot")
-        .data(data);
+        .data(data.dotbots);
     dotbots
         .transition()
             .attr("cx", function(d) { return scaleFactor*d.x; })

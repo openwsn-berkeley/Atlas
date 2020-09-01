@@ -78,7 +78,7 @@ class SimUI(object):
         returnVal = {
             'dotbots':          [],
             'simulatedTime':    '{0} ({1}x)'.format(
-                datetime.timedelta(seconds=simulatedTime),
+                str(datetime.timedelta(seconds=simulatedTime)).split('.')[0],
                 int(simulatedTime / (time.time()-self.startTs)),
             ),
         }

@@ -1,8 +1,15 @@
 #pagetitle {
+    position:         absolute;
+    top:              10px;
+    left:             10px;
+    width:            530px;
+    height:           50px;
     background-color: yellow;
 }
 
 #floorplan {
+    position:         absolute;
+    top:              70px;
     background-color: white;
     border-style:     solid;
     border-width:     1px;
@@ -10,24 +17,42 @@
 }
 
 #nextbutton {
-    background-color: yellow;
+    position:         absolute;
+    left:             10px;
     width:            100px;
-    height:            50px;
+    height:           50px;
+    background-color: yellow;
 }
 
 #playbutton {
-    background-color: blue;
+    position:         absolute;
+    left:             120px;
     width:            100px;
-    height:            50px;
+    height:           50px;
+    background-color: blue;
 }
 
 #pausebutton {
-    background-color: orange;
+    position:         absolute;
+    left:             230px;
     width:            100px;
-    height:            50px;
+    height:           50px;
+    background-color: orange;
 }
 
-#versionLabel {
+#timelabel {
+    position:         absolute;
+    left:             340px;
+    width:            200px;
+    height:           50px;
+    background-color: grey;
+}
+
+#versionlabel {
+    position:         absolute;
+    left:             10px;
+    width:            530px;
+    height:           50px;
     background-color: green;
 }
 
