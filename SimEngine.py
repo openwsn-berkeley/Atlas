@@ -10,6 +10,11 @@ class SimEngine(threading.Thread):
     Discrete-event simulation engine for a swarm of DotBots.
     '''
     
+    MODE_PAUSE          = 'pause'
+    MODE_FRAMEFORWARD   = 'frameforward'
+    MODE_PLAY           = 'play'
+    MODE_FASTFORWARD    = 'fastforward'
+    
     # singleton pattern
     _instance   = None
     _init       = False
@@ -27,13 +32,12 @@ class SimEngine(threading.Thread):
         
         # local variables
         self._currentTime         = 0    # what time is it for the DotBots
+        self._mode                = self.MODE_PAUSE
         self._runTime             = 0    # how many seconds has the computer been actively simulating?
         self._runTimePlayTs       = None # timestamp of when the play button was pressed
         self.events               = []
         self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
-        self.nextClicked          = False
-        self.isPaused             = True
         self.semIsRunning         = threading.Lock()
         self.semIsRunning.acquire()
         
@@ -60,8 +64,8 @@ class SimEngine(threading.Thread):
             
             # is next was clicked, acquire
             with self.dataLock:
-                if self.nextClicked==True:
-                    self.nextClicked = False
+                if self._mode==self.MODE_FRAMEFORWARD:
+                    self._mode=self.MODE_PAUSE
                     self.semIsRunning.acquire()
     
     #======================== public ==========================================
@@ -71,15 +75,24 @@ class SimEngine(threading.Thread):
     def currentTime(self):
         return self._currentTime
     
+    def mode(self):
+        return self._mode
+    
     def formatSimulatedTime(self):
         returnVal  = []
-        returnVal += ['{0}'.format(str(datetime.timedelta(seconds=self._currentTime)).split('.')[0])]
+        returnVal += ['[']
+        returnVal += [' {0} simulated'.format(str(datetime.timedelta(seconds=self._currentTime)).split('.')[0])]
         if self._runTime>0 or self._runTimePlayTs!=None:
             totalRuntime = self._runTime
             if self._runTimePlayTs!=None:
                 totalRuntime+=time.time()-self._runTimePlayTs
-            returnVal += ['({0} x)'.format(int(self._currentTime / totalRuntime))]
-        returnVal = ' '.join(returnVal)
+            returnVal += [
+                '( {0} &times; )'.format(
+                    int(self._currentTime / totalRuntime),
+                )
+            ]
+        returnVal += [']']
+        returnVal  = ' '.join(returnVal)
         return returnVal
     
     def schedule(self,ts,cb):
@@ -101,11 +114,11 @@ class SimEngine(threading.Thread):
         
         # abort if not paused
         with self.dataLock:
-            if not self.isPaused:
+            if self._mode != self.MODE_PAUSE:
                 return
         
         with self.dataLock:
-            self.nextClicked = True
+            self._mode = self.MODE_FRAMEFORWARD
         
         self.semIsRunning.release()
     
@@ -114,10 +127,15 @@ class SimEngine(threading.Thread):
         (re)start the execution of the simulation at full speed
         '''
         
+        # abort if already in MODE_FASTFORWARD
+        with self.dataLock:
+            if self._mode == self.MODE_FASTFORWARD:
+                return
+        
         with self.dataLock:
             if self._runTimePlayTs == None:
                 self._runTimePlayTs = time.time()
-            self.isPaused = False
+            self._mode = self.MODE_FASTFORWARD
         
         self.semIsRunning.release()
     
@@ -137,9 +155,9 @@ class SimEngine(threading.Thread):
             if self._runTimePlayTs != None:
                 self._runTime      += time.time()-self._runTimePlayTs
                 self._runTimePlayTs = None
-            if self.isPaused == False:
+            if self._mode != self.MODE_PAUSE:
                 self.semIsRunning.acquire()
-                self.isPaused = True
+                self._mode = self.MODE_PAUSE
     
     #======================== private =========================================
     

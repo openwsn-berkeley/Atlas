@@ -19,40 +19,45 @@
     background-color: #f0f0f0;
 }
 
-#nextbutton {
+#pausebutton {
     position:         absolute;
     left:             10px;
     width:            50px;
     height:           50px;
+    opacity:          50%;
 }
 
-#fastforwardbutton {
+#nextbutton {
     position:         absolute;
-    left:             70px;
+    left:             80px;
     width:            50px;
     height:           50px;
+    opacity:          50%;
 }
 
 #playbutton {
     position:         absolute;
-    left:             130px;
+    left:             150px;
     width:            50px;
     height:           50px;
+    opacity:          50%;
 }
 
-#pausebutton {
+#fastforwardbutton {
     position:         absolute;
-    left:             190px;
+    left:             320px;
     width:            50px;
     height:           50px;
+    opacity:          50%;
 }
 
 #timelabel {
     position:         absolute;
-    left:             340px;
-    width:            200px;
-    height:           50px;
-    background-color: grey;
+    left:             380px;
+    width:            400px;
+    line-height:      50px;
+    font-family:      monospace;
+    text-align:       center;
 }
 
 #versionlabel {

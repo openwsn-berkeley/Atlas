@@ -10,11 +10,11 @@
 
 <div id="pagetitle"><strong>DOTBOT</strong>SIMULATOR</div>
 <svg id="floorplan"></svg>
-<img id="nextbutton"         src="/static/button_next.svg"/>
-<img id="fastforwardbutton"  src="/static/button_fastforward_inactive.svg"/>
-<img id="playbutton"         src="/static/button_play_inactive.svg"/>
-<img id="pausebutton"        src="/static/button_pause_inactive.svg"/>
-<div id="timelabel">poipoi</div>
+<img id="pausebutton"        src="/static/button_pause.svg"/>
+<img id="nextbutton"         src="/static/button_frameforward.svg"/>
+<img id="playbutton"         src="/static/button_play.svg"/>
+<img id="fastforwardbutton"  src="/static/button_fastforward.svg"/>
+<div id="timelabel"></div>
 <div id="versionlabel">version {{version}}</div>
 
 <script id="js">

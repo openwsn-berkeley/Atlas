@@ -8,17 +8,17 @@ function coordinates2pixels(x,y) {
 
 function gettingThingsInPlace() {
     // arming click events on buttons
+    $("#pausebutton").click(function(){
+        $.post('pause')
+    });
     $("#nextbutton").click(function(){
         $.post('next')
-    });
-    $("#fastforwardbutton").click(function(){
-        $.post('fastforward')
     });
     $("#playbutton").click(function(){
         $.post('play')
     });
-    $("#pausebutton").click(function(){
-        $.post('pause')
+    $("#fastforwardbutton").click(function(){
+        $.post('fastforward')
     });
 }
 
