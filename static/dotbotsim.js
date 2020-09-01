@@ -44,23 +44,53 @@ function drawFloorplan(floorplan) {
 }
 
 function getDotBots() {
-    $.getJSON( "/dotbots.json", function( dotbots ) {
-        drawDotBots(dotbots.dotbots);
+    $.getJSON( "/dotbots.json", function( data ) {
+        drawDotBots(data.dotbots);
     });
 }
 
-function drawDotBots(dotbots) {
+function drawDotBots(data) {
     var svg    = d3.select("#floorplan");
     
-    // position collisionpath
-    var line   = svg.selectAll("line")
-        .data(dotbots);
-    line
+    // positionerror
+    var positionerror  = svg.selectAll(".positionerror")
+        .data(data);
+    positionerror
+        .attr("x1", function(d) { return scaleFactor*d.x; })
+        .attr("y1", function(d) { return scaleFactor*d.y; })
+        .attr("x2", function(d) { return scaleFactor*d.orchestratorview_x; })
+        .attr("y2", function(d) { return scaleFactor*d.orchestratorview_y; });
+    positionerror
+        .enter().append("line")
+            .attr("x1", function(d) { return scaleFactor*d.x; })
+            .attr("y1", function(d) { return scaleFactor*d.y; })
+            .attr("x2", function(d) { return scaleFactor*d.orchestratorview_x; })
+            .attr("y2", function(d) { return scaleFactor*d.orchestratorview_y; })
+            .attr("class", "positionerror");
+    
+    // orchestratorview
+    var orchestratorview = svg.selectAll(".orchestratorview")
+        .data(data);
+    orchestratorview
+        .transition()
+            .attr("cx", function(d) { return scaleFactor*d.orchestratorview_x; })
+            .attr("cy", function(d) { return scaleFactor*d.orchestratorview_y; });
+    orchestratorview
+        .enter().append("circle")
+            .attr("cx", function(d) { return scaleFactor*d.orchestratorview_x; })
+            .attr("cy", function(d) { return scaleFactor*d.orchestratorview_y; })
+            .attr("class", "orchestratorview")
+            .attr("r", 6);
+    
+    // collisionpath
+    var collisionpaths  = svg.selectAll(".collisionpath")
+        .data(data);
+    collisionpaths
         .attr("x1", function(d) { return scaleFactor*d.x; })
         .attr("y1", function(d) { return scaleFactor*d.y; })
         .attr("x2", function(d) { return d.next_bump_x === null ? scaleFactor*d.x : scaleFactor*d.next_bump_x; })
         .attr("y2", function(d) { return d.next_bump_y === null ? scaleFactor*d.y : scaleFactor*d.next_bump_y; });
-    line
+    collisionpaths
         .enter().append("line")
             .attr("x1", function(d) { return scaleFactor*d.x; })
             .attr("y1", function(d) { return scaleFactor*d.y; })
@@ -68,14 +98,14 @@ function drawDotBots(dotbots) {
             .attr("y2", function(d) { return d.next_bump_y === null ? scaleFactor*d.y : scaleFactor*d.next_bump_y; })
             .attr("class", "collisionpath");
     
-    // position DotBots
-    var circle = svg.selectAll("circle")
-        .data(dotbots);
-    circle
+    // dotbots
+    var dotbots = svg.selectAll(".dotbot")
+        .data(data);
+    dotbots
         .transition()
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; });
-    circle
+    dotbots
         .enter().append("circle")
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; })

@@ -31,7 +31,16 @@
     background-color: green;
 }
 
-.dotbot {
+.obstacle {
+    fill:             #aaaaaa;
+}
+
+.positionerror {
+    stroke:           red;
+    stroke-width:     2px;
+}
+
+.orchestratorview {
     fill:             red;
     stroke:           black;
     stroke-width:     1px;
@@ -43,6 +52,8 @@
     stroke-dasharray: 2;
 }
 
-.obstacle {
-    fill:             #aaaaaa;
+.dotbot {
+    fill:             blue;
+    stroke:           black;
+    stroke-width:     1px;
 }

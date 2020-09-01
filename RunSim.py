@@ -12,7 +12,7 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       2,
+        'numDotBots':       10,
         'floorplanDrawing': # 1m per character
 '''
 ..................
@@ -50,13 +50,13 @@ def oneSim(simSetting):
         dotBot.setInitialPosition(x,y)
     
     # create the orchestrator
-    orchestrator   = Orchestrator.Orchestrator([simSetting['initialPosition']]*len(dotBots))
+    orchestrator   = Orchestrator.Orchestrator([simSetting['initialPosition']]*len(dotBots),floorplan)
     
     # indicate the elements to the singletons
     wireless.indicateElements(dotBots,orchestrator)
     
     # start the UI (call last)
-    simUI          = SimUI.SimUI(floorplan,dotBots)
+    simUI          = SimUI.SimUI(floorplan,dotBots,orchestrator)
     
     # schedule the first event
     simEngine.schedule(0,orchestrator.startExploration)

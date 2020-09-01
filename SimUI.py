@@ -14,17 +14,18 @@ class SimUI(object):
     
     TCPPORT = 8080
     
-    def __init__(self,floorplan,dotbots):
+    def __init__(self,floorplan,dotbots,orchestrator):
     
         # store params
-        self.floorplan = floorplan
-        self.dotbots   = dotbots
+        self.floorplan       = floorplan
+        self.dotbots         = dotbots
+        self.orchestrator    = orchestrator
         
         # local variables
-        self.simEngine = SimEngine.SimEngine()
+        self.simEngine       = SimEngine.SimEngine()
         
         # start web server
-        self.websrv   = bottle.Bottle()
+        self.websrv          = bottle.Bottle()
         self.websrv.route('/',                        'GET',    self._webhandle_root_GET)
         self.websrv.route('/static/<filename>',       'GET',    self._webhandle_static_GET)
         self.websrv.route('/floorplan.json',          'GET',    self._webhandle_floorplan_GET)
@@ -70,10 +71,13 @@ class SimUI(object):
     
     def _webhandle_dotbots_GET(self):
         returnVal = {
-            'dotbots': []
+            'dotbots':          [],
         }
         for dotbot in self.dotbots:
             returnVal['dotbots'] += [dotbot.getAttitude()]
+        for (dotbot,orchestratorview) in zip(returnVal['dotbots'],self.orchestrator.getView()):
+            dotbot['orchestratorview_x'] = orchestratorview['x']
+            dotbot['orchestratorview_y'] = orchestratorview['y']
         return returnVal
      
     def _webhandle_next_POST(self):
