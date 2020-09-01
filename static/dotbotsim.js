@@ -11,6 +11,9 @@ function gettingThingsInPlace() {
     $("#nextbutton").click(function(){
         $.post('next')
     });
+    $("#fastforwardbutton").click(function(){
+        $.post('fastforward')
+    });
     $("#playbutton").click(function(){
         $.post('play')
     });
@@ -46,11 +49,12 @@ function drawFloorplan(floorplan) {
             .attr("class",  "obstacle");
     
     // position buttons and labels
-    $("#nextbutton").offset(   { top: scaleFactor*floorplan.height+ 80 });
-    $("#playbutton").offset(   { top: scaleFactor*floorplan.height+ 80 });
-    $("#pausebutton").offset(  { top: scaleFactor*floorplan.height+ 80 });
-    $("#timelabel").offset(    { top: scaleFactor*floorplan.height+ 80 });
-    $("#versionlabel").offset( { top: scaleFactor*floorplan.height+140 });
+    $("#nextbutton").offset(        { top: scaleFactor*floorplan.height+ 80 });
+    $("#fastforwardbutton").offset( { top: scaleFactor*floorplan.height+ 80 });
+    $("#playbutton").offset(        { top: scaleFactor*floorplan.height+ 80 });
+    $("#pausebutton").offset(       { top: scaleFactor*floorplan.height+ 80 });
+    $("#timelabel").offset(         { top: scaleFactor*floorplan.height+ 80 });
+    $("#versionlabel").offset(      { top: scaleFactor*floorplan.height+140 });
 }
 
 function getDotBots() {

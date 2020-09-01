@@ -109,9 +109,9 @@ class SimEngine(threading.Thread):
         
         self.semIsRunning.release()
     
-    def commandPlay(self):
+    def commandFastforward(self):
         '''
-        (re)start the execution of the simulation
+        (re)start the execution of the simulation at full speed
         '''
         
         with self.dataLock:
@@ -120,6 +120,13 @@ class SimEngine(threading.Thread):
             self.isPaused = False
         
         self.semIsRunning.release()
+    
+    def commandPlay(self):
+        '''
+        (re)start the execution of the simulation at moderate speed
+        '''
+        
+        pass
         
     def commandPause(self):
         '''
@@ -130,9 +137,9 @@ class SimEngine(threading.Thread):
             if self._runTimePlayTs != None:
                 self._runTime      += time.time()-self._runTimePlayTs
                 self._runTimePlayTs = None
-            self.isPaused = True
-        
-        self.semIsRunning.acquire()
+            if self.isPaused == False:
+                self.semIsRunning.acquire()
+                self.isPaused = True
     
     #======================== private =========================================
     
