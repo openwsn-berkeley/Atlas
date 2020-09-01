@@ -33,9 +33,9 @@ class SimEngine(threading.Thread):
         # local variables
         self._currentTime         = 0    # what time is it for the DotBots
         self._mode                = self.MODE_PAUSE
+        self._startTsSim          = None
+        self._startTsReal         = None
         self._playSpeed           = 1.00
-        self._runTime             = 0    # how many seconds has the computer been actively simulating?
-        self._runTimePlayTs       = None # timestamp of when the play button was pressed
         self.events               = []
         self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
@@ -86,20 +86,19 @@ class SimEngine(threading.Thread):
         return self._mode
     
     def formatSimulatedTime(self):
-        returnVal  = []
-        returnVal += ['[']
-        returnVal += [' {0} simulated'.format(str(datetime.timedelta(seconds=self._currentTime)).split('.')[0])]
-        if self._runTime>0 or self._runTimePlayTs!=None:
-            totalRuntime = self._runTime
-            if self._runTimePlayTs!=None:
-                totalRuntime+=time.time()-self._runTimePlayTs
-            returnVal += [
-                '( {0} &times; )'.format(
-                    int(self._currentTime / totalRuntime),
-                )
-            ]
-        returnVal += [']']
-        returnVal  = ' '.join(returnVal)
+        returnVal            = []
+        returnVal           += ['[']
+        returnVal           += [' {0} simulated'.format(str(datetime.timedelta(seconds=self._currentTime)).split('.')[0])]
+        if self._startTsSim!=None :
+            durSim           = self._currentTime-self._startTsSim
+            durReal          = time.time()-self._startTsReal
+            if durReal>1:
+                speed        = int(durSim / durReal)
+            else:
+                speed        = '?'
+            returnVal       += ['( {0:>4} &times; )'.format(speed)]
+        returnVal           += [']']
+        returnVal            = ' '.join(returnVal)
         return returnVal
     
     def schedule(self,ts,cb):
@@ -120,27 +119,23 @@ class SimEngine(threading.Thread):
         '''
         
         with self.dataLock:
-            if self._runTimePlayTs != None:
-                self._runTime      += time.time()-self._runTimePlayTs
-                self._runTimePlayTs = None
             if self._mode != self.MODE_PAUSE:
                 self.semIsRunning.acquire()
-                self._mode = self.MODE_PAUSE
+            self._startTsSim  = None
+            self._startTsReal = None
+            self._mode        = self.MODE_PAUSE
     
     def commandFrameforward(self):
         '''
         execute next event in list of events
         '''
         
-        # abort if not paused
         with self.dataLock:
-            if self._mode != self.MODE_PAUSE:
-                return
-        
-        with self.dataLock:
-            self._mode = self.MODE_FRAMEFORWARD
-        
-        self.semIsRunning.release()
+            if self._mode == self.MODE_PAUSE:
+                self.semIsRunning.release()
+            self._startTsSim  = None
+            self._startTsReal = None
+            self._mode        = self.MODE_FRAMEFORWARD
     
     def commandPlay(self,playSpeed):
         '''
@@ -150,11 +145,9 @@ class SimEngine(threading.Thread):
         with self.dataLock:
             if self._mode == self.MODE_PAUSE:
                 self.semIsRunning.release()
-            if self._runTimePlayTs == None:
-                self._runTimePlayTs = time.time()
-            self._playSpeed   = playSpeed
             self._startTsSim  = self._currentTime
             self._startTsReal = time.time()
+            self._playSpeed   = playSpeed
             self._mode        = self.MODE_PLAY
     
     def commandFastforward(self):
@@ -165,9 +158,9 @@ class SimEngine(threading.Thread):
         with self.dataLock:
             if self._mode == self.MODE_PAUSE:
                 self.semIsRunning.release()
-            if self._runTimePlayTs == None:
-                self._runTimePlayTs = time.time()
-            self._mode = self.MODE_FASTFORWARD
+            self._startTsSim  = self._currentTime
+            self._startTsReal = time.time()
+            self._mode        = self.MODE_FASTFORWARD
     
     #======================== private =========================================
     
