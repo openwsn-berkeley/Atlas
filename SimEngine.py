@@ -96,10 +96,10 @@ class SimEngine(threading.Thread):
             durSim           = self._currentTime-self._startTsSim
             durReal          = time.time()-self._startTsReal
             if durReal>1:
-                speed        = int(durSim / durReal)
+                simSpeed     = int(durSim / durReal)
             else:
-                speed        = '?'
-            returnVal       += ['( {0:>4} &times; )'.format(speed)]
+                simSpeed     = '?'
+            returnVal       += ['( {0:>4} &times; )'.format(simSpeed)]
         returnVal           += [']']
         returnVal            = ' '.join(returnVal)
         return returnVal
@@ -142,7 +142,7 @@ class SimEngine(threading.Thread):
     
     def commandPlay(self,playSpeed):
         '''
-        (re)start the execution of the simulation at moderate speed
+        (re)start the execution of the simulation at moderate simSpeed
         '''
         
         with self.dataLock:
@@ -155,7 +155,7 @@ class SimEngine(threading.Thread):
     
     def commandFastforward(self):
         '''
-        (re)start the execution of the simulation at full speed
+        (re)start the execution of the simulation at full simSpeed
         '''
         
         with self.dataLock:

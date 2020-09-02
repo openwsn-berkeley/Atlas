@@ -20,20 +20,21 @@ class DotBot(object):
         self.floorplan            = floorplan
         
         # local variables
-        self.simEngine            = SimEngine.SimEngine()
-        self.wireless             = Wireless.Wireless()
-        self.x                    = None  # the "real" position, sometimes in the past. Set to None to ensure single initialization
-        self.y                    = None
-        self.posTs                = 0     # timestamp, in s, of when was at position
-        self.headingRequested     = 0     # the heading, a float between 0 and 360 degrees (0 indicates North) as requested by the orchestrator
-        self.headingInaccuracy    = 0     # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
-        self.headingActual        = 0     # actual heading, taking into account inaccuracy
-        self.speedRequested       = 0     # speed, in m/s, as requested by the orchestrator
-        self.speedInaccuracy      = 0     # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
-        self.speedActual          = 0     # actual speed, taking into account inaccuracy
-        self.next_bump_x          = None  # coordinate the DotBot will bump into next
-        self.next_bump_y          = None
-        self.next_bump_ts         = None  # time at which DotBot will bump
+        self.simEngine                 = SimEngine.SimEngine()
+        self.wireless                  = Wireless.Wireless()
+        self.x                         = None  # the "real" position, sometimes in the past. Set to None to ensure single initialization
+        self.y                         = None
+        self.posTs                     = 0     # timestamp, in s, of when was at position
+        self.lastCommandIdReceived     = None  # set to None as not a valid command Id
+        self.headingRequested          = 0     # the heading, a float between 0 and 360 degrees (0 indicates North) as requested by the orchestrator
+        self.headingInaccuracy         = 0     # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
+        self.headingActual             = 0     # actual heading, taking into account inaccuracy
+        self.speedRequested            = 0     # speed, in m/s, as requested by the orchestrator
+        self.speedInaccuracy           = 0     # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
+        self.speedActual               = 0     # actual speed, taking into account inaccuracy
+        self.next_bump_x               = None  # coordinate the DotBot will bump into next
+        self.next_bump_y               = None
+        self.next_bump_ts              = None  # time at which DotBot will bump
     
     #======================== public ==========================================
         
@@ -52,17 +53,21 @@ class DotBot(object):
         Received a packet from the orchestrator
         '''
         
+        # extract portion of orchestrator message which is for me (shorthand)
+        myMsg = packet[self.dotBotId]
+        
         # disregard duplicate command
-        if packet[self.dotBotId]['heading']==self.headingRequested and packet[self.dotBotId]['speed']==self.speedRequested:
+        if myMsg['commandId']==self.lastCommandIdReceived:
             return
         
         # remember what I was asked
-        self.headingRequested     = packet[self.dotBotId]['heading']
-        self.speedRequested       = packet[self.dotBotId]['speed']
+        self.lastCommandIdReceived     = myMsg['commandId']
+        self.headingRequested          = myMsg['heading']
+        self.speedRequested            = myMsg['speed']
         
         # apply heading and speed from packet
-        self._setHeading(packet[self.dotBotId]['heading'])
-        self._setSpeed(  packet[self.dotBotId]['speed'])
+        self._setHeading(myMsg['heading'])
+        self._setSpeed(  myMsg['speed'])
         
         # compute when/where next bump will happen
         (bump_x,bump_y,bump_ts) = self._computeNextBump()
@@ -114,17 +119,17 @@ class DotBot(object):
         assert self.simEngine.currentTime()==self.next_bump_ts
         
         # update my position
-        self.x                    = self.next_bump_x
-        self.y                    = self.next_bump_y
-        self.posTs                = self.next_bump_ts
+        self.x               = self.next_bump_x
+        self.y               = self.next_bump_y
+        self.posTs           = self.next_bump_ts
         
         # stop moving
-        self.speedActual          = 0
+        self.speedActual     = 0
         
         # report bump to orchestrator
         self.wireless.toOrchestrator({
-            'dotBotId': self.dotBotId,
-            'bumpTs':   self.simEngine.currentTime(),
+            'dotBotId':      self.dotBotId,
+            'bumpTs':        self.simEngine.currentTime(),
         })
     
     def _setHeading(self,heading):

@@ -27,6 +27,7 @@ class Orchestrator(object):
                 'posTs':       0,
                 'heading':     0,
                 'speed':       0,
+                'commandId':   0,
             } for (x,y) in self.positions
         ]
         self.discoveredobstacles = [] # the Orchestrator's internal view of the location of the obstacles
@@ -48,7 +49,8 @@ class Orchestrator(object):
         A DotBot indicates its bump sensor was activated at a certain time
         '''
         
-        dotbot = self.dotbotsview[msg['dotBotId']] # shorthand
+        # shorthand
+        dotbot = self.dotbotsview[msg['dotBotId']]
         
         # compute new theoretical position
         dotbot['x']         += (msg['bumpTs']-dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
@@ -87,6 +89,12 @@ class Orchestrator(object):
         else:                                              # in the middle of field
             dotbot['heading']    = random.randint(  0,359)
         
+        # set the DotBot's speed
+        dotbot['speed']          = 1
+        
+        # bump command Id so DotBot knows this is not a duplicate command
+        dotbot['commandId']     += 1
+        
         # send commands to the robots
         self._sendDownstreamCommands()
     
@@ -119,8 +127,9 @@ class Orchestrator(object):
         # format msg
         msg = [
             {
-                'heading': dotbot['heading'],
-                'speed':   dotbot['speed'],
+                'commandId': dotbot['commandId'],
+                'heading':   dotbot['heading'],
+                'speed':     dotbot['speed'],
             } for dotbot in self.dotbotsview
         ]
         
