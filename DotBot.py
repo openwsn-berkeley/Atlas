@@ -16,8 +16,8 @@ class DotBot(object):
     def __init__(self,dotBotId,floorplan):
         
         # store params
-        self.dotBotId             = dotBotId
-        self.floorplan            = floorplan
+        self.dotBotId                  = dotBotId
+        self.floorplan                 = floorplan
         
         # local variables
         self.simEngine                 = SimEngine.SimEngine()
@@ -174,29 +174,23 @@ class DotBot(object):
         elif self.headingActual in [  0,180]:
             # vertical edge case
             
-            north_x      = self.x
-            south_x      = self.x
-            west_y       = None # doesn't cross
-            east_y       = None # doesn't cross
+            north_x     = self.x
+            south_x     = self.x
+            west_y      = None # doesn't cross
+            east_y      = None # doesn't cross
         
         else:
             # general case
              
             # find equation of trajectory as y = a*x + b
-            a = math.tan(math.radians(self.headingActual-90))
-            b = self.y - (a*self.x)
+            a           = math.tan(math.radians(self.headingActual-90))
+            b           = self.y - (a*self.x)
             
             # compute intersection points with 4 walls
             north_x     = (0                    -b)/a # intersection with North wall (y=0)
             south_x     = (self.floorplan.height-b)/a # intersection with South wall (y=self.floorplan.height)
             west_y      = 0*a+b                       # intersection with West wall (x=0)
             east_y      = self.floorplan.width*a+b    # intersection with West wall (x=self.floorplan.width)
-        
-        # round
-        if north_x!=None: north_x = round(north_x,3)
-        if south_x!=None: south_x = round(south_x,3)
-        if  west_y!=None:  west_y = round(west_y,3)
-        if  east_y!=None:  east_y = round(east_y,3)
         
         # pick the two intersection points on the floorplan perimeter
         valid_intersections = []
@@ -256,5 +250,9 @@ class DotBot(object):
         distance   = math.sqrt( (self.x-bump_x)**2 + (self.y-bump_y)**2 )
         timetobump = distance/self.speedActual
         bump_ts    = self.posTs+timetobump
+        
+        # round
+        bump_x     = round(bump_x,3)
+        bump_y     = round(bump_y,3)
         
         return (bump_x,bump_y,bump_ts)
