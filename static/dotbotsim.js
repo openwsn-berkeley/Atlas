@@ -63,6 +63,7 @@ function drawFloorplan(floorplan) {
     $("#fastforwardbutton").offset(   { top: scaleFactor*floorplan.height+ 70 });
     $("#playbuttonsliderdiv").offset( { top: scaleFactor*floorplan.height+ 70 });
     $("#playbuttonslider").offset(    { top: scaleFactor*floorplan.height+ 94 });
+    $("#playbuttontooltip").offset(   { top: scaleFactor*floorplan.height+ 45 });
     $("#playbutton").offset(          { top: scaleFactor*floorplan.height+ 70 });
     $("#pausebutton").offset(         { top: scaleFactor*floorplan.height+ 70 });
     $("#timelabel").offset(           { top: scaleFactor*floorplan.height+ 70 });
@@ -195,11 +196,21 @@ function slideHandlerMouseMove(e) {
     e = e || window.event;
     e.preventDefault();
     
-    // move
+    // record mouse position
     newX = e.clientX;
+    
+    // move play button
     if (newX<playbuttonMinX) {newX=playbuttonMinX};
     if (newX>playbuttonMaxX) {newX=playbuttonMaxX};
     $("#playbutton").offset({ left: newX-25 });
+    
+    // compute current speed setting
+    portion = (newX-playbuttonMinX) / (playbuttonMaxX-playbuttonMinX)
+    speed   = Math.round(playbuttonMinSpeed + portion*(playbuttonMaxSpeed-playbuttonMinSpeed));
+    
+    // display tootip
+    $("#playbuttontooltip").offset({ left: newX-20 });
+    $("#playbuttontooltip").html(speed+' x');
 }
 
 function slideHandlerMouseUp(e) {
@@ -211,6 +222,11 @@ function slideHandlerMouseUp(e) {
     // disarm handlers
     document.onmousemove = null;
     document.onmouseup   = null;
+    
+    // remove tootip
+    $("#playbuttontooltip").html('');
+    $("#playbuttontooltip").offset({ left: -100 });
+    
     
     // determine speed
     buttonX = $("#playbutton").position().left+25;

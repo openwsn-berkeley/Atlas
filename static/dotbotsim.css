@@ -35,6 +35,20 @@
     opacity:          50%;
 }
 
+#playbuttontooltip {
+    position:         absolute;
+    left:             -100px;
+    width:            40px;
+    height:           20px;
+    opacity:          0.50;
+    border-style:     solid;
+    border-width:     1px;
+    border-color:     black;
+    background-color: #aaaaaa;
+    text-align:       center;
+    font-family:      Helvetica, sans-serif;
+}
+
 #playbuttonsliderdiv {
     position:         absolute;
     left:             150px;

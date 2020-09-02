@@ -14,6 +14,7 @@
 <div id="versionlabel">version {{version}}</div>
 <img id="pausebutton"        src="/static/button_pause.svg"/>
 <img id="frameforwardbutton" src="/static/button_frameforward.svg"/>
+<div id="playbuttontooltip"></div>
 <div id="playbuttonsliderdiv"></div>
 <div id="playbuttonslider"></div>
 <img id="playbutton"         src="/static/button_play.svg"/>
