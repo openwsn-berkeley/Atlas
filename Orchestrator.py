@@ -114,7 +114,8 @@ class Orchestrator(object):
         
         # record the obstacle location
         with self.mapLock:
-            self.discoMap['dots'] += [(dotbot['x'],dotbot['y'])]
+            pass
+            #self.discoMap['dots'] += [(dotbot['x'],dotbot['y'])]
         
         # round
         dotbot['x']              = round(dotbot['x'],3)
