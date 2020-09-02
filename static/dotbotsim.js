@@ -20,8 +20,11 @@ function gettingThingsInPlace() {
         $.post('frameforward')
     });
     $("#frameforwardbutton").attr('title', 'Advance the simulation by one event.');
+    $("#playbuttonsliderdiv").hover(handlerPlaybuttonsliderdivHoverIn,handlerPlaybuttonsliderdivHoverOut);
+    $("#playbuttonslider").hover(handlerPlaybuttonsliderdivHoverIn,handlerPlaybuttonsliderdivHoverOut);
     $("#playbutton").mousedown(slideHandlerMouseDown);
     $("#playbutton").attr('title', 'Drag to set the play speed.');
+    $("#playbutton").hover(handlerPlaybuttonsliderdivHoverIn,handlerPlaybuttonsliderdivHoverOut);
     $("#fastforwardbutton").click(function(){
         $.post('fastforward')
     });
@@ -56,11 +59,13 @@ function drawFloorplan(floorplan) {
     
     // position buttons and labels
     $("#pagetitle").width(scaleFactor*floorplan.width);
-    $("#frameforwardbutton").offset({ top: scaleFactor*floorplan.height+ 70 });
-    $("#fastforwardbutton").offset( { top: scaleFactor*floorplan.height+ 70 });
-    $("#playbutton").offset(        { top: scaleFactor*floorplan.height+ 70 });
-    $("#pausebutton").offset(       { top: scaleFactor*floorplan.height+ 70 });
-    $("#timelabel").offset(         { top: scaleFactor*floorplan.height+ 70 });
+    $("#frameforwardbutton").offset(  { top: scaleFactor*floorplan.height+ 70 });
+    $("#fastforwardbutton").offset(   { top: scaleFactor*floorplan.height+ 70 });
+    $("#playbuttonsliderdiv").offset( { top: scaleFactor*floorplan.height+ 70 });
+    $("#playbuttonslider").offset(    { top: scaleFactor*floorplan.height+ 94 });
+    $("#playbutton").offset(          { top: scaleFactor*floorplan.height+ 70 });
+    $("#pausebutton").offset(         { top: scaleFactor*floorplan.height+ 70 });
+    $("#timelabel").offset(           { top: scaleFactor*floorplan.height+ 70 });
     $("#versionlabel").offset(
         {
             top:  scaleFactor*floorplan.height+ 70,
@@ -164,8 +169,17 @@ function drawDotBots(data) {
             .attr("r", 2);
 }
 
+
+function handlerPlaybuttonsliderdivHoverIn(e) {
+    $("#playbuttonslider").css( { opacity: 0.30 } );
+}
+
+function handlerPlaybuttonsliderdivHoverOut(e) {
+    $("#playbuttonslider").css( { opacity: 0.10 } );
+}
+
 function slideHandlerMouseDown(e) {
-    console.log('slideHandlerMouseDown');
+    
     // avoid default event
     e = e || window.event;
     e.preventDefault();
@@ -176,7 +190,7 @@ function slideHandlerMouseDown(e) {
 }
 
 function slideHandlerMouseMove(e) {
-    console.log('slideHandlerMouseMove');
+    
     // avoid default event
     e = e || window.event;
     e.preventDefault();
@@ -189,7 +203,7 @@ function slideHandlerMouseMove(e) {
 }
 
 function slideHandlerMouseUp(e) {
-    console.log('slideHandlerMouseUp');
+    
     // avoid default event
     e = e || window.event;
     e.preventDefault();
