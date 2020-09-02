@@ -1,10 +1,58 @@
 # built-in
 import random
 import math
+import threading
+import copy
+import time
 # third-party
 # local
 import SimEngine
 import Wireless
+
+class MapBuilder(threading.Thread):
+    '''
+    A background task which consolidates the map.
+    It combines dots into lines
+    It declares when the map is complete.
+    '''
+    
+    PERIOD         = 1 # FIXME: in simulated time?
+    MINFEATURESIZE = 1 # shortest wall, narrowest opening
+    
+    def __init__(self,discoMap,dataLock):
+        
+        # store params
+        self.discoMap        = discoMap
+        self.dataLock        = dataLock
+        
+        # start thread
+        threading.Thread.__init__(self)
+        self.name            = 'MapBuilder'
+        self.daemon          = True
+        self.start()
+    
+    def run(self):
+        while True:
+            
+            # wait a bit between consolidation actions
+            time.sleep(self.PERIOD)
+            
+            # consolidate
+            with self.dataLock:
+                self._consolidateMap(self.discoMap)
+    
+    def _consolidateMap(self,discoMap):
+        '''
+        self.discoMap['lines'] += [
+            (
+                random.randint(0,18),
+                random.randint(0,6),
+                random.randint(0,18),
+                random.randint(0,6),
+            )
+        ]
+        '''
+        pass
 
 class Orchestrator(object):
     '''
@@ -18,9 +66,9 @@ class Orchestrator(object):
         self.floorplan         = floorplan
         
         # local variables
-        self.simEngine     = SimEngine.SimEngine()
-        self.wireless      = Wireless.Wireless()
-        self.dotbotsview   = [ # the Orchestrator's internal view of the DotBots
+        self.simEngine         = SimEngine.SimEngine()
+        self.wireless          = Wireless.Wireless()
+        self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
             {
                 'x':           x,
                 'y':           y,
@@ -30,7 +78,14 @@ class Orchestrator(object):
                 'commandId':   0,
             } for (x,y) in self.positions
         ]
-        self.discoveredobstacles = [] # the Orchestrator's internal view of the location of the obstacles
+        # the map the orchestrator is building
+        self.mapLock           = threading.RLock()
+        self.discoMap = {
+            'complete': False,    # is the map complete?
+            'dots':     [],       # each bump becomes a dot
+            'lines':    [],       # closeby dots are aggregated into a line
+        }
+        self.mapBuilder        = MapBuilder(self.discoMap,self.mapLock)
     
     #======================== public ==========================================
     
@@ -58,7 +113,8 @@ class Orchestrator(object):
         dotbot['posTs']          = msg['bumpTs']
         
         # record the obstacle location
-        #poipoipoiself.discoveredobstacles += [(dotbot['x'],dotbot['y'])]
+        with self.mapLock:
+            self.discoMap['dots'] += [(dotbot['x'],dotbot['y'])]
         
         # round
         dotbot['x']              = round(dotbot['x'],3)
@@ -104,6 +160,9 @@ class Orchestrator(object):
         
         # compute updated position
         now         = self.simEngine.currentTime() # shorthand
+        
+        with self.mapLock:
+            discoMapCopy = copy.deepcopy(self.discoMap)
         return {
             'dotbots': [
                 {
@@ -111,7 +170,7 @@ class Orchestrator(object):
                     'y': db['y']+(now-db['posTs'])*math.sin(math.radians(db['heading']-90))*db['speed'],
                 } for db in self.dotbotsview
             ],
-            'discoveredobstacles': self.discoveredobstacles,
+            'discomap': discoMapCopy,
         }
     
     #======================== private =========================================

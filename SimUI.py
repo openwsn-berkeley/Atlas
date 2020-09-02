@@ -79,7 +79,7 @@ class SimUI(object):
             'mode':                self.simEngine.mode(),
             'simulatedTime':       self.simEngine.formatSimulatedTime(),
             'dotbots':             [],
-            'discoveredobstacles': orchestratorView['discoveredobstacles'],
+            'discomap':            orchestratorView['discomap'],
         }
         for dotbot in self.dotbots:
             returnVal['dotbots'] += [dotbot.getAttitude()]

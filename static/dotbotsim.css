@@ -103,8 +103,13 @@
     fill:             #aaaaaa;
 }
 
-.discoveredobstacle {
-    fill:             black;
+.discomapdot {
+    fill:             blue;
+}
+
+.discomapline {
+    stroke:           black;
+    stroke-width:     2px;
 }
 
 .positionerror {
