@@ -62,12 +62,11 @@ class Orchestrator(object):
         dotbot['x']          = round(dotbot['x'],3)
         dotbot['y']          = round(dotbot['y'],3)
         
-        # adjust the heading of the DotBot which bumped (avoid immediately bumping into same wall)
+        # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
         against_N_wall       = math.isclose(dotbot['y'],                    0,abs_tol=10**-3)
         against_E_wall       = math.isclose(dotbot['x'], self.floorplan.width,abs_tol=10**-3)
         against_S_wall       = math.isclose(dotbot['y'],self.floorplan.height,abs_tol=10**-3)
         against_W_wall       = math.isclose(dotbot['x'],                    0,abs_tol=10**-3)
-        
         if   against_N_wall and against_W_wall:            # NW corner
             dotbot['heading']    = random.randint( 90,180)
         elif against_N_wall and against_E_wall:            # NE corner

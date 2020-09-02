@@ -60,8 +60,11 @@ class SimEngine(threading.Thread):
             # wait for at least one event
             self.semNumEvents.acquire()
             
-            # handle
-            self._handleNextEvent()
+            # handle next event
+            (ts,cb) = self.events.pop(0)
+            assert self._currentTime<=ts
+            self._currentTime = ts
+            cb()
             
             # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
             if self._mode==self.MODE_FRAMEFORWARD:
@@ -163,11 +166,3 @@ class SimEngine(threading.Thread):
             self._mode        = self.MODE_FASTFORWARD
     
     #======================== private =========================================
-    
-    def _handleNextEvent(self):
-        assert self.events
-        
-        (ts,cb) = self.events.pop(0)
-        
-        self._currentTime = ts
-        cb()

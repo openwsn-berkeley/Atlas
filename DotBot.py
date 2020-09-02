@@ -2,6 +2,7 @@
 import random
 import math
 import itertools
+import threading
 # third-party
 # local
 import SimEngine
@@ -42,9 +43,9 @@ class DotBot(object):
         '''
         assert self.x==None
         assert self.y==None
-        self.x = x
-        self.y = y
-        self.posTs = self.simEngine.currentTime()
+        self.x      = x
+        self.y      = y
+        self.posTs  = self.simEngine.currentTime()
     
     def fromOrchestrator(self,packet):
         '''
@@ -81,15 +82,22 @@ class DotBot(object):
         \post updates attributes position and posTs
         '''
         
-        # update position
-        now         = self.simEngine.currentTime() # shorthand
-        self.x     += (now-self.posTs)*math.cos(math.radians(self.headingActual-90))*self.speedActual
-        self.y     += (now-self.posTs)*math.sin(math.radians(self.headingActual-90))*self.speedActual
-        self.posTs  = now
+        # gather state
+        now              = self.simEngine.currentTime()
+        x                = self.x
+        y                = self.y
+        posTs            = self.posTs
+        headingActual    = self.headingActual
+        speedActual      = self.speedActual
         
+        # update position
+        newX                 = x + (now-posTs)*math.cos(math.radians(headingActual-90))*speedActual
+        newY                 = y + (now-posTs)*math.sin(math.radians(headingActual-90))*speedActual
+        
+        # do NOT write back any results to the DotBot's state as race condition possible
         return {
-            'x':           self.x,
-            'y':           self.y,
+            'x':           newX,
+            'y':           newY,
             'heading':     self.headingActual,
             'speed':       self.speedActual,
             'next_bump_x': self.next_bump_x,
@@ -200,7 +208,7 @@ class DotBot(object):
         if len(valid_intersections)>2:
             distances = [(self._dist(a,b),a,b) for (a,b) in itertools.product(valid_intersections,valid_intersections)]
             distances = sorted(distances,key = lambda e: e[0])
-            valid_intersections = [distances[-1][1],distances[-1][2]]        
+            valid_intersections = [distances[-1][1],distances[-1][2]]
         assert len(valid_intersections)==2
         
         # pick the correct intersection point given the heading of the robot
