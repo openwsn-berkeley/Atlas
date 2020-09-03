@@ -17,7 +17,7 @@ class MapBuilder(object):
     '''
     
     PERIOD         = 1 # s, in simulated time
-    MINFEATURESIZE = 10  # shortest wall, narrowest opening
+    MINFEATURESIZE = 1 # shortest wall, narrowest opening
     
     def __init__(self,discoMap,dataLock):
         
@@ -27,14 +27,6 @@ class MapBuilder(object):
         
         # local variables
         self.simEngine       = SimEngine.SimEngine()
-        '''
-        self.discoMap = {
-            'dots':   [(0,5)],
-            'lines':  [(0,3,0,4)],
-        }
-        self._consolidateMap()
-        print(self.discoMap)
-        '''
         
         # schedule first consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._consolidateMap)
@@ -50,12 +42,7 @@ class MapBuilder(object):
             self.discoMap['dots']                = list(set(self.discoMap['dots']))
             
             # horizontal
-            print('\n\n========================================================')
-            print("self.discoMap['dots']:     {0}".format((self.discoMap['dots'])))
-            print("self.discoMap['lines']:    {0}".format((self.discoMap['lines'])))
             for direction in ['horizontal','vertical']:
-                
-                print('======= {0}'.format(direction))
                 
                 refs                             = []
                 if direction=='horizontal':
@@ -67,28 +54,24 @@ class MapBuilder(object):
                 refs                             = set(refs)
                 
                 for ref in refs:
-                    print('ref:  {0}'.format(ref))
                     
                     # select all the dots which are aligned at this ref
                     if direction=='horizontal':
                         thesedots                = [x for (x,y) in self.discoMap['dots'] if y==ref]
                     else:
                         thesedots                = [y for (x,y) in self.discoMap['dots'] if x==ref]
-                    print('1 thesedots:          {0}'.format(thesedots))
                     
                     # select the lines we already know of at this ref
                     if direction=='horizontal':
                         theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lay==ref and lby==ref]
                     else:
                         theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lax==ref and lbx==ref]
-                    print('2 theselines:         {0}'.format(theselines))
                     
                     # remove dots which fall inside a line
                     if direction=='horizontal':
                         thesedots                = [x for (x,y) in self._removeDotsOnLines([(x,ref) for x in thesedots] ,theselines)]
                     else:
                         thesedots                = [y for (x,y) in self._removeDotsOnLines([(ref,y) for y in thesedots] ,theselines)]
-                    print('3 thesedots:          {0}'.format(thesedots))
                     
                     # add vertices of all lines to the dots
                     for (lax,lay,lbx,lby) in theselines:
@@ -98,15 +81,12 @@ class MapBuilder(object):
                         else:
                             thesedots           += [lay]
                             thesedots           += [lby]
-                    print('4 thesedots:          {0}'.format(thesedots))
                     
                     # remove duplicates (in case dot falls on vertice of existing line)
                     thesedots                    = list(set(thesedots))
-                    print('5 thesedots:          {0}'.format(thesedots))
                     
                     # sort dots by increasing value
                     thesedots                    = sorted(thesedots)
-                    print('6 thesedots:          {0}'.format(thesedots))
                     
                     # create line between close dots
                     for (idx,v) in enumerate(thesedots):
@@ -118,11 +98,9 @@ class MapBuilder(object):
                                 theselines      += [(v,ref,vnext,ref)]
                             else:
                                 theselines      += [(ref,v,ref,vnext)]
-                    print('7 theselines:         {0}'.format(theselines))
                     
                     # remove line duplicates (caused by short lines which turn into close points)
                     theselines                   = list(set(theselines))
-                    print('8 theselines:         {0}'.format(theselines))
                     
                     # join the lines that touch
                     if direction=='horizontal':
@@ -142,7 +120,6 @@ class MapBuilder(object):
                             theselines.pop(idx+1)
                         else:
                             idx                 += 1
-                    print('9 theselines:         {0}'.format(theselines))
                     
                     # store
                     reslines                    += theselines
@@ -152,22 +129,14 @@ class MapBuilder(object):
             
             # remove duplicate dots
             self.discoMap['dots']                = list(set(self.discoMap['dots']))
-            print("self.discoMap['dots']:        {0}".format((self.discoMap['dots'])))
             
             # remove dots which fall inside a line
             self.discoMap['dots']                = self._removeDotsOnLines(self.discoMap['dots'],self.discoMap['lines'])
-            print("self.discoMap['dots']:        {0}".format((self.discoMap['dots'])))
             
-            # update main structure
-            
-            print("dots ({0}): {1}".format(len(self.discoMap['dots']),self.discoMap['dots']))
-            print("lines ({0}): {1}".format(len(self.discoMap['lines']),self.discoMap['lines']))
-        
         # schedule next consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._consolidateMap)
     
     def _removeDotsOnLines(self,dots,lines):
-        print('    poipoipoi in ',dots,lines)
         idx = 0
         while idx<len(dots):
             (dx,dy)                              = dots[idx]
@@ -185,13 +154,11 @@ class MapBuilder(object):
                     # not co-linear to point
                     condition                    = False
                 if condition:
-                    print('        poipoipoi removed',dots[idx])
                     dots.pop(idx)
                     removed                      = True
                     break
             if removed==False:
                 idx                             += 1
-        print('    poipoipoi out',dots,lines)
         return dots
     
 class Orchestrator(object):
