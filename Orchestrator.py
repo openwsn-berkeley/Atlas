@@ -46,26 +46,28 @@ class MapBuilder(object):
         with self.dataLock:
             
             # results lists of (lone) dots and lines
-            reslonedots                     = []
-            reslines                        = []
-            
-            # artificially add dots at the vertices of all lines
-            # TODO
+            reslonedots                          = []
+            reslines                             = []
             
             # remove duplicate dots
-            self.discoMap['dots']           = list(set(self.discoMap['dots']))
+            self.discoMap['dots']                = list(set(self.discoMap['dots']))
             
             # horizontal
             print('\n\n========================================================')
-            print (self.discoMap['dots'])
+            print("self.discoMap['dots']:     {0}".format((self.discoMap['dots'])))
+            print("self.discoMap['lines']:    {0}".format((self.discoMap['lines'])))
             for direction in ['horizontal','vertical']:
                 
                 print('======= {0}'.format(direction))
                 
+                refs                             = []
                 if direction=='horizontal':
-                    refs                         = set([y for (x,y) in self.discoMap['dots']])
+                    refs                        += [y   for (x,y)             in self.discoMap['dots']]               # all dots
+                    refs                        += [lay for (lax,lay,lbx,lby) in self.discoMap['lines'] if lay==lby ] # all horizontal lines
                 else:
-                    refs                         = set([y for (x,y) in self.discoMap['dots']])
+                    refs                        += [x   for (x,y)             in self.discoMap['dots']]               # all dots
+                    refs                        += [lax for (lax,lay,lbx,lby) in self.discoMap['lines'] if lax==lbx ] # all vertical lines
+                refs                             = set(refs)
                 
                 for ref in refs:
                     print('ref:  {0}'.format(ref))
@@ -75,120 +77,121 @@ class MapBuilder(object):
                         thesedots                = [x for (x,y) in self.discoMap['dots'] if y==ref]
                     else:
                         thesedots                = [y for (x,y) in self.discoMap['dots'] if x==ref]
-                    print('len(thesedots):      {0}'.format(len(thesedots)))
-                    
-                    # there can be no line if there is only one: it's a lone dot
-                    if len(thesedots)==1:
-                        reslonedots             += [(thesedots[0],ref)]
-                        continue
+                    print('1 thesedots:          {0}'.format(thesedots))
                     
                     # select the lines we already know of at this ref
                     if direction=='horizontal':
                         theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lay==ref and lby==ref]
                     else:
                         theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lax==ref and lbx==ref]
-                    print('len(theselines):     {0}'.format(len(theselines)))
-                    
-                    # sort dots by increasing value
-                    thesedots                   = sorted(thesedots)
-                    print('len(thesedots):      {0}'.format(len(thesedots)))
+                    print('2 theselines:         {0}'.format(theselines))
                     
                     # remove dots which fall inside a line
-                    idx = 0
-                    while idx<len(thesedots):
-                        v                       = thesedots[idx]
-                        removeOne               = False
-                        for (lax,lay,lbx,lby) in theselines:
-                            if direction=='horizontal':
-                                condition       = lax<=v and v<=lbx
-                            else:
-                                condition       = lay<=v and v<=lby
-                            if condition:
-                                thesedots.pop(idx)
-                                removeOne       = True
-                                break
-                        if removeOne==False:
-                            idx                += 1
-                    print('len(thesedots):      {0}'.format(len(thesedots)))
+                    if direction=='horizontal':
+                        thesedots                = [x for (x,y) in self._removeDotsOnLines([(x,ref) for x in thesedots] ,theselines)]
+                    else:
+                        thesedots                = [y for (x,y) in self._removeDotsOnLines([(ref,y) for y in thesedots] ,theselines)]
+                    print('3 thesedots:          {0}'.format(thesedots))
                     
-                    # add vertices of all lines to the dots (and sort)
+                    # add vertices of all lines to the dots
                     for (lax,lay,lbx,lby) in theselines:
                         if direction=='horizontal':
-                            thesedots          += [lax]
-                            thesedots          += [lbx]
+                            thesedots           += [lax]
+                            thesedots           += [lbx]
                         else:
-                            thesedots          += [lay]
-                            thesedots          += [lby]
-                    thesedots                   = sorted(thesedots)
-                    print('len(thesedots):      {0}'.format(len(thesedots)))
+                            thesedots           += [lay]
+                            thesedots           += [lby]
+                    thesedots                    = sorted(thesedots)
+                    print('4 thesedots:          {0}'.format(thesedots))
                     
-                    # create line between close dots; remainder dots are lonedots
+                    # sort dots by increasing value
+                    thesedots                    = sorted(thesedots)
+                    print('5 thesedots:          {0}'.format(thesedots))
+                    
+                    # create line between close dots
                     for (idx,v) in enumerate(thesedots):
                         if idx==len(thesedots)-1:
-                            if lastdotlone:
-                                if direction=='horizontal':
-                                    reslonedots+= [(v,ref)]
-                                else:
-                                    reslonedots+= [(ref,v)]
                             continue
-                        vnext                   = thesedots[idx+1]
+                        vnext                    = thesedots[idx+1]
                         if vnext-v<=self.MINFEATURESIZE:
                             if direction=='horizontal':
-                                theselines     += [(v,ref,vnext,ref)]
+                                theselines      += [(v,ref,vnext,ref)]
                             else:
-                                theselines     += [(ref,v,ref,vnext)]
-                            lastdotlone         = False
-                        else:
-                            if direction=='horizontal':
-                                reslonedots    += [(v,ref)]
-                            else:
-                                reslonedots    += [(ref,v)]
-                            lastdotlone         = True
-                    print('len(theselines):     {0}'.format(len(theselines)))
-                    print('len(reslonedots):    {0}'.format(len(reslonedots)))
+                                theselines      += [(ref,v,ref,vnext)]
+                    print('6 theselines:         {0}'.format(theselines))
                     
-                    # join lines which touch
+                    # remove line duplicates (caused by short lines already considered)
+                    theselines                   = list(set(theselines))
+                    print('7 theselines:         {0}'.format(theselines))
+                    
+                    # join the lines that touch
                     theselines = sorted(theselines,key = lambda l: l[0])
                     idx = 0
                     while idx<len(theselines)-1:
-                        (lax,lay,lbx,lby)       = theselines[idx]
-                        (nax,nay,nbx,nby)       = theselines[idx+1]
+                        (lax,lay,lbx,lby)        = theselines[idx]
+                        (nax,nay,nbx,nby)        = theselines[idx+1]
                         if direction=='horizontal':
-                            condition           = (lbx==nax)
+                            condition            = (lbx==nax)
                         else:
-                            condition           = (lby==nay)
+                            condition            = (lby==nay)
                         if condition:
-                            theselines[idx]     = (lax,lay,nbx,nby)
+                            theselines[idx]      = (lax,lay,nbx,nby)
                             theselines.pop(idx+1)
                         else:
-                            idx                += 1
-                    print('len(theselines):     {0}'.format(len(theselines)))
+                            idx                 += 1
+                    print('8 theselines:         {0}'.format(theselines))
                     
-                    # store lines
-                    reslines                   += theselines
+                    # store
+                    reslines                    += theselines
             
-            # remove lone dots that are vertices of lines
-            idx = 0
-            while idx<len(reslonedots):
-                deleted = False
-                for (lax,lay,lbx,lby) in reslines:
-                    if reslonedots[idx]==(lax,lay) or reslonedots[idx]==(lbx,lby):
-                        reslonedots.pop(idx)
-                        deleted             = True
-                        break
-                if deleted == False:
-                    idx                    += 1
+            # store
+            self.discoMap['lines']               = reslines
+            
+            # remove duplicate dots
+            self.discoMap['dots']                = list(set(self.discoMap['dots']))
+            print("self.discoMap['dots']:        {0}".format((self.discoMap['dots'])))
+            
+            # remove dots which fall inside a line
+            self.discoMap['dots']                = self._removeDotsOnLines(self.discoMap['dots'],self.discoMap['lines'])
+            print("self.discoMap['dots']:        {0}".format((self.discoMap['dots'])))
             
             # update main structure
-            self.discoMap['dots']           = reslonedots
-            self.discoMap['lines']          = reslines
-            print("len(self.discoMap['dots']):     {0}".format(len(self.discoMap['dots'])))
-            print("len(self.discoMap['lines']):    {0}".format(len(self.discoMap['lines'])))
+            
+            print("self.discoMap['dots']:        {0}".format((self.discoMap['dots'])))
+            print("self.discoMap['lines']:       {0}".format((self.discoMap['lines'])))
             
         
         # schedule next consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._consolidateMap)
-
+    
+    def _removeDotsOnLines(self,dots,lines):
+        print('    poipoipoi in ',dots,lines)
+        idx = 0
+        while idx<len(dots):
+            (dx,dy)                              = dots[idx]
+            removed                              = False
+            for (lax,lay,lbx,lby) in lines:
+                if   lay==lby and lay==dy:
+                    # horizontal line, co-linear to point
+                    
+                    condition                    = lax<=dx and dx<=lbx
+                elif lax==lbx and lax==dx:
+                    # vertical line,   co-linear to point
+                    
+                    condition                    = lay<=dy and dy<=lby
+                else:
+                    # not co-linear to point
+                    condition                    = False
+                if condition:
+                    print('        poipoipoi removed',dots[idx])
+                    dots.pop(idx)
+                    removed                      = True
+                    break
+            if removed==False:
+                idx                             += 1
+        print('    poipoipoi out',dots,lines)
+        return dots
+    
 class Orchestrator(object):
     '''
     The central orchestrator of the expedition.
