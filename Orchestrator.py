@@ -28,113 +28,120 @@ class MapBuilder(object):
         # local variables
         self.simEngine       = SimEngine.SimEngine()
         
-        # schedule first consolidation activity
-        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._consolidateMap)
+        # schedule first housekeeping activity
+        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
     
-    def _consolidateMap(self):
+    def _houseKeeping(self):
         
         with self.dataLock:
+            # consolidate map
+            self._consolidateMap()
             
-            # result list of lines
-            reslines                             = []
-            
-            # remove duplicate dots
-            self.discoMap['dots']                = list(set(self.discoMap['dots']))
-            
-            # horizontal
-            for direction in ['horizontal','vertical']:
-                
-                refs                             = []
-                if direction=='horizontal':
-                    refs                        += [y   for (x,y)             in self.discoMap['dots']]               # all dots
-                    refs                        += [lay for (lax,lay,lbx,lby) in self.discoMap['lines'] if lay==lby ] # all horizontal lines
-                else:
-                    refs                        += [x   for (x,y)             in self.discoMap['dots']]               # all dots
-                    refs                        += [lax for (lax,lay,lbx,lby) in self.discoMap['lines'] if lax==lbx ] # all vertical lines
-                refs                             = set(refs)
-                
-                for ref in refs:
-                    
-                    # select all the dots which are aligned at this ref
-                    if direction=='horizontal':
-                        thesedots                = [x for (x,y) in self.discoMap['dots'] if y==ref]
-                    else:
-                        thesedots                = [y for (x,y) in self.discoMap['dots'] if x==ref]
-                    
-                    # select the lines we already know of at this ref
-                    if direction=='horizontal':
-                        theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lay==ref and lby==ref]
-                    else:
-                        theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lax==ref and lbx==ref]
-                    
-                    # remove dots which fall inside a line
-                    if direction=='horizontal':
-                        thesedots                = [x for (x,y) in self._removeDotsOnLines([(x,ref) for x in thesedots] ,theselines)]
-                    else:
-                        thesedots                = [y for (x,y) in self._removeDotsOnLines([(ref,y) for y in thesedots] ,theselines)]
-                    
-                    # add vertices of all lines to the dots
-                    for (lax,lay,lbx,lby) in theselines:
-                        if direction=='horizontal':
-                            thesedots           += [lax]
-                            thesedots           += [lbx]
-                        else:
-                            thesedots           += [lay]
-                            thesedots           += [lby]
-                    
-                    # remove duplicates (in case dot falls on vertice of existing line)
-                    thesedots                    = list(set(thesedots))
-                    
-                    # sort dots by increasing value
-                    thesedots                    = sorted(thesedots)
-                    
-                    # create line between close dots
-                    for (idx,v) in enumerate(thesedots):
-                        if idx==len(thesedots)-1:
-                            continue
-                        vnext                    = thesedots[idx+1]
-                        if vnext-v<=self.MINFEATURESIZE:
-                            if direction=='horizontal':
-                                theselines      += [(v,ref,vnext,ref)]
-                            else:
-                                theselines      += [(ref,v,ref,vnext)]
-                    
-                    # remove line duplicates (caused by short lines which turn into close points)
-                    theselines                   = list(set(theselines))
-                    
-                    # join the lines that touch
-                    if direction=='horizontal':
-                        theselines = sorted(theselines,key = lambda l: l[0])
-                    else:
-                        theselines = sorted(theselines,key = lambda l: l[1])
-                    idx = 0
-                    while idx<len(theselines)-1:
-                        (lax,lay,lbx,lby)        = theselines[idx]
-                        (nax,nay,nbx,nby)        = theselines[idx+1]
-                        if direction=='horizontal':
-                            condition            = (lbx==nax)
-                        else:
-                            condition            = (lby==nay)
-                        if condition:
-                            theselines[idx]      = (lax,lay,nbx,nby)
-                            theselines.pop(idx+1)
-                        else:
-                            idx                 += 1
-                    
-                    # store
-                    reslines                    += theselines
-            
-            # store
-            self.discoMap['lines']               = reslines
-            
-            # remove duplicate dots
-            self.discoMap['dots']                = list(set(self.discoMap['dots']))
-            
-            # remove dots which fall inside a line
-            self.discoMap['dots']                = self._removeDotsOnLines(self.discoMap['dots'],self.discoMap['lines'])
-            
+            # decide whether map completed
+            self.discoMap['complete'] = self._isMapComplete()
+        
         # schedule next consolidation activity
-        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._consolidateMap)
+        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
+    
+    def _consolidateMap(self):
+            
+        # result list of lines
+        reslines                             = []
+        
+        # remove duplicate dots
+        self.discoMap['dots']                = list(set(self.discoMap['dots']))
+        
+        # horizontal
+        for direction in ['horizontal','vertical']:
+            
+            refs                             = []
+            if direction=='horizontal':
+                refs                        += [y   for (x,y)             in self.discoMap['dots']]               # all dots
+                refs                        += [lay for (lax,lay,lbx,lby) in self.discoMap['lines'] if lay==lby ] # all horizontal lines
+            else:
+                refs                        += [x   for (x,y)             in self.discoMap['dots']]               # all dots
+                refs                        += [lax for (lax,lay,lbx,lby) in self.discoMap['lines'] if lax==lbx ] # all vertical lines
+            refs                             = set(refs)
+            
+            for ref in refs:
+                
+                # select all the dots which are aligned at this ref
+                if direction=='horizontal':
+                    thesedots                = [x for (x,y) in self.discoMap['dots'] if y==ref]
+                else:
+                    thesedots                = [y for (x,y) in self.discoMap['dots'] if x==ref]
+                
+                # select the lines we already know of at this ref
+                if direction=='horizontal':
+                    theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lay==ref and lby==ref]
+                else:
+                    theselines               = [(lax,lay,lbx,lby) for (lax,lay,lbx,lby) in self.discoMap['lines'] if lax==ref and lbx==ref]
+                
+                # remove dots which fall inside a line
+                if direction=='horizontal':
+                    thesedots                = [x for (x,y) in self._removeDotsOnLines([(x,ref) for x in thesedots] ,theselines)]
+                else:
+                    thesedots                = [y for (x,y) in self._removeDotsOnLines([(ref,y) for y in thesedots] ,theselines)]
+                
+                # add vertices of all lines to the dots
+                for (lax,lay,lbx,lby) in theselines:
+                    if direction=='horizontal':
+                        thesedots           += [lax]
+                        thesedots           += [lbx]
+                    else:
+                        thesedots           += [lay]
+                        thesedots           += [lby]
+                
+                # remove duplicates (in case dot falls on vertice of existing line)
+                thesedots                    = list(set(thesedots))
+                
+                # sort dots by increasing value
+                thesedots                    = sorted(thesedots)
+                
+                # create line between close dots
+                for (idx,v) in enumerate(thesedots):
+                    if idx==len(thesedots)-1:
+                        continue
+                    vnext                    = thesedots[idx+1]
+                    if vnext-v<=self.MINFEATURESIZE:
+                        if direction=='horizontal':
+                            theselines      += [(v,ref,vnext,ref)]
+                        else:
+                            theselines      += [(ref,v,ref,vnext)]
+                
+                # remove line duplicates (caused by short lines which turn into close points)
+                theselines                   = list(set(theselines))
+                
+                # join the lines that touch
+                if direction=='horizontal':
+                    theselines = sorted(theselines,key = lambda l: l[0])
+                else:
+                    theselines = sorted(theselines,key = lambda l: l[1])
+                idx = 0
+                while idx<len(theselines)-1:
+                    (lax,lay,lbx,lby)        = theselines[idx]
+                    (nax,nay,nbx,nby)        = theselines[idx+1]
+                    if direction=='horizontal':
+                        condition            = (lbx==nax)
+                    else:
+                        condition            = (lby==nay)
+                    if condition:
+                        theselines[idx]      = (lax,lay,nbx,nby)
+                        theselines.pop(idx+1)
+                    else:
+                        idx                 += 1
+                
+                # store
+                reslines                    += theselines
+        
+        # store
+        self.discoMap['lines']               = reslines
+        
+        # remove duplicate dots
+        self.discoMap['dots']                = list(set(self.discoMap['dots']))
+        
+        # remove dots which fall inside a line
+        self.discoMap['dots']                = self._removeDotsOnLines(self.discoMap['dots'],self.discoMap['lines'])
     
     def _removeDotsOnLines(self,dots,lines):
         idx = 0
@@ -160,6 +167,20 @@ class MapBuilder(object):
             if removed==False:
                 idx                             += 1
         return dots
+    
+    def _isMapComplete(self):
+        
+        while True:
+            
+            # map is never complete if there are dots remaining
+            if self.discoMap['dots']:
+                returnVal = False
+                break
+            
+            returnVal = True # poipoipoi
+            break
+        
+        return returnVal
     
 class Orchestrator(object):
     '''

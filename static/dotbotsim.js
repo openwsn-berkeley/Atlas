@@ -155,6 +155,13 @@ function drawDotBots(data) {
             .attr("fill",function(d,i){return dotbotcolors[i%10];})
             .attr("r", 6);
     
+    // discomapcomplete
+    if (data.discomap.complete==true) {
+        $(".discomapline").css( { stroke: 'green' } );
+    } else {
+        $(".discomapline").css( { stroke: 'red' } );
+    }
+    
     // discomapdots
     var discomapdots = svg.selectAll(".discomapdot")
         .data(data.discomap.dots);
