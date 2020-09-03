@@ -159,15 +159,17 @@ function drawDotBots(data) {
     var discomapdots = svg.selectAll(".discomapdot")
         .data(data.discomap.dots);
     discomapdots
-        .transition()
-            .attr("cx", function(d) { return scaleFactor*d[0]; })
-            .attr("cy", function(d) { return scaleFactor*d[1]; });
+        .attr("cx", function(d) { return scaleFactor*d[0]; })
+        .attr("cy", function(d) { return scaleFactor*d[1]; });
     discomapdots
         .enter().append("circle")
             .attr("cx", function(d) { return scaleFactor*d[0]; })
             .attr("cy", function(d) { return scaleFactor*d[1]; })
             .attr("class", "discomapdot")
             .attr("r", 2);
+    discomapdots
+        .exit()
+            .remove();
     
     // discomaplines
     var discomaplines  = svg.selectAll(".discomapline")
@@ -183,7 +185,10 @@ function drawDotBots(data) {
             .attr("y1", function(d) { return scaleFactor*d[1]; })
             .attr("x2", function(d) { return scaleFactor*d[2]; })
             .attr("y2", function(d) { return scaleFactor*d[3]; })
-            .attr("class", "discomapline")
+            .attr("class", "discomapline");
+    discomaplines
+        .exit()
+            .remove();
 }
 
 
