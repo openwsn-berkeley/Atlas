@@ -34,11 +34,18 @@ def collisionPoint(xmax,xmin,ymax,ymin,x1,y1,heading):
     print('collosion at :', (xcollide,ycollide))
     return         
     
-    
+#============================ main ============================================
+
+TESTCASES = [
+    #  rx ry angle  ax ay bx by   -> cx  cy
+    (  5, 5, 90,    10, 0,15, 10,    10, 5 )
+]
+
 def main():
-    #xmax, xmin, ymax, ymin, x1 , y1, heading 
+    for ( (rx,ry,angle,ax,ay,bx,by,cx,cy) in TESTCASES):
+        assert collisionPoint(rx,ry,angle,ax,ay,bx,by)==cx,cy
     collisionPoint(30,-30,20,-20,50,-10,45)
     print('Done.')
 
 if __name__=='__main__':
-    main() 
+    main()
