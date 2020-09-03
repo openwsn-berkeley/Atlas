@@ -17,7 +17,7 @@ class MapBuilder(object):
     '''
     
     PERIOD         = 1 # s, in simulated time
-    MINFEATURESIZE = 1  # shortest wall, narrowest opening
+    MINFEATURESIZE = 10  # shortest wall, narrowest opening
     
     def __init__(self,discoMap,dataLock):
         
@@ -26,27 +26,24 @@ class MapBuilder(object):
         self.dataLock        = dataLock
         
         # local variables
-        self.simEngine         = SimEngine.SimEngine()
+        self.simEngine       = SimEngine.SimEngine()
+        '''
+        self.discoMap = {
+            'dots':   [(0,5)],
+            'lines':  [(0,3,0,4)],
+        }
+        self._consolidateMap()
+        print(self.discoMap)
+        '''
         
         # schedule first consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._consolidateMap)
     
     def _consolidateMap(self):
-        '''
-        self.discoMap['lines'] += [
-            (
-                random.randint(0,18),
-                random.randint(0,6),
-                random.randint(0,18),
-                random.randint(0,6),
-            )
-        ]
-        '''
         
         with self.dataLock:
             
-            # results lists of (lone) dots and lines
-            reslonedots                          = []
+            # result list of lines
             reslines                             = []
             
             # remove duplicate dots
@@ -56,7 +53,7 @@ class MapBuilder(object):
             print('\n\n========================================================')
             print("self.discoMap['dots']:     {0}".format((self.discoMap['dots'])))
             print("self.discoMap['lines']:    {0}".format((self.discoMap['lines'])))
-            for direction in ['horizontal']:#,'vertical']:
+            for direction in ['horizontal','vertical']:
                 
                 print('======= {0}'.format(direction))
                 
@@ -128,7 +125,10 @@ class MapBuilder(object):
                     print('8 theselines:         {0}'.format(theselines))
                     
                     # join the lines that touch
-                    theselines = sorted(theselines,key = lambda l: l[0])
+                    if direction=='horizontal':
+                        theselines = sorted(theselines,key = lambda l: l[0])
+                    else:
+                        theselines = sorted(theselines,key = lambda l: l[1])
                     idx = 0
                     while idx<len(theselines)-1:
                         (lax,lay,lbx,lby)        = theselines[idx]
