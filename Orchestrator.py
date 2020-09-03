@@ -56,7 +56,7 @@ class MapBuilder(object):
             print('\n\n========================================================')
             print("self.discoMap['dots']:     {0}".format((self.discoMap['dots'])))
             print("self.discoMap['lines']:    {0}".format((self.discoMap['lines'])))
-            for direction in ['horizontal','vertical']:
+            for direction in ['horizontal']:#,'vertical']:
                 
                 print('======= {0}'.format(direction))
                 
@@ -101,12 +101,15 @@ class MapBuilder(object):
                         else:
                             thesedots           += [lay]
                             thesedots           += [lby]
-                    thesedots                    = sorted(thesedots)
                     print('4 thesedots:          {0}'.format(thesedots))
+                    
+                    # remove duplicates (in case dot falls on vertice of existing line)
+                    thesedots                    = list(set(thesedots))
+                    print('5 thesedots:          {0}'.format(thesedots))
                     
                     # sort dots by increasing value
                     thesedots                    = sorted(thesedots)
-                    print('5 thesedots:          {0}'.format(thesedots))
+                    print('6 thesedots:          {0}'.format(thesedots))
                     
                     # create line between close dots
                     for (idx,v) in enumerate(thesedots):
@@ -118,11 +121,11 @@ class MapBuilder(object):
                                 theselines      += [(v,ref,vnext,ref)]
                             else:
                                 theselines      += [(ref,v,ref,vnext)]
-                    print('6 theselines:         {0}'.format(theselines))
-                    
-                    # remove line duplicates (caused by short lines already considered)
-                    theselines                   = list(set(theselines))
                     print('7 theselines:         {0}'.format(theselines))
+                    
+                    # remove line duplicates (caused by short lines which turn into close points)
+                    theselines                   = list(set(theselines))
+                    print('8 theselines:         {0}'.format(theselines))
                     
                     # join the lines that touch
                     theselines = sorted(theselines,key = lambda l: l[0])
@@ -139,7 +142,7 @@ class MapBuilder(object):
                             theselines.pop(idx+1)
                         else:
                             idx                 += 1
-                    print('8 theselines:         {0}'.format(theselines))
+                    print('9 theselines:         {0}'.format(theselines))
                     
                     # store
                     reslines                    += theselines
@@ -157,9 +160,8 @@ class MapBuilder(object):
             
             # update main structure
             
-            print("self.discoMap['dots']:        {0}".format((self.discoMap['dots'])))
-            print("self.discoMap['lines']:       {0}".format((self.discoMap['lines'])))
-            
+            print("dots ({0}): {1}".format(len(self.discoMap['dots']),self.discoMap['dots']))
+            print("lines ({0}): {1}".format(len(self.discoMap['lines']),self.discoMap['lines']))
         
         # schedule next consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._consolidateMap)
