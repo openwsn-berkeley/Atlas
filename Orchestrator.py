@@ -29,7 +29,7 @@ class MapBuilder(object):
         
         # local variables
         self.simEngine       = SimEngine.SimEngine()
-        self.mapLock           = threading.RLock()
+        self.dataLock        = threading.RLock()
         self.discoMap = {
             'complete': False,    # is the map complete?
             'dots':     [],       # each bump becomes a dot
@@ -43,19 +43,19 @@ class MapBuilder(object):
     
     def notifBump(self,x,y):
         
-        with self.mapLock:
+        with self.dataLock:
             self.discoMap['dots'] += [(x,y)]
     
     def getMap(self):
         
-        with self.mapLock:
+        with self.dataLock:
             return copy.deepcopy(self.discoMap)
     
     #======================== private =========================================
     
     def _houseKeeping(self):
         
-        with self.mapLock:
+        with self.dataLock:
             # consolidate map
             self._consolidateMap()
             
