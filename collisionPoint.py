@@ -1,20 +1,24 @@
 import math
 
-def collisionPoint(x1,y1,angle,xmin,ymin,xmax,ymax):
+def collisionPoint(rx,ry,angle,ax,ay,bx,by):
     '''
     a function that takes in top left corner of obstacle (xmin,ymax) and bottom right corner of obstacle (xmax,ymin) as well as two points (coordinates) on a trajectory (straight line)
     and returns the point at which the line will intersect with the obstacle
     '''
-    
+
     angleRadian      = math.radians(angle)
-    
-    x2               = x1 + round(math.sin(angleRadian),2)
-    y2               = y1 + round(math.cos(angleRadian),2)
-    
-    vx               = x2-x1
-    vy               = y2-y1
+    sinAngle         = round(math.sin(angleRadian),2)
+    cosAngle         = round(math.cos(angleRadian),2)
+    print('sin:', sinAngle)
+    x2               = rx + sinAngle
+    print('x2:', x2)
+    y2               = ry - cosAngle
+
+   
+    vx               = x2-rx
+    vy               = y2-ry
     p                = [-vx, vx, -vy, vy]
-    q                = [x1-xmin, xmax-x1, y1-ymin, ymax-y1]
+    q                = [rx-ax, bx-rx, ry-ay, by-ry]
     
     u1               = 0
     u2               = 1   
@@ -22,7 +26,7 @@ def collisionPoint(x1,y1,angle,xmin,ymin,xmax,ymax):
     for i in range(4):
         if p[i] == 0:
             if q[i] < 0:
-                continue
+                return (None,None)
         else:
             t = q[i]/p[i]
             if p[i] < 0 and u1 < t:
@@ -30,20 +34,30 @@ def collisionPoint(x1,y1,angle,xmin,ymin,xmax,ymax):
             elif p[i] > 0 and u2 > t:
                 u2 = t 
     
-    xcollide = x1 + u1*vx
-    ycollide = y1 + u1*vy
+    xcollide = rx + u1*vx
+    ycollide = ry + u1*vy
     
+    if (abs(xcollide - rx)< abs(xcollide-x2))or (abs(ycollide - ry)< abs(ycollide-y2)):
+        return (None, None)
     return (xcollide,ycollide)
     
 #============================ main ============================================
 
 TESTCASES = [
     #  rx ry angle  ax ay bx by   -> cx  cy
-    (  5, 5, 90,    10, 0,15, 10,    10,    5 ),
-    (  5, 5,135,    10, 0,15, 10,    10,   10 ),
-    (  5, 5,-90,    10, 0,15, 10,  None, None ),
-    (  5, 5,  0,    10, 0,15, 10,  None, None ),
-    (  5, 5, 45,    10, 0,15, 10,    10,    0 ),
+    (  5 , 5 ,  90 , 10 , 0  , 15 , 10 , 10   , 5    ),
+    (  5 , 5 , 135 , 10 , 0  , 15 , 10 , 10   , 10   ),
+    (  5 , 5 , -90 , 10 , 0  , 15 , 10 , None , None ),
+    (  5 , 5 ,  0  , 10 , 0  , 15 , 10 , None , None ),
+    (  5 , 5 , 45  , 10 , 0  , 15 , 10 , 10   , 0    ),
+    (  5 , 5 , 280 , 10 , 0  , 15 , 10 , None , None ),
+    (  20, 13, -45 , 5  , 5  , 15 , 10 , 15   , 8    ),
+    (  20, 13, 90  , 5  , 5  , 15 , 10 , None , None ),
+    (  20, 13, 270  , 5  , 5  , 15 , 10 , None , None ),
+    (  10, 2 , 180 , 5  , 5  , 15 , 10 , 10, 5 ),
+    (  10, 2 , 90 , 5  , 5  , 15 , 10 , None, None ),
+    
+    
 ]
 
 def main():
