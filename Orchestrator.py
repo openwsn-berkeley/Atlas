@@ -23,21 +23,39 @@ class MapBuilder(object):
     PERIOD         = 1 # s, in simulated time
     MINFEATURESIZE = 1 # shortest wall, narrowest opening
     
-    def __init__(self,discoMap,dataLock):
+    def __init__(self):
         
         # store params
-        self.discoMap        = discoMap
-        self.dataLock        = dataLock
         
         # local variables
         self.simEngine       = SimEngine.SimEngine()
+        self.mapLock           = threading.RLock()
+        self.discoMap = {
+            'complete': False,    # is the map complete?
+            'dots':     [],       # each bump becomes a dot
+            'lines':    [],       # closeby dots are aggregated into a line
+        }
         
         # schedule first housekeeping activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
     
+    #======================== public ==========================================
+    
+    def notifBump(self,x,y):
+        
+        with self.mapLock:
+            self.discoMap['dots'] += [(x,y)]
+    
+    def getMap(self):
+        
+        with self.mapLock:
+            return copy.deepcopy(self.discoMap)
+    
+    #======================== private =========================================
+    
     def _houseKeeping(self):
         
-        with self.dataLock:
+        with self.mapLock:
             # consolidate map
             self._consolidateMap()
             
@@ -268,14 +286,7 @@ class Orchestrator(object):
                 'commandId':   0,
             } for (x,y) in self.positions
         ]
-        # the map the orchestrator is building
-        self.mapLock           = threading.RLock()
-        self.discoMap = {
-            'complete': False,    # is the map complete?
-            'dots':     [],       # each bump becomes a dot
-            'lines':    [],       # closeby dots are aggregated into a line
-        }
-        self.mapBuilder        = MapBuilder(self.discoMap,self.mapLock)
+        self.mapBuilder        = MapBuilder()
     
     #======================== public ==========================================
     
@@ -306,9 +317,8 @@ class Orchestrator(object):
         dotbot['x']              = round(dotbot['x'],3)
         dotbot['y']              = round(dotbot['y'],3)
         
-        # record the obstacle location
-        with self.mapLock:
-            self.discoMap['dots'] += [(dotbot['x'],dotbot['y'])]
+        # notify the self.mapBuilder the obstacle location
+        self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
         
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
         against_N_wall           = math.isclose(dotbot['y'],                    0,abs_tol=10**-3)
@@ -351,8 +361,6 @@ class Orchestrator(object):
         # compute updated position
         now         = self.simEngine.currentTime() # shorthand
         
-        with self.mapLock:
-            discoMapCopy = copy.deepcopy(self.discoMap)
         return {
             'dotbots': [
                 {
@@ -360,7 +368,7 @@ class Orchestrator(object):
                     'y': db['y']+(now-db['posTs'])*math.sin(math.radians(db['heading']-90))*db['speed'],
                 } for db in self.dotbotsview
             ],
-            'discomap': discoMapCopy,
+            'discomap': self.mapBuilder.getMap(),
         }
     
     #======================== private =========================================
