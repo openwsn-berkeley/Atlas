@@ -7,6 +7,7 @@ import threading
 # local
 import SimEngine
 import Wireless
+import Utils as u
 
 class DotBot(object):
     '''
@@ -156,11 +157,6 @@ class DotBot(object):
         else:
             self.speedActual = speed
     
-    def _dist(self,pos1,pos2):
-        (x1,y1) = pos1
-        (x2,y2) = pos2
-        return math.sqrt( (x1-x2)**2 + (y1-y2)**2 )
-    
     def _computeNextBump(self):
         
         if   self.headingActual in [ 90,270]:
@@ -205,7 +201,7 @@ class DotBot(object):
         
         # if mote than 2 valid points, pick the pair that is furthest appart
         if len(valid_intersections)>2:
-            distances = [(self._dist(a,b),a,b) for (a,b) in itertools.product(valid_intersections,valid_intersections)]
+            distances = [(u.distance(a,b),a,b) for (a,b) in itertools.product(valid_intersections,valid_intersections)]
             distances = sorted(distances,key = lambda e: e[0])
             valid_intersections = [distances[-1][1],distances[-1][2]]
         assert len(valid_intersections)==2
@@ -247,8 +243,7 @@ class DotBot(object):
                 (bump_x,bump_y) = (x_int1,y_int1)
         
         # compute time to bump
-        distance   = math.sqrt( (self.x-bump_x)**2 + (self.y-bump_y)**2 )
-        timetobump = distance/self.speedActual
+        timetobump = u.distance((self.x,self.y),(bump_x,bump_y))/self.speedActual
         bump_ts    = self.posTs+timetobump
         
         # round

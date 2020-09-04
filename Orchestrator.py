@@ -8,6 +8,10 @@ import time
 # local
 import SimEngine
 import Wireless
+import Utils as u
+
+class ExceptionOpenLoop(Exception):
+    pass
 
 class MapBuilder(object):
     '''
@@ -170,18 +174,76 @@ class MapBuilder(object):
     
     def _isMapComplete(self):
         
-        while True:
+        while True: # "loop" only once
             
             # map is never complete if there are dots remaining
             if self.discoMap['dots']:
                 returnVal = False
                 break
             
-            returnVal = True # poipoipoi
+            # keep looping until no more todo lines
+            alllines = copy.deepcopy(self.discoMap['lines'])
+            try:
+                while alllines:
+                    loop      = self._walkloop(alllines,alllines[0])
+                    for line in loop:
+                        alllines.remove(line)
+            except ExceptionOpenLoop:
+                returnVal = False
+                break
+            
+            # if I get here, map is complete
+            returnVal = True
             break
         
         return returnVal
     
+    def _walkloop(self,alllines,startline):
+        
+        loop  = []
+        loop += [startline]
+        while True:
+            # add close line to loop
+            foundCloseLine = False
+            for line in alllines:
+                if (self._areLinesClose(loop[-1],line)) and (line not in loop):
+                    foundCloseLine = True
+                    loop          += [line]
+                    break
+            
+            # abort if no next line to hop to
+            if foundCloseLine==False:
+                
+                raise ExceptionOpenLoop()
+            # success! last line in loop is close to first line
+            if len(loop)>2 and self._areLinesClose(loop[-1],loop[0]):
+                
+                return loop
+    
+    def _areLinesClose(self,line1,line2):
+        
+        (l1ax,l1ay,l1bx,l1by) = line1
+        (l2ax,l2ay,l2bx,l2by) = line2
+        
+        returnVal = False
+        
+        while True: # "loop" only once
+            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<=self.MINFEATURESIZE:
+                returnVal = True
+                break
+            if  u.distance((l1ax,l1ay),(l2bx,l2by))<=self.MINFEATURESIZE:
+                returnVal = True
+                break
+            if  u.distance((l1bx,l1by),(l2ax,l2ay))<=self.MINFEATURESIZE:
+                returnVal = True
+                break
+            if  u.distance((l1bx,l1by),(l2bx,l2by))<=self.MINFEATURESIZE:
+                returnVal = True
+                break
+            break
+        
+        return returnVal
+
 class Orchestrator(object):
     '''
     The central orchestrator of the expedition.
