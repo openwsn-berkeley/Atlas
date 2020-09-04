@@ -4,10 +4,13 @@ import math
 a function that takes in top left corner of obstacle (xmin,ymax) and bottom right corner of obstacle (xmax,ymin) as well as two points (coordinates) on a trajectory (straight line)
 and returns the point at which the line will intersect with the obstacle
 '''
-def collisionPoint(xmax,xmin,ymax,ymin,x1,y1,heading):
+def collisionPoint(x1,y1,angle,xmin,ymin,xmax,ymax):
     
-    x2 = math.cos(heading)
-    y2 = math.sin(heading)
+    angleRadian = math.radians(angle)
+    print(angleRadian)
+    x2 = x1 + round(math.sin(angleRadian),2)
+    y2 = y1 + round(math.cos(angleRadian),2)
+    print(x2,y2)
     
     
     vx = x2-x1
@@ -32,19 +35,19 @@ def collisionPoint(xmax,xmin,ymax,ymin,x1,y1,heading):
     xcollide = x1 + u1*vx
     ycollide = y1 + u1*vy
     print('collosion at :', (xcollide,ycollide))
-    return         
+    return (xcollide,ycollide)     
     
 #============================ main ============================================
 
 TESTCASES = [
     #  rx ry angle  ax ay bx by   -> cx  cy
     (  5, 5, 90,    10, 0,15, 10,    10, 5 )
-]
+    ]
 
 def main():
-    for ( (rx,ry,angle,ax,ay,bx,by,cx,cy) in TESTCASES):
-        assert collisionPoint(rx,ry,angle,ax,ay,bx,by)==cx,cy
-    collisionPoint(30,-30,20,-20,50,-10,45)
+    for ( (rx,ry,angle,ax,ay,bx,by,cx,cy) in TESTCASES ):
+        assert collisionPoint(rx,ry,angle,ax,ay,bx,by)==(cx,cy)
+    collisionPoint( 5, 5, 90,    10, 0,15, 10)
     print('Done.')
 
 if __name__=='__main__':
