@@ -9,11 +9,11 @@ def collisionPoint(rx,ry,angle,ax,ay,bx,by):
     angleRadian      = math.radians(angle)
     sinAngle         = round(math.sin(angleRadian),2)
     cosAngle         = round(math.cos(angleRadian),2)
-    print('sin:', sinAngle)
+    
     x2               = rx + sinAngle
-    print('x2:', x2)
-    y2               = ry - cosAngle
 
+    y2               = ry - cosAngle
+    print('x2,y2:', x2,y2)
    
     vx               = x2-rx
     vy               = y2-ry
@@ -22,6 +22,8 @@ def collisionPoint(rx,ry,angle,ax,ay,bx,by):
     
     u1               = 0
     u2               = 1   
+    
+    
     
     for i in range(4):
         if p[i] == 0:
@@ -37,14 +39,29 @@ def collisionPoint(rx,ry,angle,ax,ay,bx,by):
     xcollide = rx + u1*vx
     ycollide = ry + u1*vy
     
-    if (abs(xcollide - rx)< abs(xcollide-x2))or (abs(ycollide - ry)< abs(ycollide-y2)):
-        return (None, None)
+    if xcollide < ax or xcollide > bx or ycollide < ay or ycollide > by:
+        return(None, None)
+        
+    if xcollide != rx and ycollide != ry and xcollide != x2 and ycollide != y2:
+        a = (xcollide - rx  , ycollide - ry)
+        b = (xcollide - x2  , ycollide - y2)
+        
+        print(a[0],a[1])
+        angleAC = math.degrees(math.acos(  ((a[0]*b[0])+(a[1]*b[1]))/( (math.sqrt( a[0]**2 + a[1]**2 ) * (math.sqrt( b[0]**2 + b[1]**2 )))) ) )
+        print('angleAC:', angleAC)
+        if angleAC != 180   :
+            
+            if (abs(xcollide - rx)< abs(xcollide-x2))or (abs(ycollide - ry)< abs(ycollide-y2)): 
+                return (None, None)
+        
+ 
     return (xcollide,ycollide)
     
 #============================ main ============================================
 
 TESTCASES = [
-    #  rx ry angle  ax ay bx by   -> cx  cy
+    #  rx ry  angle  ax  ay    bx   by -> cx  cy
+    (  9.9 , 5 ,  90 , 10 , 0  , 15 , 10 , 10   , 5    ),
     (  5 , 5 ,  90 , 10 , 0  , 15 , 10 , 10   , 5    ),
     (  5 , 5 , 135 , 10 , 0  , 15 , 10 , 10   , 10   ),
     (  5 , 5 , -90 , 10 , 0  , 15 , 10 , None , None ),
