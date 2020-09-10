@@ -13,7 +13,7 @@ def collisionPoint(rx,ry,angle,ax,ay,bx,by):
     x2               = rx + sinAngle
 
     y2               = ry - cosAngle
-    print('x2,y2:', x2,y2)
+    
    
     vx               = x2-rx
     vy               = y2-ry
@@ -46,33 +46,38 @@ def collisionPoint(rx,ry,angle,ax,ay,bx,by):
         a = (xcollide - rx  , ycollide - ry)
         b = (xcollide - x2  , ycollide - y2)
         
-        print(a[0],a[1])
+        
         angleAC = math.degrees(math.acos(  ((a[0]*b[0])+(a[1]*b[1]))/( (math.sqrt( a[0]**2 + a[1]**2 ) * (math.sqrt( b[0]**2 + b[1]**2 )))) ) )
-        print('angleAC:', angleAC)
+        
         if angleAC != 180   :
             
             if (abs(xcollide - rx)< abs(xcollide-x2))or (abs(ycollide - ry)< abs(ycollide-y2)): 
                 return (None, None)
         
  
-    return (xcollide,ycollide)
+    return (round(xcollide,3),round(ycollide,3))
     
 #============================ main ============================================
 
 TESTCASES = [
-    #  rx ry  angle  ax  ay    bx   by -> cx  cy
-    (  9.9 , 5 ,  90 , 10 , 0  , 15 , 10 , 10   , 5    ),
-    (  5 , 5 ,  90 , 10 , 0  , 15 , 10 , 10   , 5    ),
-    (  5 , 5 , 135 , 10 , 0  , 15 , 10 , 10   , 10   ),
-    (  5 , 5 , -90 , 10 , 0  , 15 , 10 , None , None ),
-    (  5 , 5 ,  0  , 10 , 0  , 15 , 10 , None , None ),
-    (  5 , 5 , 45  , 10 , 0  , 15 , 10 , 10   , 0    ),
-    (  5 , 5 , 280 , 10 , 0  , 15 , 10 , None , None ),
-    (  20, 13, -45 , 5  , 5  , 15 , 10 , 15   , 8    ),
-    (  20, 13, 90  , 5  , 5  , 15 , 10 , None , None ),
-    (  20, 13, 270  , 5  , 5  , 15 , 10 , None , None ),
-    (  10, 2 , 180 , 5  , 5  , 15 , 10 , 10, 5 ),
-    (  10, 2 , 90 , 5  , 5  , 15 , 10 , None, None ),
+    #  rx    ry    angle   ax  ay    bx   by -> cx  cy
+    (  9.9 , 5    , 90  ,  10 , 0  , 15 , 10 , 10  , 5   ),
+    (  5   , 5    , 90  ,  10 , 0  , 15 , 10 , 10  , 5   ),
+    (  5   , 5    , 135 ,  10 , 0  , 15 , 10 , 10  , 10  ),
+    (  5   , 5    , -90 ,  10 , 0  , 15 , 10 , None, None),
+    (  5   , 5    ,  0  ,  10 , 0  , 15 , 10 , None, None),
+    (  5   , 5    , 45  ,  10 , 0  , 15 , 10 , 10  , 0   ),
+    (  5   , 5    , 280 ,  10 , 0  , 15 , 10 , None, None),
+    (  20  , 13   , -45 ,  5  , 5  , 15 , 10 , 15  , 8   ),
+    (  20  , 13   , 90  ,  5  , 5  , 15 , 10 , None, None),
+    (  20  , 13   , 270 ,  5  , 5  , 15 , 10 , None, None),
+    (  10  , 2    , 180 ,  5  , 5  , 15 , 10 , 10  , 5   ),
+    (  10  , 2    , 90  , 5   , 5  , 15 , 10 , None, None),
+    (  9   , 1    , 225 , 4   , 2  , 8  , 4  , 8   , 2   ),
+    (  7   , 4    , 0   , 4   , 2  , 8  , 4  , 7   , 4   ),
+    (  6   , 4.01 , 0   , 4   , 2  , 8  , 4  , 6   , 4   ),
+    (  11  , 5    , 225 , 4   , 2  , 8  , 4  , None, None),
+    
     
     
 ]
