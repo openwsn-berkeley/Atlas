@@ -321,29 +321,7 @@ class Orchestrator(object):
         self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
         
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
-        against_N_wall           = math.isclose(dotbot['y'],                    0,abs_tol=10**-3)
-        against_E_wall           = math.isclose(dotbot['x'], self.floorplan.width,abs_tol=10**-3)
-        against_S_wall           = math.isclose(dotbot['y'],self.floorplan.height,abs_tol=10**-3)
-        against_W_wall           = math.isclose(dotbot['x'],                    0,abs_tol=10**-3)
-        if   against_N_wall and against_W_wall:            # NW corner
-            dotbot['heading']    = random.randint( 90,180)
-        elif against_N_wall and against_E_wall:            # NE corner
-            dotbot['heading']    = random.randint(180,270)
-        elif against_S_wall and against_E_wall:            # SE corner
-            dotbot['heading']    = random.randint(270,359)
-        elif against_S_wall and against_W_wall:            # SW corner
-            dotbot['heading']    = random.randint(  0, 90)
-        elif against_N_wall:                               # N  wall
-            dotbot['heading']    = random.randint( 90,270)
-        elif against_E_wall:                               # E  wall
-            dotbot['heading']    = random.randint(180,359)
-        elif against_S_wall:                               # S  wall
-            dotbot['heading']    = random.randint(270,360+90)
-            dotbot['heading']    = dotbot['heading']%360
-        elif against_W_wall:                               # W  wall
-            dotbot['heading']    = random.randint(  0,180)
-        else:                                              # in the middle of field
-            dotbot['heading']    = random.randint(  0,359)
+        dotbot['heading']        = random.randint(  0,359)
         
         # set the DotBot's speed
         dotbot['speed']          = 1

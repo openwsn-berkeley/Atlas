@@ -156,8 +156,31 @@ class DotBot(object):
             self.speedActual = speed + (-1+(2*random.random()))*self.speedInaccuracy
         else:
             self.speedActual = speed
-    
+   
     def _computeNextBump(self):
+    
+        # compute when/where next bump will happen with frame
+        (bump_x,bump_y,bump_ts) = self._computeNextBumpFrame()
+              
+        # compute when/where next bump will happen with obstacles
+        for obstacle in self.floorplan.obstacles:
+            ax = obstacle['x']
+            ay = obstacle['y']
+           
+            bx = ax + obstacle['width']
+            by = ay + obstacle['height']
+            
+            (bump_xo,bump_yo,bump_tso)   = self._computeNextBumpObstacle(self.x,self.y,self.headingRequested,ax,ay,bx,by)
+            
+            if ((bump_xo != None)   and 
+               (bump_xo != self.x) and (bump_yo != self.y) and
+               (bump_tso<bump_ts)) :
+                (bump_x,bump_y,bump_ts)= (bump_xo,bump_yo,bump_tso)
+                
+        #FIXME: exclude current position
+        return (bump_x,bump_y,bump_ts)
+
+    def _computeNextBumpFrame(self):
         
         if   self.headingActual in [ 90,270]:
             # horizontal edge case
@@ -250,4 +273,60 @@ class DotBot(object):
         bump_x     = round(bump_x,3)
         bump_y     = round(bump_y,3)
         
+        return (bump_x,bump_y,bump_ts)
+    
+    def _computeNextBumpObstacle(self,rx,ry,angle,ax,ay,bx,by):
+        '''
+        a function that takes in top left corner of obstacle (xmin,ymax) and bottom right corner of obstacle (xmax,ymin) as well as two points (coordinates) on a trajectory (straight line)
+        and returns the point at which the line will intersect with the obstacle
+        '''
+
+        angleRadian      = math.radians(angle)
+        sinAngle         = round(math.sin(angleRadian),2)
+        cosAngle         = round(math.cos(angleRadian),2)
+        
+        #next x position
+        x2               = rx + sinAngle
+        #next y position
+        y2               = ry - cosAngle
+       
+        vx               = x2-rx
+        vy               = y2-ry
+        p                = [-vx, vx, -vy, vy]
+        q                = [rx-ax, bx-rx, ry-ay, by-ry]
+        
+        u1               = 0
+        u2               = 1   
+  
+        for i in range(4):
+            if p[i] == 0:
+                if q[i] < 0:
+                    return (None,None,None)
+            else:
+                t = q[i]/p[i]
+                if p[i] < 0 and u1 < t:
+                    u1 = t
+                elif p[i] > 0 and u2 > t:
+                    u2 = t 
+        
+        xcollide = rx + u1*vx
+        ycollide = ry + u1*vy
+        
+        if xcollide < ax or xcollide > bx or ycollide < ay or ycollide > by:
+            return(None, None,  None)
+            
+        if xcollide != rx and ycollide != ry and xcollide != x2 and ycollide != y2:
+            a = (xcollide - rx  , ycollide - ry)
+            b = (xcollide - x2  , ycollide - y2)
+
+            cosangle = ((a[0]*b[0])+(a[1]*b[1]))/( (math.sqrt( a[0]**2 + a[1]**2 ) * (math.sqrt( b[0]**2 + b[1]**2 ))))
+            angleAC = math.degrees((math.acos(round(cosangle,3))))            
+            if angleAC != 180   :
+                
+                if (abs(xcollide - rx)< abs(xcollide-x2))or (abs(ycollide - ry)< abs(ycollide-y2)): 
+                    return (None, None, None)
+        bump_x = round(xcollide,3)
+        bump_y = round(ycollide,3)
+        timetobump = u.distance((rx,ry),(bump_x,bump_y))/self.speedActual
+        bump_ts    = self.posTs+timetobump
         return (bump_x,bump_y,bump_ts)

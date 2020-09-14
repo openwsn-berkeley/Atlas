@@ -21,7 +21,7 @@ def collisionPoint(rx,ry,angle,ax,ay,bx,by):
     q                = [rx-ax, bx-rx, ry-ay, by-ry]
     
     u1               = 0
-    u2               = 1   
+    u2               = 1 
     
     
     
@@ -46,8 +46,8 @@ def collisionPoint(rx,ry,angle,ax,ay,bx,by):
         a = (xcollide - rx  , ycollide - ry)
         b = (xcollide - x2  , ycollide - y2)
         
-        
-        angleAC = math.degrees(math.acos(  ((a[0]*b[0])+(a[1]*b[1]))/( (math.sqrt( a[0]**2 + a[1]**2 ) * (math.sqrt( b[0]**2 + b[1]**2 )))) ) )
+        cosangle = ((a[0]*b[0])+(a[1]*b[1]))/( (math.sqrt( a[0]**2 + a[1]**2 ) * (math.sqrt( b[0]**2 + b[1]**2 ))))
+        angleAC = math.degrees((math.acos(round(cosangle,3))))
         
         if angleAC != 180   :
             
@@ -77,6 +77,8 @@ TESTCASES = [
     (  7   , 4    , 0   , 4   , 2  , 8  , 4  , 7   , 4   ),
     (  6   , 4.01 , 0   , 4   , 2  , 8  , 4  , 6   , 4   ),
     (  11  , 5    , 225 , 4   , 2  , 8  , 4  , None, None),
+    (  5  , 1   , 107 , 15   , 4  , 16  , 5  , None, None),
+    (  10 , 5    , -90  ,  10 , 0  , 15 , 10 , 10  , 5   ),
     
     
     
