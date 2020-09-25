@@ -25,7 +25,6 @@ SIMSETTINGS = [
         'initialPosition':  (5,1),
     }
 ]
-
 #============================ helpers =========================================
 
 def oneSim(simSetting):

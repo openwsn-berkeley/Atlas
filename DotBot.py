@@ -36,7 +36,7 @@ class DotBot(object):
         self.next_bump_x               = None  # coordinate the DotBot will bump into next
         self.next_bump_y               = None
         self.next_bump_ts              = None  # time at which DotBot will bump
-    
+
     #======================== public ==========================================
         
     def setInitialPosition(self,x,y):
@@ -156,29 +156,27 @@ class DotBot(object):
             self.speedActual = speed + (-1+(2*random.random()))*self.speedInaccuracy
         else:
             self.speedActual = speed
-   
+
     def _computeNextBump(self):
-    
+
         # compute when/where next bump will happen with frame
         (bump_x,bump_y,bump_ts) = self._computeNextBumpFrame()
-              
-        # compute when/where next bump will happen with obstacles
+        #store this value to determine robot trajectory
+        (x2,y2) = (bump_x,bump_y)
+
         for obstacle in self.floorplan.obstacles:
-            ax = obstacle['x']
-            ay = obstacle['y']
-           
-            bx = ax + obstacle['width']
-            by = ay + obstacle['height']
-            
-            (bump_xo,bump_yo,bump_tso)   = self._computeNextBumpObstacle(self.x,self.y,self.headingRequested,ax,ay,bx,by)
-            
-            if ((bump_xo != None)   and 
-               (bump_xo != self.x) and (bump_yo != self.y) and
-               (bump_tso<bump_ts)) :
-                (bump_x,bump_y,bump_ts)= (bump_xo,bump_yo,bump_tso)
-                
-        #FIXME: exclude current position
-        return (bump_x,bump_y,bump_ts)
+             ax = obstacle['x']
+             ay = obstacle['y']
+             bx = ax + obstacle['width']
+             by = ay + obstacle['height']
+
+             (bump_xo,bump_yo,bump_tso)   = self._computeNextBumpObstacle(self.x,self.y,x2,y2,self.headingRequested,ax,ay,bx,by)
+
+             if(bump_xo != None):
+                if  bump_tso <= bump_ts:
+                    (bump_x,bump_y,bump_ts) = (bump_xo,bump_yo,bump_tso)
+
+        return (round(bump_x,3),round(bump_y,3),bump_ts)
 
     def _computeNextBumpFrame(self):
         
@@ -227,6 +225,7 @@ class DotBot(object):
             distances = [(u.distance(a,b),a,b) for (a,b) in itertools.product(valid_intersections,valid_intersections)]
             distances = sorted(distances,key = lambda e: e[0])
             valid_intersections = [distances[-1][1],distances[-1][2]]
+
         assert len(valid_intersections)==2
         
         # pick the correct intersection point given the heading of the robot
@@ -275,58 +274,53 @@ class DotBot(object):
         
         return (bump_x,bump_y,bump_ts)
     
-    def _computeNextBumpObstacle(self,rx,ry,angle,ax,ay,bx,by):
+    def _computeNextBumpObstacle(self,rx,ry,x2,y2,angle,ax,ay,bx,by):
         '''
         a function that takes in top left corner of obstacle (xmin,ymax) and bottom right corner of obstacle (xmax,ymin) as well as two points (coordinates) on a trajectory (straight line)
         and returns the point at which the line will intersect with the obstacle
         '''
 
-        angleRadian      = math.radians(angle)
-        sinAngle         = round(math.sin(angleRadian),2)
-        cosAngle         = round(math.cos(angleRadian),2)
-        
-        #next x position
-        x2               = rx + sinAngle
-        #next y position
-        y2               = ry - cosAngle
-       
+        #find delta x and delta y
         vx               = x2-rx
         vy               = y2-ry
+
+        #the p and q values are used to find the time at which there is an intersection between the
+        #line and the boundries of the obstacle where the initial time(t) is 0 represented by u1 (when at point -inf)
+        # and the final time is inf represented by u2 (when at point 2). the t value is then used to find the
+        #coordinates of the intersection point (bump_x,bump_y)
+
         p                = [-vx, vx, -vy, vy]
         q                = [rx-ax, bx-rx, ry-ay, by-ry]
         
-        u1               = 0
-        u2               = 1   
-  
+        u1               = -math.inf
+        u2               = math.inf
+
+        # iterating over the 4 boundaries of the obstacle in order to find the t value for each one.
+        # if p = 0 then the trajectory is parallel to that boundary
+        # if p = 0 and q<0 then line completly outside boundaries
+
         for i in range(4):
-            if p[i] == 0:
-                if q[i] < 0:
-                    return (None,None,None)
-            else:
-                t = q[i]/p[i]
+            if p[i] != 0:
+
+                t = q[i] / p[i]
                 if p[i] < 0 and u1 < t:
                     u1 = t
                 elif p[i] > 0 and u2 > t:
-                    u2 = t 
-        
-        xcollide = rx + u1*vx
-        ycollide = ry + u1*vy
-        
-        if xcollide < ax or xcollide > bx or ycollide < ay or ycollide > by:
-            return(None, None,  None)
-            
-        if xcollide != rx and ycollide != ry and xcollide != x2 and ycollide != y2:
-            a = (xcollide - rx  , ycollide - ry)
-            b = (xcollide - x2  , ycollide - y2)
+                    u2 = t
+            else:
+                if q[i]<0:
+                    return (None,None,None)
 
-            cosangle = ((a[0]*b[0])+(a[1]*b[1]))/( (math.sqrt( a[0]**2 + a[1]**2 ) * (math.sqrt( b[0]**2 + b[1]**2 ))))
-            angleAC = math.degrees((math.acos(round(cosangle,3))))            
-            if angleAC != 180   :
-                
-                if (abs(xcollide - rx)< abs(xcollide-x2))or (abs(ycollide - ry)< abs(ycollide-y2)): 
-                    return (None, None, None)
-        bump_x = round(xcollide,3)
-        bump_y = round(ycollide,3)
-        timetobump = u.distance((rx,ry),(bump_x,bump_y))/self.speedActual
-        bump_ts    = self.posTs+timetobump
-        return (bump_x,bump_y,bump_ts)
+        if (u1>=0 and u1<=u2 and u2<=1):
+
+            bump_x = rx + u1 * vx
+            bump_y = ry + u1 * vy
+
+            timetobump = u.distance((rx, ry), (bump_x, bump_y)) / self.speedActual
+            bump_ts = self.posTs + timetobump
+            return (round(bump_x, 3), round(bump_y, 3),bump_ts)
+
+        else:
+            return (None,None,None)
+
+
