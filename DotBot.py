@@ -95,12 +95,14 @@ class DotBot(object):
         posTs            = self.posTs
         headingActual    = self.headingActual
         speedActual      = self.speedActual
-        
+
         # update position
         newX                 = x + (now-posTs)*math.cos(math.radians(headingActual-90))*speedActual
         newY                 = y + (now-posTs)*math.sin(math.radians(headingActual-90))*speedActual
-        
+
+
         # do NOT write back any results to the DotBot's state as race condition possible
+
         return {
             'x':           newX,
             'y':           newY,
@@ -117,20 +119,20 @@ class DotBot(object):
         Bump sensor triggered
         '''
         
-        assert self.simEngine.currentTime()==self.next_bump_ts
-        
         # update my position
         self.x               = self.next_bump_x
         self.y               = self.next_bump_y
         self.posTs           = self.next_bump_ts
-        
         # stop moving
         self.speedActual     = 0
-        
+
+        assert self.simEngine.currentTime() == self.next_bump_ts
+
         # report bump to orchestrator
         self.wireless.toOrchestrator({
             'dotBotId':      self.dotBotId,
             'bumpTs':        self.simEngine.currentTime(),
+
         })
     
     def _setHeading(self,heading):
@@ -176,7 +178,9 @@ class DotBot(object):
                 if  bump_tso <= bump_ts:
                     (bump_x,bump_y,bump_ts) = (bump_xo,bump_yo,bump_tso)
 
-        return (round(bump_x,3),round(bump_y,3),bump_ts)
+
+
+        return (bump_x, bump_y ,bump_ts)
 
     def _computeNextBumpFrame(self):
         
@@ -208,7 +212,13 @@ class DotBot(object):
             south_x     = (self.floorplan.height-b)/a # intersection with South wall (y=self.floorplan.height)
             west_y      = 0*a+b                       # intersection with West wall (x=0)
             east_y      = self.floorplan.width*a+b    # intersection with West wall (x=self.floorplan.width)
-        
+
+            #round
+            north_x = round(north_x,3)
+            south_x = round(south_x,3)
+            west_y  = round(west_y ,3)
+            east_y  = round(east_y ,3)
+
         # pick the two intersection points on the floorplan perimeter
         valid_intersections = []
         if (north_x!=None and 0<=north_x and north_x<=self.floorplan.width):
@@ -220,13 +230,14 @@ class DotBot(object):
         if (east_y!=None  and 0<=east_y  and east_y<=self.floorplan.height):
             valid_intersections += [(self.floorplan.width,               east_y)]
         
-        # if mote than 2 valid points, pick the pair that is furthest appart
+        # if more than 2 valid points, pick the pair that is furthest apart
         if len(valid_intersections)>2:
             distances = [(u.distance(a,b),a,b) for (a,b) in itertools.product(valid_intersections,valid_intersections)]
             distances = sorted(distances,key = lambda e: e[0])
             valid_intersections = [distances[-1][1],distances[-1][2]]
 
         assert len(valid_intersections)==2
+
         
         # pick the correct intersection point given the heading of the robot
         (x_int0,y_int0) = valid_intersections[0]
@@ -267,7 +278,7 @@ class DotBot(object):
         # compute time to bump
         timetobump = u.distance((self.x,self.y),(bump_x,bump_y))/self.speedActual
         bump_ts    = self.posTs+timetobump
-        
+
         # round
         bump_x     = round(bump_x,3)
         bump_y     = round(bump_y,3)
@@ -316,9 +327,15 @@ class DotBot(object):
             bump_x = rx + u1 * vx
             bump_y = ry + u1 * vy
 
+
             timetobump = u.distance((rx, ry), (bump_x, bump_y)) / self.speedActual
             bump_ts = self.posTs + timetobump
-            return (round(bump_x, 3), round(bump_y, 3),bump_ts)
+
+            #round
+            bump_x = round(bump_x,3)
+            bump_y = round(bump_y,3)
+
+            return (bump_x, bump_y,bump_ts)
 
         else:
             return (None,None,None)
