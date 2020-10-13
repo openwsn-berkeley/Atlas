@@ -1,0 +1,1 @@
+This directory contains the static files (images, etc) served by the bottle-based web server.

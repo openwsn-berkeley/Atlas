@@ -1,2 +1,1 @@
-matplotlib
-numpy
+bottle >= 0.12.18

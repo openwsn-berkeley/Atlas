@@ -1,0 +1,1 @@
+This directory contains template files used by the bottle-based web server.
