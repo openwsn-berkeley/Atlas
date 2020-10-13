@@ -309,30 +309,30 @@ class Orchestrator(object):
         '''
         A DotBot indicates its bump sensor was activated at a certain time
         '''
+        
         # shorthand
-        dotbot = self.dotbotsview[msg['dotBotId']]
-        dotbot2 = dotbot
+        dotbot               = self.dotbotsview[msg['dotBotId']]
+        
         # compute new theoretical position
         dotbot['x']         += (msg['bumpTs']-dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
         dotbot['y']         += (msg['bumpTs']-dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
         dotbot['posTs']      = msg['bumpTs']
 
         # round
-        dotbot['x']              = round(dotbot['x'],3)
-        dotbot['y']              = round(dotbot['y'],3)
-
+        dotbot['x']          = round(dotbot['x'],3)
+        dotbot['y']          = round(dotbot['y'],3)
 
         # notify the self.mapBuilder the obstacle location
         self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
 
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
-        dotbot['heading']        = random.randint(  0,359)
+        dotbot['heading']    = random.randint(  0,359)
 
         # set the DotBot's speed
-        dotbot['speed']          = 1
+        dotbot['speed']      = 1
 
         # bump command Id so DotBot knows this is not a duplicate command
-        dotbot['commandId']     += 1
+        dotbot['commandId'] += 1
 
         # send commands to the robots
         self._sendDownstreamCommands()
