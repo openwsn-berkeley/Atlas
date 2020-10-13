@@ -1,0 +1,132 @@
+#pagetitle {
+    position:         absolute;
+    top:              10px;
+    left:             10px;
+    height:           40px;
+    font-style:       normal;
+    font-family:      Helvetica, sans-serif;
+    font-stretch:     condensed;
+    font-size:        40px;
+    text-align:       right;
+}
+
+#floorplan {
+    position:         absolute;
+    top:              60px;
+    left:             10px;
+    background-color: white;
+    border-width:     0px;
+    background-color: #f0f0f0;
+}
+
+#pausebutton {
+    position:         absolute;
+    left:             10px;
+    width:            50px;
+    height:           50px;
+    opacity:          50%;
+}
+
+#frameforwardbutton {
+    position:         absolute;
+    left:             80px;
+    width:            50px;
+    height:           50px;
+    opacity:          50%;
+}
+
+#playbuttontooltip {
+    position:         absolute;
+    left:             -100px;
+    width:            40px;
+    height:           20px;
+    opacity:          0.50;
+    border-style:     solid;
+    border-width:     1px;
+    border-color:     black;
+    background-color: #aaaaaa;
+    text-align:       center;
+    font-family:      Helvetica, sans-serif;
+}
+
+#playbuttonsliderdiv {
+    position:         absolute;
+    left:             150px;
+    width:            160px;
+    height:           50px;
+}
+
+#playbuttonslider {
+    position:         absolute;
+    left:             175px;
+    width:            110px;
+    height:           2px;
+    border-radius:    1px;
+    opacity:          0.10;
+    background-color: black;
+}
+
+#playbutton {
+    position:         absolute;
+    left:             150px;
+    width:            50px;
+    height:           50px;
+    opacity:          50%;
+}
+
+#fastforwardbutton {
+    position:         absolute;
+    left:             320px;
+    width:            50px;
+    height:           50px;
+    opacity:          50%;
+}
+
+#timelabel {
+    position:         absolute;
+    left:             380px;
+    width:            400px;
+    line-height:      50px;
+    font-family:      monospace;
+    text-align:       center;
+}
+
+#versionlabel {
+    position:         absolute;
+    width:            200px;
+    height:           50px;
+    text-align:       right;
+    font-family:      Helvetica, sans-serif;
+}
+
+.obstacle {
+    fill:             #aaaaaa;
+}
+
+.discomapdot {
+    fill:             blue;
+}
+
+.discomapline {
+    stroke-width:     4px;
+}
+
+.positionerror {
+    stroke:           red;
+    stroke-width:     2px;
+}
+
+.orchestratorview {
+    fill:             red;
+    stroke:           black;
+    stroke-width:     1px;
+}
+
+.collisionpath {
+    stroke-width:     1px;
+    stroke-dasharray: 2;
+}
+
+.dotbot {
+    stroke-width:     0px;
+}
