@@ -72,7 +72,10 @@ class DotBot(object):
         
         # compute when/where next bump will happen
         (bump_x,bump_y,bump_ts) = self._computeNextBump()
-        
+
+
+
+
         # remember
         self.next_bump_x  = bump_x
         self.next_bump_y  = bump_y
@@ -178,7 +181,11 @@ class DotBot(object):
                 if  bump_tso <= bump_ts:
                     (bump_x,bump_y,bump_ts) = (bump_xo,bump_yo,bump_tso)
 
+        bump_x = self.x + (bump_ts-self.posTs)*math.cos(math.radians(self.headingActual-90))*self.speedActual
+        bump_y = self.y + (bump_ts-self.posTs)*math.sin(math.radians(self.headingActual-90))*self.speedActual
 
+        bump_x = round(bump_x,3)
+        bump_y = round(bump_y, 3)
 
         return (bump_x, bump_y ,bump_ts)
 

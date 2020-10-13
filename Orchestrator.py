@@ -21,7 +21,7 @@ class MapBuilder(object):
     '''
 
     PERIOD         = 1 # s, in simulated time
-    MINFEATURESIZE = 0.9 # shortest wall, narrowest opening
+    MINFEATURESIZE = 1 # shortest wall, narrowest opening
 
     def __init__(self):
 
@@ -311,7 +311,7 @@ class Orchestrator(object):
         '''
         # shorthand
         dotbot = self.dotbotsview[msg['dotBotId']]
-
+        dotbot2 = dotbot
         # compute new theoretical position
         dotbot['x']         += (msg['bumpTs']-dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
         dotbot['y']         += (msg['bumpTs']-dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
@@ -321,8 +321,6 @@ class Orchestrator(object):
         dotbot['x']              = round(dotbot['x'],3)
         dotbot['y']              = round(dotbot['y'],3)
 
-        if (dotbot['x'] != msg['xfrombot'] or dotbot['y'] != msg['yfrombot']):
-            print('dot,orch:',msg['xfrombot'],msg['yfrombot'],msg['postsfrombot'],dotbot['x'],dotbot['y'],dotbot['posTs'], x, y)
 
         # notify the self.mapBuilder the obstacle location
         self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
