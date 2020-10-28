@@ -21,13 +21,14 @@ class MapBuilder(object):
     '''
 
     PERIOD         = 1 # s, in simulated time
-    MINFEATURESIZE = 1 # shortest wall, narrowest opening
+    MINFEATURESIZE = 0.9 # shortest wall, narrowest opening
 
     def __init__(self):
 
         # store params
 
         # local variables
+        self.lastCommandIdReceived = None
         self.simEngine       = SimEngine.SimEngine()
         self.dataLock        = threading.RLock()
         self.discoMap = {
@@ -277,6 +278,7 @@ class Orchestrator(object):
         # store params
         self.positions         = positions
         self.floorplan         = floorplan
+        self.notifrec          = False
 
         # local variables
         self.simEngine         = SimEngine.SimEngine()
@@ -289,6 +291,7 @@ class Orchestrator(object):
                 'heading':     0,
                 'speed':       0,
                 'commandId':   0,
+                'movingTime':  0,
             } for (x,y) in self.positions
         ]
         self.mapBuilder        = MapBuilder()
@@ -309,14 +312,17 @@ class Orchestrator(object):
         '''
         A DotBot indicates its bump sensor was activated at a certain time
         '''
-        
+        self.notifrec = True
         # shorthand
         dotbot               = self.dotbotsview[msg['dotBotId']]
-        
+
+
         # compute new theoretical position
-        dotbot['x']         += (msg['bumpTs']-dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
-        dotbot['y']         += (msg['bumpTs']-dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
-        dotbot['posTs']      = msg['bumpTs']
+        dotbot['x']         += (msg['bumpTs'] - dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
+        dotbot['y']         += (msg['bumpTs'] - dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
+        dotbot['posTs'] = msg['bumpTs']
+        dotbot['movingTime'] = msg['movingTime']
+
 
         # round
         dotbot['x']          = round(dotbot['x'],3)
@@ -324,7 +330,7 @@ class Orchestrator(object):
 
         # notify the self.mapBuilder the obstacle location
         self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
-
+        print('x,y',dotbot['x'],dotbot['y'])
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
         dotbot['heading']    = random.randint(  0,359)
 
@@ -355,6 +361,17 @@ class Orchestrator(object):
         }
 
     #======================== private =========================================
+
+    def _checkPacket(self):
+
+        if self.notifrec:
+            pass
+        else:
+            while not self.notifrec:
+                print('notification lost at', self.simEngine.currentTime())
+                self._sendDownstreamCommands()
+
+        self.notifrec = False
 
     def _sendDownstreamCommands(self):
         '''

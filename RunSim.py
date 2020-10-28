@@ -12,7 +12,7 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       50,
+        'numDotBots':       5,
         'floorplanDrawing': # 1m per character
 '''
 ............###...
