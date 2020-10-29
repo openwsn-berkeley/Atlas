@@ -278,11 +278,14 @@ class Orchestrator(object):
         # store params
         self.positions         = positions
         self.floorplan         = floorplan
-        self.notifrec          = False
+
+
 
         # local variables
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
+        self.notifrec          = False
+        self.mostRecentBumpTs  = self.simEngine.currentTime()
         self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
             {
                 'x':           x,
@@ -291,7 +294,6 @@ class Orchestrator(object):
                 'heading':     0,
                 'speed':       0,
                 'commandId':   0,
-                'movingTime':  0,
             } for (x,y) in self.positions
         ]
         self.mapBuilder        = MapBuilder()
@@ -313,20 +315,30 @@ class Orchestrator(object):
         A DotBot indicates its bump sensor was activated at a certain time
         '''
         self.notifrec = True
+
+
         # shorthand
         dotbot               = self.dotbotsview[msg['dotBotId']]
 
+        if msg['bumpTs'] != self.mostRecentBumpTs:
+            self.mostRecentBumpTs = msg['bumpTs']
+            # compute new theoretical position
+            dotbot['x']         += (msg['bumpTs'] - dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
+            dotbot['y']         += (msg['bumpTs'] - dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
+            dotbot['posTs'] = msg['posTs']
 
-        # compute new theoretical position
-        dotbot['x']         += (msg['bumpTs'] - dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
-        dotbot['y']         += (msg['bumpTs'] - dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
-        dotbot['posTs'] = msg['bumpTs']
-        dotbot['movingTime'] = msg['movingTime']
+            # round
+            dotbot['x'] = round(dotbot['x'], 3)
+            dotbot['y'] = round(dotbot['y'], 3)
 
+        else:
 
-        # round
-        dotbot['x']          = round(dotbot['x'],3)
-        dotbot['y']          = round(dotbot['y'],3)
+            dotbot['x']         += 0
+            dotbot['y']         += 0
+            dotbot['posTs'] = msg['posTs']
+
+        print('bumpTs,posTs, minus',msg['bumpTs'],msg['movingTime'],msg['bumpTs'] - msg['movingTime'])
+
 
         # notify the self.mapBuilder the obstacle location
         self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
@@ -348,13 +360,14 @@ class Orchestrator(object):
         # do NOT write back any results to the DotBot's state as race condition possible
 
         # compute updated position
-        now         = self.simEngine.currentTime() # shorthand
+        #now         = self.simEngine.currentTime() # shorthand
+        lastKnownBumpTs = self.mostRecentBumpTs
 
         return {
             'dotbots': [
                 {
-                    'x': db['x']+(now-db['posTs'])*math.cos(math.radians(db['heading']-90))*db['speed'],
-                    'y': db['y']+(now-db['posTs'])*math.sin(math.radians(db['heading']-90))*db['speed'],
+                    'x': db['x']+(lastKnownBumpTs-db['posTs'])*math.cos(math.radians(db['heading']-90))*db['speed'],
+                    'y': db['y']+(lastKnownBumpTs-db['posTs'])*math.sin(math.radians(db['heading']-90))*db['speed'],
                 } for db in self.dotbotsview
             ],
             'discomap': self.mapBuilder.getMap(),

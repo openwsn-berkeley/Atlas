@@ -59,13 +59,13 @@ class Wireless(object):
             self.packetCounter += 1
 
     def toOrchestrator(self, msg):
-        if self.PDR == 1:
-            self.orchestrator.fromDotBot(msg)
-        elif random.randint(0, 1) < self.PDR:
-            self.orchestrator.fromDotBot(msg)
-        else:
-            pass
-
+        # if self.PDR == 1:
+        #     self.orchestrator.fromDotBot(msg)
+        # elif random.randint(0, 1) < self.PDR or self.packetCounter < 3:
+        #     self.orchestrator.fromDotBot(msg)
+        # else:
+        #     pass
+        self.orchestrator.fromDotBot(msg)
         self.packetCounter += 1
 
     # ======================== private =========================================

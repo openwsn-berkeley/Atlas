@@ -70,6 +70,7 @@ class DotBot(object):
         # movingTime = self.simEngine.currentTime()
         print('packet received at', self.simEngine.currentTime())
 
+
         # remember what I was asked
         self.lastCommandIdReceived = myMsg['commandId']
         self.headingRequested = myMsg['heading']
@@ -127,18 +128,23 @@ class DotBot(object):
         if self.packetReceived:
             pass
         else:
-            while not self.packetReceived:
+            if not self.packetReceived:
                 print('packet lost at', self.simEngine.currentTime())
-                self._transmit()
+                #self._transmit()
+                self.simEngine.schedule(self.simEngine.currentTime()+1,self._bump)
+
+
 
         self.packetReceived = False
 
     def _transmit(self):
-        print('bumpTs', self.next_bump_ts, 'movingTime', self.movingTime)
+        print('bumpTs', self.next_bump_ts, 'movingTime', self.movingTime, 'posTs', self.posTs)
         self.wireless.toOrchestrator({
             'dotBotId': self.dotBotId,
             'bumpTs': self.next_bump_ts,
             'movingTime': self.movingTime,
+            'posTs': self.posTs,
+
 
         })
 
@@ -149,22 +155,12 @@ class DotBot(object):
         # update my position
         self.x = self.next_bump_x
         self.y = self.next_bump_y
-        self.posTs = self.next_bump_ts
+        self.posTs = self.simEngine.currentTime()
 
         # stop moving
         self.speedActual = 0
         self._transmit()
         self._checkPacket()
-
-        # assert self.simEngine.currentTime() == self.next_bump_ts
-
-        # report bump to orchestrator
-        # self.wireless.toOrchestrator({
-        #     'dotBotId':     self.dotBotId,
-        #     'bumpTs':       self.posTs,
-        #     'movingTime':   self.movingTime,
-        #
-        # })
 
     def _setHeading(self, heading):
         '''
@@ -189,6 +185,7 @@ class DotBot(object):
             self.speedActual = speed + (-1 + (2 * random.random())) * self.speedInaccuracy
         else:
             self.speedActual = speed
+            #self.movingTime = self.simEngine.currentTime()
 
     def _computeNextBump(self):
 
@@ -223,8 +220,9 @@ class DotBot(object):
         bump_y = self.y + (bump_ts - self.posTs) * math.sin(math.radians(self.headingActual - 90)) * self.speedActual
         bump_x = round(bump_x, 3)
         bump_y = round(bump_y, 3)
-
-        self.movingTime = self.simEngine.currentTime()
+        print('dotbot bumpx,bumpy',bump_x,bump_y)
+        print('----dotbot time to bump', bump_ts ,self.posTs,bump_ts-self.posTs)
+        self.movingTime = self.posTs
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
 
