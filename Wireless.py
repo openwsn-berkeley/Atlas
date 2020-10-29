@@ -11,7 +11,7 @@ class Wireless(object):
 
     # TODO: change into a PDR table later on
 
-    PDR = 0.5
+    PDR = 0.2
 
     # singleton pattern: a python design pattern that restrics the instanciation of class to one object only
     # so that all there is only one global access point to the class instance
@@ -59,13 +59,12 @@ class Wireless(object):
             self.packetCounter += 1
 
     def toOrchestrator(self, msg):
-        # if self.PDR == 1:
-        #     self.orchestrator.fromDotBot(msg)
-        # elif random.randint(0, 1) < self.PDR or self.packetCounter < 3:
-        #     self.orchestrator.fromDotBot(msg)
-        # else:
-        #     pass
-        self.orchestrator.fromDotBot(msg)
+        if self.PDR == 1:
+            self.orchestrator.fromDotBot(msg)
+        elif random.randint(0, 1) < self.PDR or self.packetCounter < 3:
+            self.orchestrator.fromDotBot(msg)
+        else:
+            pass
         self.packetCounter += 1
 
     # ======================== private =========================================
