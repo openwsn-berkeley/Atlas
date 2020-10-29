@@ -40,7 +40,7 @@ class DotBot(object):
         self.next_bump_ts = 0  # time at which DotBot will bump
         self.packetReceived = False  # packet received or not
         self.movingTime = 0  # time at which robot starts moving after bump
-        self.period = 1
+
 
     # ======================== public ==========================================
 
@@ -66,8 +66,8 @@ class DotBot(object):
         if myMsg['commandId'] == self.lastCommandIdReceived:
             return
 
+        #if we have reached here, packet has been recieved, otherwise packetRecieved reamains at its default value as false
         self.packetReceived = True
-        # movingTime = self.simEngine.currentTime()
         print('packet received at', self.simEngine.currentTime())
 
 
@@ -124,26 +124,28 @@ class DotBot(object):
     # ======================== private =========================================
 
     def _checkPacket(self):
-
+        '''
+        check if packet has been recieved, if not , transmitt again
+        '''
         if self.packetReceived:
             pass
         else:
             if not self.packetReceived:
                 print('packet lost at', self.simEngine.currentTime())
-                #self._transmit()
+                #schedule sending a notification again in 1 second
                 self.simEngine.schedule(self.simEngine.currentTime()+1,self._bump)
-
-
 
         self.packetReceived = False
 
     def _transmit(self):
-        print('bumpTs', self.next_bump_ts, 'movingTime', self.movingTime, 'posTs', self.posTs)
+        '''
+        transmit a packet to the orchestrator to request a new heading and to notify of obstacle
+        '''
         self.wireless.toOrchestrator({
             'dotBotId': self.dotBotId,
-            'bumpTs': self.next_bump_ts,
-            'movingTime': self.movingTime,
-            'posTs': self.posTs,
+            'bumpTs': self.next_bump_ts,      #time at which robot bumped into obstacle
+            'movingTime': self.movingTime,    #time at which robot started moving after its previous bump/stop
+            'posTs': self.posTs,              #current time
 
 
         })
@@ -159,7 +161,9 @@ class DotBot(object):
 
         # stop moving
         self.speedActual = 0
+        #transmit packet
         self._transmit()
+        #check if a new packet has been recieved
         self._checkPacket()
 
     def _setHeading(self, heading):
@@ -222,7 +226,9 @@ class DotBot(object):
         bump_y = round(bump_y, 3)
         print('dotbot bumpx,bumpy',bump_x,bump_y)
         print('----dotbot time to bump', bump_ts ,self.posTs,bump_ts-self.posTs)
+
         self.movingTime = self.posTs
+
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
 

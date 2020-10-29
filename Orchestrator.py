@@ -284,8 +284,8 @@ class Orchestrator(object):
         # local variables
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
-        self.notifrec          = False
-        self.mostRecentBumpTs  = self.simEngine.currentTime()
+        self.notifrec          = False #whether or not a notification has been recieved from a bot
+        self.mostRecentBumpTs  = self.simEngine.currentTime() #initialise value of last know bumptime to be current time
         self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
             {
                 'x':           x,
@@ -314,15 +314,19 @@ class Orchestrator(object):
         '''
         A DotBot indicates its bump sensor was activated at a certain time
         '''
-        self.notifrec = True
 
+        #if reached here, then notification from bot has been recieved, otherwise it remains at its default value of false
+        self.notifrec = True
 
         # shorthand
         dotbot               = self.dotbotsview[msg['dotBotId']]
 
+        #if bumptime of notification recieved is same as that of the previous notification, it means that its a
+        #re-transmitted message, so x and y values remain the same, otherwise updated position values are calculated
+
         if msg['bumpTs'] != self.mostRecentBumpTs:
             self.mostRecentBumpTs = msg['bumpTs']
-            # compute new theoretical position
+            # compute new theoretical position, based on the bumpt time - the time the bot started moving after last bump/stop
             dotbot['x']         += (msg['bumpTs'] - dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
             dotbot['y']         += (msg['bumpTs'] - dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
             dotbot['posTs'] = msg['posTs']
@@ -337,12 +341,10 @@ class Orchestrator(object):
             dotbot['y']         += 0
             dotbot['posTs'] = msg['posTs']
 
-        print('bumpTs,posTs, minus',msg['bumpTs'],msg['movingTime'],msg['bumpTs'] - msg['movingTime'])
-
 
         # notify the self.mapBuilder the obstacle location
         self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
-        print('x,y',dotbot['x'],dotbot['y'])
+
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
         dotbot['heading']    = random.randint(  0,359)
 
@@ -360,8 +362,8 @@ class Orchestrator(object):
         # do NOT write back any results to the DotBot's state as race condition possible
 
         # compute updated position
-        #now         = self.simEngine.currentTime() # shorthand
-        lastKnownBumpTs = self.mostRecentBumpTs
+
+        lastKnownBumpTs = self.mostRecentBumpTs 
 
         return {
             'dotbots': [
