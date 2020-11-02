@@ -168,7 +168,6 @@ class MapBuilder(object):
         # remove dots which fall inside a line
         self.discoMap['dots']                = self._removeDotsOnLines(self.discoMap['dots'],self.discoMap['lines'])
 
-
     def _removeDotsOnLines(self,dots,lines):
         idx = 0
         while idx<len(dots):
@@ -318,6 +317,10 @@ class Orchestrator(object):
         #if reached here, then notification from bot has been recieved, otherwise it remains at its default value of false
         self.notifrec = True
 
+        if msg['bumpTs'] == None:
+            self._sendDownstreamCommands()
+            return
+
         # shorthand
         dotbot               = self.dotbotsview[msg['dotBotId']]
 
@@ -363,7 +366,7 @@ class Orchestrator(object):
 
         # compute updated position
 
-        lastKnownBumpTs = self.mostRecentBumpTs 
+        lastKnownBumpTs = self.mostRecentBumpTs
 
         return {
             'dotbots': [

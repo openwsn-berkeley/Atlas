@@ -53,6 +53,7 @@ class DotBot(object):
         self.x = x
         self.y = y
         self.posTs = self.simEngine.currentTime()
+        self._checkPacket()
 
     def fromOrchestrator(self, packet):
         '''
@@ -144,7 +145,6 @@ class DotBot(object):
         self.wireless.toOrchestrator({
             'dotBotId': self.dotBotId,
             'bumpTs': self.next_bump_ts,      #time at which robot bumped into obstacle
-            'movingTime': self.movingTime,    #time at which robot started moving after its previous bump/stop
             'posTs': self.posTs,              #current time
 
 
@@ -226,8 +226,6 @@ class DotBot(object):
         bump_y = round(bump_y, 3)
         print('dotbot bumpx,bumpy',bump_x,bump_y)
         print('----dotbot time to bump', bump_ts ,self.posTs,bump_ts-self.posTs)
-
-        self.movingTime = self.posTs
 
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
