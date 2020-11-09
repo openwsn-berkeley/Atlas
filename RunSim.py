@@ -23,6 +23,7 @@ SIMSETTINGS = [
 ..............##..
 ''',
         'initialPosition':  (5,1),
+        'orchLocation'   :  (5,1),
     }
 ]
 #============================ helpers =========================================
@@ -50,7 +51,11 @@ def oneSim(simSetting):
     (x,y) = simSetting['initialPosition']
     for dotBot in dotBots:
         dotBot.setInitialPosition(x,y)
-    
+
+    #set orchestrator position
+    (xo,yo) = simSetting['orchLocation']
+    wireless.indicateOrchLocation(xo,yo)
+
     # create the orchestrator
     orchestrator   = Orchestrator.Orchestrator([simSetting['initialPosition']]*len(dotBots),floorplan)
     
@@ -62,6 +67,9 @@ def oneSim(simSetting):
     
     # schedule the first event
     simEngine.schedule(0,orchestrator.startExploration)
+
+    for dotBot in dotBots:
+        dotBot.wakeBot()
     
     input('Press Enter to close simulation.')
 

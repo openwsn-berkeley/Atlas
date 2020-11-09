@@ -53,6 +53,8 @@ class DotBot(object):
         self.x = x
         self.y = y
         self.posTs = self.simEngine.currentTime()
+
+    def wakeBot(self):
         self._checkPacket()
 
     def fromOrchestrator(self, packet):
@@ -69,8 +71,7 @@ class DotBot(object):
 
         #if we have reached here, packet has been recieved, otherwise packetRecieved reamains at its default value as false
         self.packetReceived = True
-        print('packet received at', self.simEngine.currentTime())
-
+        print('packet',myMsg['commandId'] ,'received at', self.simEngine.currentTime(),'for dotBot',self.dotBotId, 'posTs', self.posTs)
 
         # remember what I was asked
         self.lastCommandIdReceived = myMsg['commandId']
@@ -83,7 +84,7 @@ class DotBot(object):
 
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
-
+        print('next bump ts', bump_ts,self.dotBotId)
         # remember
         self.next_bump_x = bump_x
         self.next_bump_y = bump_y
@@ -118,8 +119,7 @@ class DotBot(object):
             'y': newY,
             'heading': self.headingActual,
             'speed': self.speedActual,
-            'next_bump_x': self.next_bump_x,
-            'next_bump_y': self.next_bump_y,
+
         }
 
     # ======================== private =========================================
@@ -128,20 +128,19 @@ class DotBot(object):
         '''
         check if packet has been recieved, if not , transmitt again
         '''
-        if self.packetReceived:
-            pass
-        else:
-            if not self.packetReceived:
-                print('packet lost at', self.simEngine.currentTime())
-                #schedule sending a notification again in 1 second
-                self.simEngine.schedule(self.simEngine.currentTime()+1,self._bump)
 
-        self.packetReceived = False
+        if not self.packetReceived:
+            print('packet lost at', self.simEngine.currentTime(),'for DotBot', self.dotBotId)
+            #schedule sending a notification again in 1 second
+            self.simEngine.schedule(self.simEngine.currentTime()+1,self._bump)
+        else:
+            self.packetReceived = False
 
     def _transmit(self):
         '''
         transmit a packet to the orchestrator to request a new heading and to notify of obstacle
         '''
+        print('dotBotId', self.dotBotId, 'bumpTs', self.next_bump_ts, 'posTs', self.posTs)
         self.wireless.toOrchestrator({
             'dotBotId': self.dotBotId,
             'bumpTs': self.next_bump_ts,      #time at which robot bumped into obstacle
@@ -155,9 +154,11 @@ class DotBot(object):
         Bump sensor triggered
         '''
         # update my position
-        self.x = self.next_bump_x
-        self.y = self.next_bump_y
+        if self.lastCommandIdReceived != None:
+            self.x = self.next_bump_x
+            self.y = self.next_bump_y
         self.posTs = self.simEngine.currentTime()
+        print('x,y,now', self.x,self.y,self.posTs)
 
         # stop moving
         self.speedActual = 0
@@ -224,8 +225,6 @@ class DotBot(object):
         bump_y = self.y + (bump_ts - self.posTs) * math.sin(math.radians(self.headingActual - 90)) * self.speedActual
         bump_x = round(bump_x, 3)
         bump_y = round(bump_y, 3)
-        print('dotbot bumpx,bumpy',bump_x,bump_y)
-        print('----dotbot time to bump', bump_ts ,self.posTs,bump_ts-self.posTs)
 
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
@@ -326,6 +325,7 @@ class DotBot(object):
         # compute time to bump
         timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.speedActual
         bump_ts = self.posTs + timetobump
+        print('timetobump',timetobump, self.dotBotId,'posTs',self.posTs)
 
         # round
         bump_x = round(bump_x, 3)
@@ -395,7 +395,7 @@ class DotBot(object):
 
             timetobump = u.distance((rx, ry), (bump_x, bump_y)) / self.speedActual
             bump_ts = self.posTs + timetobump
-
+            print('timetobump',timetobump,self.dotBotId,'posTs',self.posTs)
             # round
             bump_x = round(bump_x, 3)
             bump_y = round(bump_y, 3)

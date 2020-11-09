@@ -37,7 +37,7 @@ class SimEngine(threading.Thread):
         self._startTsReal         = None
         self._playSpeed           = 1.00
         self.events               = []
-        self.semNumEvents         = threading.Semaphore(0)
+        self.semNumEvents         = threading.Semaphore(0) #number of release()-aquire()
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
         self.semIsRunning.acquire()
@@ -62,6 +62,7 @@ class SimEngine(threading.Thread):
             
             # handle next event
             (ts,cb) = self.events.pop(0)
+            print('ts,now,event', ts, self._currentTime,cb)
             assert self._currentTime<=ts
             self._currentTime = ts
             cb()

@@ -284,7 +284,7 @@ class Orchestrator(object):
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
         self.notifrec          = False #whether or not a notification has been recieved from a bot
-        self.mostRecentBumpTs  = self.simEngine.currentTime() #initialise value of last know bumptime to be current time
+        self.mostRecentBumpTs  = self.simEngine.currentTime() #initialise value of last known bumptime to be current time
         self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
             {
                 'x':           x,
@@ -309,13 +309,11 @@ class Orchestrator(object):
 
         self._sendDownstreamCommands()
 
+
     def fromDotBot(self,msg):
         '''
         A DotBot indicates its bump sensor was activated at a certain time
         '''
-
-        #if reached here, then notification from bot has been recieved, otherwise it remains at its default value of false
-        self.notifrec = True
 
         if msg['bumpTs'] == None:
             self._sendDownstreamCommands()
@@ -379,17 +377,6 @@ class Orchestrator(object):
         }
 
     #======================== private =========================================
-
-    def _checkPacket(self):
-
-        if self.notifrec:
-            pass
-        else:
-            while not self.notifrec:
-                print('notification lost at', self.simEngine.currentTime())
-                self._sendDownstreamCommands()
-
-        self.notifrec = False
 
     def _sendDownstreamCommands(self):
         '''
