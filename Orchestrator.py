@@ -293,6 +293,7 @@ class Orchestrator(object):
                 'heading':     0,
                 'speed':       0,
                 'commandId':   0,
+                'lastBump': self.mostRecentBumpTs
             } for (x,y) in self.positions
         ]
         self.mapBuilder        = MapBuilder()
@@ -325,12 +326,12 @@ class Orchestrator(object):
         #if bumptime of notification recieved is same as that of the previous notification, it means that its a
         #re-transmitted message, so x and y values remain the same, otherwise updated position values are calculated
 
-        if msg['bumpTs'] != self.mostRecentBumpTs:
-            self.mostRecentBumpTs = msg['bumpTs']
+        if msg['bumpTs'] != dotbot['lastBump'] :
+            dotbot['lastBump'] = msg['bumpTs']
             # compute new theoretical position, based on the bumpt time - the time the bot started moving after last bump/stop
-            dotbot['x']         += (msg['bumpTs'] - dotbot['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
-            dotbot['y']         += (msg['bumpTs'] - dotbot['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
-            dotbot['posTs'] = msg['posTs']
+            dotbot['x']         += (msg['bumpTs'] - msg['posTs'])*math.cos(math.radians(dotbot['heading']-90))*dotbot['speed']
+            dotbot['y']         += (msg['bumpTs'] - msg['posTs'])*math.sin(math.radians(dotbot['heading']-90))*dotbot['speed']
+            dotbot['posTs'] = msg['bumpTs']
 
             # round
             dotbot['x'] = round(dotbot['x'], 3)
@@ -364,13 +365,12 @@ class Orchestrator(object):
 
         # compute updated position
 
-        lastKnownBumpTs = self.mostRecentBumpTs
 
         return {
             'dotbots': [
                 {
-                    'x': db['x']+(lastKnownBumpTs-db['posTs'])*math.cos(math.radians(db['heading']-90))*db['speed'],
-                    'y': db['y']+(lastKnownBumpTs-db['posTs'])*math.sin(math.radians(db['heading']-90))*db['speed'],
+                    'x': db['x']+(db['posTs'] -db['lastBump'])*math.cos(math.radians(db['heading']-90))*db['speed'],
+                    'y': db['y']+(db['posTs'] -db['lastBump'])*math.sin(math.radians(db['heading']-90))*db['speed'],
                 } for db in self.dotbotsview
             ],
             'discomap': self.mapBuilder.getMap(),
