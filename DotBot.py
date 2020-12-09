@@ -46,13 +46,32 @@ class DotBot(object):
 
     def setInitialPosition(self, x, y):
         '''
-        Call exactly once at start of simulation to exactly place the DotBot at its initial position.
+        Call exactly once at start of each simulation run to exactly place the DotBot at its initial position.
         '''
-        assert self.x == None
-        assert self.y == None
+        #assert self.x == None
+        #assert self.y == None
         self.x = x
         self.y = y
         self.posTs = self.simEngine.currentTime()
+
+    def reset(self):
+        '''
+        Reset dotbot
+        '''
+
+        self.posTs = 0  # timestamp, in s, of when was at position (at current calculated position it was this time)
+        self.lastCommandIdReceived = None  # set to None as not a valid command Id
+        self.headingRequested = 0  # the heading, a float between 0 and 360 degrees (0 indicates North) as requested by the orchestrator
+        self.headingInaccuracy = 0  # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
+        self.headingActual = 0  # actual heading, taking into account inaccuracy
+        self.speedRequested = 0  # speed, in m/s, as requested by the orchestrator
+        self.speedInaccuracy = 0  # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
+        self.speedActual = 0  # actual speed, taking into account inaccuracy
+        self.next_bump_x = None  # coordinate the DotBot will bump into next
+        self.next_bump_y = None
+        self.next_bump_ts = None  # time at which DotBot will bump
+        self.packetReceived = False  # packet received or not
+        self.movingTime = 0  # time at which robot starts moving after bump
 
     def wakeBot(self):
         self._checkPacket()
@@ -85,7 +104,6 @@ class DotBot(object):
 
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
-        print('next bump ts', bump_ts,self.dotBotId)
         # remember
         self.next_bump_x = bump_x
         self.next_bump_y = bump_y
@@ -142,12 +160,10 @@ class DotBot(object):
         transmit a packet to the orchestrator to request a new heading and to notify of obstacle
         '''
         #self.posTs = self.simEngine.currentTime()
-        print('dotBotId', self.dotBotId, 'bumpTs', self.next_bump_ts, 'posTs at',self.simEngine.currentTime(), self.posTs )
         self.wireless.toOrchestrator({
             'dotBotId': self.dotBotId,
             'bumpTs': self.next_bump_ts,      #time at which robot bumped into obstacle
             'posTs': self.movingTime,
-
 
         })
 
@@ -159,13 +175,13 @@ class DotBot(object):
         if self.lastCommandIdReceived != None:
             self.x = self.next_bump_x
             self.y = self.next_bump_y
-        #self.movingTime = self.simEngine.currentTime()
-        print('x,y,posTs once bump is triggered', self.x,self.y,self.posTs)
 
         # stop moving
         self.speedActual = 0
+
         #transmit packet
         self._transmit()
+
         #check if a new packet has been recieved
         self._checkPacket()
 
@@ -228,7 +244,6 @@ class DotBot(object):
         bump_y = self.y + (bump_ts - self.posTs) * math.sin(math.radians(self.headingActual - 90)) * self.speedActual
         bump_x = round(bump_x, 3)
         bump_y = round(bump_y, 3)
-        print('posTs at final bump_ts calculation', self.posTs)
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
 
@@ -324,11 +339,9 @@ class DotBot(object):
                 (bump_x, bump_y) = (x_int0, y_int0)
             else:
                 (bump_x, bump_y) = (x_int1, y_int1)
-        print('posTs at frame bump calculation', self.posTs)
         # compute time to bump
         timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.speedActual
         bump_ts = self.posTs + timetobump
-        print('timetobump',timetobump, self.dotBotId,'posTs',self.posTs)
 
         # round
         bump_x = round(bump_x, 3)
@@ -395,10 +408,8 @@ class DotBot(object):
 
             bump_x = rx + u1 * deltax
             bump_y = ry + u1 * deltay
-            print('posTs at bump calculation for obstacle', self.posTs)
             timetobump = u.distance((rx, ry), (bump_x, bump_y)) / self.speedActual
             bump_ts = self.posTs + timetobump
-            print('timetobump',timetobump,self.dotBotId,'posTs',self.posTs)
             # round
             bump_x = round(bump_x, 3)
             bump_y = round(bump_y, 3)

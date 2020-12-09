@@ -41,7 +41,7 @@ class SimEngine(threading.Thread):
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
         self.semIsRunning.acquire()
-        
+
         # start thread
         threading.Thread.__init__(self)
         self.name                 = 'SimEngine'
@@ -59,14 +59,13 @@ class SimEngine(threading.Thread):
             
             # wait for at least one event
             self.semNumEvents.acquire()
-            
+
             # handle next event
             (ts,cb) = self.events.pop(0)
-            print('ts,now,event', ts, self._currentTime,cb)
             assert self._currentTime<=ts
             self._currentTime = ts
             cb()
-            
+
             # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
             if self._mode==self.MODE_FRAMEFORWARD:
                 self._mode=self.MODE_PAUSE
@@ -78,11 +77,29 @@ class SimEngine(threading.Thread):
                 durReal = time.time()-self._startTsReal
                 if durReal*self._playSpeed<durSim:
                     time.sleep( durSim - (durReal*self._playSpeed) )
+
     
     #======================== public ==========================================
     
     #=== from other elements in simulator
-    
+
+    def reset(self):
+        '''
+        Reset SimEngine
+        '''
+        self._currentTime         = 0    # reset current time
+        self._mode                = self.MODE_PAUSE
+        self._startTsSim          = None
+        self._startTsReal         = None
+        self._playSpeed           = 1.00
+        self.events               = []
+        self.semNumEvents         = threading.Semaphore(0) #number of release()-aquire()
+        self.dataLock             = threading.Lock()
+        self.semIsRunning         = threading.Lock()
+        self.semIsRunning.acquire()
+
+
+
     def currentTime(self):
         return self._currentTime
     
@@ -108,7 +125,6 @@ class SimEngine(threading.Thread):
     def schedule(self,ts,cb):
         # add new event
         self.events += [(ts,cb)]
-        
         # reorder list
         self.events  = sorted(self.events, key = lambda e: e[0])
         # release semaphore

@@ -28,7 +28,6 @@ class MapBuilder(object):
         # store params
 
         # local variables
-        self.lastCommandIdReceived = None
         self.simEngine       = SimEngine.SimEngine()
         self.dataLock        = threading.RLock()
         self.discoMap = {
@@ -41,6 +40,15 @@ class MapBuilder(object):
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
 
     #======================== public ==========================================
+    def reset(self):
+        self.discoMap = {
+            'complete': False,    # is the map complete?
+            'dots':     [],       # each bump becomes a dot
+            'lines':    [],       # close by dots are aggregated into a line
+        }
+
+        # schedule first housekeeping activity
+        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
 
     def notifBump(self,x,y):
 
@@ -62,6 +70,9 @@ class MapBuilder(object):
 
             # decide whether map completed
             self.discoMap['complete'] = self._isMapComplete()
+
+            #this is where we invoke end of current simulation
+
 
         # schedule next consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
@@ -198,9 +209,10 @@ class MapBuilder(object):
         while True: # "loop" only once
 
             # map is never complete if there are dots remaining
-            if self.discoMap['dots']:
-                returnVal = False
-                break
+
+            #if self.discoMap['dots']:
+            #    returnVal = False
+            #    break
 
             # keep looping until no more todo lines
             alllines = copy.deepcopy(self.discoMap['lines'])
@@ -275,6 +287,7 @@ class Orchestrator(object):
     def __init__(self,positions,floorplan):
 
         # store params
+        #self.initialPos        = positions
         self.positions         = positions
         self.floorplan         = floorplan
 
@@ -283,6 +296,8 @@ class Orchestrator(object):
         # local variables
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
+        self.simRun            = 1
+        self.navAlgorithm      = None
         self.notifrec          = False #whether or not a notification has been recieved from a bot
         self.mostRecentBumpTs  = self.simEngine.currentTime() #initialise value of last known bumptime to be current time
         self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
@@ -310,6 +325,8 @@ class Orchestrator(object):
 
         self._sendDownstreamCommands()
 
+    def setNavAlgorithm(self, navigation):
+        self.navAlgorithm = navigation
 
     def fromDotBot(self,msg):
         '''
@@ -346,9 +363,51 @@ class Orchestrator(object):
 
         # notify the self.mapBuilder the obstacle location
         self.mapBuilder.notifBump(dotbot['x'],dotbot['y'])
+        if self.navAlgorithm == ['Ballistic']:
 
-        # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
-        dotbot['heading']    = random.randint(  0,359)
+            # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
+            dotbot['heading']    = random.randint(  0,359)
+
+        elif self.navAlgorithm == ['Atlas_2.0']:
+
+            distanceDotandBot = []
+
+            map = self.mapBuilder.getMap()
+            #get all dots in the map
+            dots = list(set(map['dots']))
+
+            #if there are more than 2 dots (as one will be the dot the robot just bumped into) then find distance
+            #between dot and robot, to then find the closest dot to robot
+
+            if len(dots) > 2*len(self.positions):
+                for dot in dots:
+                    distance = u.distance(dot,(dotbot['x'],dotbot['y']))
+                    if distance > 0:
+                        distanceDotandBot += [(distance, dot)]
+
+                distanceDotandBot = sorted(distanceDotandBot, key = lambda e: e[0])
+
+                closestDotelement = distanceDotandBot[0]
+                closestDistance = closestDotelement[0]
+                closestDot = closestDotelement[1]
+
+                #find the angle between the bot and the closest dot
+
+                #angleBD = (math.degrees(math.acos((closestDot[0]-dotbot['x'])/closestDistance)))
+                if closestDot[0]<=dotbot['x'] and closestDot[1]<=dotbot['y']:
+                    newHeading = random.randint(270,359)
+                elif closestDot[0]>=dotbot['x'] and closestDot[1]<=dotbot['y']:
+                    newHeading = random.randint(0, 90)
+                elif closestDot[0] <= dotbot['x'] and closestDot[1] >= dotbot['y']:
+                    newHeading = random.randint(180, 270)
+                elif closestDot[0] >= dotbot['x'] and closestDot[1] >= dotbot['y']:
+                    newHeading = random.randint(90, 180)
+
+                dotbot['heading'] = newHeading
+            else:
+
+                dotbot['heading'] = random.randint(0, 359)
+
 
         # set the DotBot's speed
         dotbot['speed']      = 1
@@ -362,9 +421,12 @@ class Orchestrator(object):
     def getView(self):
 
         # do NOT write back any results to the DotBot's state as race condition possible
-
         # compute updated position
 
+        # check if mapping has completed, if it has trigger simulation reset
+        map = self.mapBuilder.getMap()
+        if map['complete'] and map['lines'] != []:
+            self.simRun += 1
 
         return {
             'dotbots': [
@@ -375,6 +437,22 @@ class Orchestrator(object):
             ],
             'discomap': self.mapBuilder.getMap(),
         }
+
+    def reset(self):
+        '''
+        Reset orchestrator
+        '''
+        self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
+            {
+                'x':           x,
+                'y':           y,
+                'posTs':       0,
+                'heading':     0,
+                'speed':       0,
+                'commandId':   0,
+                'lastBump':    0,
+            } for (x,y) in self.positions
+        ]
 
     #======================== private =========================================
 

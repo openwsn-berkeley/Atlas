@@ -43,6 +43,8 @@ class Wireless(object):
         self.packetCounter = 0
 
     # ======================== public ==========================================
+    def reset(self):
+        self.packetCounter = 0
 
     def indicateElements(self, dotbots, orchestrator):
         assert self.dotbots == None
@@ -52,8 +54,8 @@ class Wireless(object):
         self.orchestrator = orchestrator
 
     def indicateOrchLocation(self, xo, yo):
-        assert self.orchX == None
-        assert self.orchY == None
+        #assert self.orchX == None
+        #assert self.orchY == None
 
         self.orchX = xo
         self.orchY = yo
@@ -82,22 +84,23 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _getPDR(self,dotbot):
-        if self.packetCounter == 0:
-            dotbotX = self.orchX
-            dotbotY = self.orchY
-        else:
-            dotbotAttitude = dotbot.getAttitude()
-            dotbotX = dotbotAttitude['x']
-            dotbotY = dotbotAttitude['y']
-
-        distance = int(u.distance((dotbotX,dotbotY),(self.orchX,self.orchY)))
-        distanceToPDR = {
-                        '23': 0.0001, '22': 0.0001, '21': 0.0001, '20': 0.0001, '19': 0.0001,
-                        '18': 0.0001, '17': 0.1494, '16': 0.2340, '15': 0.4071, '14': 0.6359,
-                        '13': 0.6866, '12': 0.7476, '11':0.8603, '10': 0.8702, '9':   0.9324,
-                        '8': 0.9427 , '7': 0.9562, '6': 0.9611, '5': 0.9739, '4': 0.9745,
-                        '3': 0.9844, '2': 0.9854, '1': 0.9903, '0': 1.0000,
-                        }
-        PDR = distanceToPDR[str(distance)]
+        # if self.packetCounter == 0:
+        #     dotbotX = self.orchX
+        #     dotbotY = self.orchY
+        # else:
+        #     dotbotAttitude = dotbot.getAttitude()
+        #     dotbotX = dotbotAttitude['x']
+        #     dotbotY = dotbotAttitude['y']
+        #
+        # distance = int(u.distance((dotbotX,dotbotY),(self.orchX,self.orchY)))
+        # distanceToPDR = {
+        #                 '23': 0.0001, '22': 0.0001, '21': 0.0001, '20': 0.0001, '19': 0.0001,
+        #                 '18': 0.0001, '17': 0.1494, '16': 0.2340, '15': 0.4071, '14': 0.6359,
+        #                 '13': 0.6866, '12': 0.7476, '11':0.8603, '10': 0.8702, '9':   0.9324,
+        #                 '8': 0.9427 , '7': 0.9562, '6': 0.9611, '5': 0.9739, '4': 0.9745,
+        #                 '3': 0.9844, '2': 0.9854, '1': 0.9903, '0': 1.0000,
+        #                 }
+        # PDR = distanceToPDR[str(distance)]
+        PDR = 0.8
 
         return PDR

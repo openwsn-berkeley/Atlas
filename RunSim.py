@@ -12,7 +12,7 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       5,
+        'numDotBots':       3,
         'floorplanDrawing': # 1m per character
 '''
 ............###...
@@ -24,7 +24,9 @@ SIMSETTINGS = [
 ''',
         'initialPosition':  (5,1),
         'orchLocation'   :  (5,1),
+        'navAlgorithm'   :   'Ballistic', #set navigation algorithm. options are: 1. Ballistic 2. Atlas_2.0
     }
+
 ]
 #============================ helpers =========================================
 
@@ -32,7 +34,7 @@ def oneSim(simSetting):
     '''
     Run a single simulation.
     '''
-    
+    currentRun = 1
     # create the wireless communication
     wireless       = Wireless.Wireless()
     
@@ -52,6 +54,7 @@ def oneSim(simSetting):
     for dotBot in dotBots:
         dotBot.setInitialPosition(x,y)
 
+
     #set orchestrator position
     (xo,yo) = simSetting['orchLocation']
     wireless.indicateOrchLocation(xo,yo)
@@ -64,13 +67,63 @@ def oneSim(simSetting):
     
     # start the UI (call last)
     simUI          = SimUI.SimUI(floorplan,dotBots,orchestrator)
-    
+
+    orchestrator.setNavAlgorithm([simSetting['navAlgorithm']])
+
     # schedule the first event
     simEngine.schedule(0,orchestrator.startExploration)
 
     for dotBot in dotBots:
         dotBot.wakeBot()
-    
+
+    simEngine.commandPlay(1.00)
+
+    while True:
+        if orchestrator.simRun > currentRun:
+            #do all the re-initializing here
+
+            print('========================RESET===============================')
+
+            # reset simEngine
+            simEngine.reset()
+
+            #reset wireless
+            wireless.reset()
+
+            # reset robots
+            for dotBot in dotBots:
+                dotBot.reset()
+
+            # send robots back to starting position
+            (x, y) = simSetting['initialPosition']
+            for dotBot in dotBots:
+                dotBot.setInitialPosition(x, y)
+
+            #reset mapbuilder
+            orchestrator.mapBuilder.reset()
+
+            # set orchestrator position
+            (xo, yo) = simSetting['orchLocation']
+            wireless.indicateOrchLocation(xo, yo)
+
+            print('current time', simEngine.currentTime())
+
+            # schedule first event for new simulation run
+            simEngine.schedule(0, orchestrator.startExploration)
+
+            # reset orchestrator
+            orchestrator.reset()
+
+            # wake dotbots up to start checking packets
+            for dotBot in dotBots:
+                dotBot.wakeBot()
+
+            #increement current run
+            currentRun = orchestrator.simRun
+
+            simEngine.commandPlay(1.00)
+
+
     input('Press Enter to close simulation.')
 
 #============================ main ============================================
