@@ -1,5 +1,6 @@
 # built-in
 # third-party
+import csv
 # local
 import Floorplan
 import DotBot
@@ -12,7 +13,7 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       3,
+        'numDotBots':       20,
         'floorplanDrawing': # 1m per character
 '''
 ............###...
@@ -66,7 +67,7 @@ def oneSim(simSetting):
     wireless.indicateElements(dotBots,orchestrator)
     
     # start the UI (call last)
-    simUI          = SimUI.SimUI(floorplan,dotBots,orchestrator)
+    #simUI          = SimUI.SimUI(floorplan,dotBots,orchestrator)
 
     orchestrator.setNavAlgorithm([simSetting['navAlgorithm']])
 
@@ -76,52 +77,62 @@ def oneSim(simSetting):
     for dotBot in dotBots:
         dotBot.wakeBot()
 
-    simEngine.commandPlay(1.00)
+    simEngine.commandPlay(20.00)
 
-    while True:
-        if orchestrator.simRun > currentRun:
-            #do all the re-initializing here
+    with open('DotBot.csv', 'a', newline = '') as f:
+        writer = csv.writer(f)
+        writer.writerow(["simRun", "PDR", "numRobots","timeToComplete (seconds)"])
+        while True:
+            if orchestrator.mapBuilder.simRun > currentRun:
+                #do all the re-initializing here
+                print('========================RESET===============================')
+                kpis = {'numRobots':simSetting['numDotBots'],
+                        'timeToComplete':simEngine.timeToCompleation(),
+                        'PDR':wireless._getPDR(1),
+                        'simRun': currentRun,
+                        }
+                writer.writerow([kpis['simRun'], kpis['PDR'], kpis['numRobots'], kpis['timeToComplete']])
+                #f.write(str(kpis)+'\n')
+                f.flush()
 
-            print('========================RESET===============================')
+                # reset simEngine
+                simEngine.reset()
 
-            # reset simEngine
-            simEngine.reset()
+                #reset wireless
+                wireless.reset()
 
-            #reset wireless
-            wireless.reset()
+                # reset robots
+                for dotBot in dotBots:
+                    dotBot.reset()
 
-            # reset robots
-            for dotBot in dotBots:
-                dotBot.reset()
+                # send robots back to starting position
+                (x, y) = simSetting['initialPosition']
+                for dotBot in dotBots:
+                    dotBot.setInitialPosition(x, y)
 
-            # send robots back to starting position
-            (x, y) = simSetting['initialPosition']
-            for dotBot in dotBots:
-                dotBot.setInitialPosition(x, y)
+                #reset mapbuilder
+                orchestrator.mapBuilder.reset()
 
-            #reset mapbuilder
-            orchestrator.mapBuilder.reset()
+                # set orchestrator position
+                (xo, yo) = simSetting['orchLocation']
+                wireless.indicateOrchLocation(xo, yo)
 
-            # set orchestrator position
-            (xo, yo) = simSetting['orchLocation']
-            wireless.indicateOrchLocation(xo, yo)
+                print('current time', simEngine.currentTime())
 
-            print('current time', simEngine.currentTime())
+                # schedule first event for new simulation run
+                simEngine.schedule(0, orchestrator.startExploration)
 
-            # schedule first event for new simulation run
-            simEngine.schedule(0, orchestrator.startExploration)
+                # reset orchestrator
+                orchestrator.reset()
 
-            # reset orchestrator
-            orchestrator.reset()
+                # wake dotbots up to start checking packets
+                for dotBot in dotBots:
+                    dotBot.wakeBot()
 
-            # wake dotbots up to start checking packets
-            for dotBot in dotBots:
-                dotBot.wakeBot()
+                #increement current run
+                currentRun = orchestrator.mapBuilder.simRun
 
-            #increement current run
-            currentRun = orchestrator.simRun
-
-            simEngine.commandPlay(1.00)
+                simEngine.commandPlay(20.00)
 
 
     input('Press Enter to close simulation.')

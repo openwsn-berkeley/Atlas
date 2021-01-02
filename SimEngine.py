@@ -121,6 +121,10 @@ class SimEngine(threading.Thread):
         returnVal           += [']']
         returnVal            = ' '.join(returnVal)
         return returnVal
+
+    def timeToCompleation(self):
+        timeToComp = self._currentTime
+        return timeToComp
     
     def schedule(self,ts,cb):
         # add new event

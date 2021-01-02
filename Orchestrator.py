@@ -30,6 +30,7 @@ class MapBuilder(object):
         # local variables
         self.simEngine       = SimEngine.SimEngine()
         self.dataLock        = threading.RLock()
+        self.simRun = 1
         self.discoMap = {
             'complete': False,    # is the map complete?
             'dots':     [],       # each bump becomes a dot
@@ -76,6 +77,11 @@ class MapBuilder(object):
 
         # schedule next consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
+
+        # check if mapping has completed, if it has trigger simulation reset
+        map = self.getMap()
+        if map['complete'] and map['lines'] != []:
+            self.simRun += 1
 
     def _consolidateMap(self):
 
@@ -287,7 +293,6 @@ class Orchestrator(object):
     def __init__(self,positions,floorplan):
 
         # store params
-        #self.initialPos        = positions
         self.positions         = positions
         self.floorplan         = floorplan
 
@@ -296,7 +301,6 @@ class Orchestrator(object):
         # local variables
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
-        self.simRun            = 1
         self.navAlgorithm      = None
         self.notifrec          = False #whether or not a notification has been recieved from a bot
         self.mostRecentBumpTs  = self.simEngine.currentTime() #initialise value of last known bumptime to be current time
@@ -422,11 +426,6 @@ class Orchestrator(object):
 
         # do NOT write back any results to the DotBot's state as race condition possible
         # compute updated position
-
-        # check if mapping has completed, if it has trigger simulation reset
-        map = self.mapBuilder.getMap()
-        if map['complete'] and map['lines'] != []:
-            self.simRun += 1
 
         return {
             'dotbots': [
