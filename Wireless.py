@@ -41,10 +41,12 @@ class Wireless(object):
         self.orchX = None
         self.orchY = None
         self.packetCounter = 0
+        self.PDR = 1
 
     # ======================== public ==========================================
-    def reset(self):
+    def reset(self,pdr):
         self.packetCounter = 0
+        self.PDR = pdr
 
     def indicateElements(self, dotbots, orchestrator):
         assert self.dotbots == None
@@ -62,7 +64,7 @@ class Wireless(object):
 
     def toDotBots(self, msg):
         for dotbot in self.dotbots:
-            PDR = self._getPDR(dotbot)
+            PDR = self.PDR
             if PDR == 1 :
                 dotbot.fromOrchestrator(msg)
             elif random.randint(0, 1) < PDR:
@@ -72,7 +74,7 @@ class Wireless(object):
             self.packetCounter += 1
 
     def toOrchestrator(self, msg):
-        PDR = self._getPDR(self.dotbots[msg['dotBotId']])
+        PDR = self.PDR
         if PDR == 1:
             self.orchestrator.fromDotBot(msg)
         elif random.randint(0, 1) < PDR :
@@ -83,7 +85,7 @@ class Wireless(object):
 
     # ======================== private =========================================
 
-    def _getPDR(self,dotbot):
+    def _get_pisterHack_PDR(self,dotbot):
         # if self.packetCounter == 0:
         #     dotbotX = self.orchX
         #     dotbotY = self.orchY

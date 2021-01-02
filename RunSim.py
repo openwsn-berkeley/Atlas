@@ -79,27 +79,50 @@ def oneSim(simSetting):
 
     simEngine.commandPlay(20.00)
 
-    with open('DotBot.csv', 'a', newline = '') as f:
+    with open('DotBot.csv', 'w', newline = '') as f:
         writer = csv.writer(f)
         writer.writerow(["simRun", "PDR", "numRobots","timeToComplete (seconds)"])
         while True:
+            if orchestrator.mapBuilder.simRun >= 100:
+                exit()
             if orchestrator.mapBuilder.simRun > currentRun:
                 #do all the re-initializing here
                 print('========================RESET===============================')
                 kpis = {'numRobots':simSetting['numDotBots'],
                         'timeToComplete':simEngine.timeToCompleation(),
-                        'PDR':wireless._getPDR(1),
+                        'PDR':wireless.PDR,
                         'simRun': currentRun,
                         }
                 writer.writerow([kpis['simRun'], kpis['PDR'], kpis['numRobots'], kpis['timeToComplete']])
                 #f.write(str(kpis)+'\n')
                 f.flush()
+                #set PDR value for next run
+                if orchestrator.mapBuilder.simRun in range(0,10):
+                    pdr = 1
+                if orchestrator.mapBuilder.simRun in range(10,20):
+                    pdr = 0.9
+                if orchestrator.mapBuilder.simRun in range(20,30):
+                    pdr = 0.8
+                if orchestrator.mapBuilder.simRun in range(30,40):
+                    pdr = 0.7
+                if orchestrator.mapBuilder.simRun in range(40,50):
+                    pdr = 0.6
+                if orchestrator.mapBuilder.simRun in range(50,60):
+                    pdr = 0.5
+                if orchestrator.mapBuilder.simRun in range(60,70):
+                    pdr = 0.4
+                if orchestrator.mapBuilder.simRun in range(70,80):
+                    pdr = 0.3
+                if orchestrator.mapBuilder.simRun in range(80,90):
+                    pdr = 0.2
+                if orchestrator.mapBuilder.simRun in range(90,100):
+                    pdr = 0.1
 
                 # reset simEngine
                 simEngine.reset()
 
                 #reset wireless
-                wireless.reset()
+                wireless.reset(pdr)
 
                 # reset robots
                 for dotBot in dotBots:

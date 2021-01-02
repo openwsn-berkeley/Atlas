@@ -80,7 +80,7 @@ class MapBuilder(object):
 
         # check if mapping has completed, if it has trigger simulation reset
         map = self.getMap()
-        if map['complete'] and map['lines'] != []:
+        if map['complete'] and map['lines'] != [] or self.simEngine.currentTime()>100:
             self.simRun += 1
 
     def _consolidateMap(self):
