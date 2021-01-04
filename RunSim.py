@@ -83,7 +83,7 @@ def oneSim(simSetting):
         writer = csv.writer(f)
         writer.writerow(["simRun", "PDR", "numRobots","timeToComplete (seconds)"])
         while True:
-            if orchestrator.mapBuilder.simRun >= 100:
+            if orchestrator.mapBuilder.simRun >= 1000:
                 exit()
             if orchestrator.mapBuilder.simRun > currentRun:
                 #do all the re-initializing here
@@ -97,25 +97,25 @@ def oneSim(simSetting):
                 #f.write(str(kpis)+'\n')
                 f.flush()
                 #set PDR value for next run
-                if orchestrator.mapBuilder.simRun in range(0,10):
+                if orchestrator.mapBuilder.simRun in range(0,100):
                     pdr = 1
-                if orchestrator.mapBuilder.simRun in range(10,20):
+                if orchestrator.mapBuilder.simRun in range(100,200):
                     pdr = 0.9
-                if orchestrator.mapBuilder.simRun in range(20,30):
+                if orchestrator.mapBuilder.simRun in range(200,300):
                     pdr = 0.8
-                if orchestrator.mapBuilder.simRun in range(30,40):
+                if orchestrator.mapBuilder.simRun in range(300,400):
                     pdr = 0.7
-                if orchestrator.mapBuilder.simRun in range(40,50):
+                if orchestrator.mapBuilder.simRun in range(400,500):
                     pdr = 0.6
-                if orchestrator.mapBuilder.simRun in range(50,60):
+                if orchestrator.mapBuilder.simRun in range(500,600):
                     pdr = 0.5
-                if orchestrator.mapBuilder.simRun in range(60,70):
+                if orchestrator.mapBuilder.simRun in range(600,700):
                     pdr = 0.4
-                if orchestrator.mapBuilder.simRun in range(70,80):
+                if orchestrator.mapBuilder.simRun in range(700,800):
                     pdr = 0.3
-                if orchestrator.mapBuilder.simRun in range(80,90):
+                if orchestrator.mapBuilder.simRun in range(800,900):
                     pdr = 0.2
-                if orchestrator.mapBuilder.simRun in range(90,100):
+                if orchestrator.mapBuilder.simRun in range(900,1000):
                     pdr = 0.1
 
                 # reset simEngine
