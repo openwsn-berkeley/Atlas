@@ -1,6 +1,7 @@
 # built-in
 # third-party
 import csv
+import time
 # local
 import Floorplan
 import DotBot
@@ -13,7 +14,7 @@ import SimUI
 
 SIMSETTINGS = [
     {
-        'numDotBots':       20,
+        'numDotBots':       1,
         'floorplanDrawing': # 1m per character
 '''
 ............###...
@@ -67,7 +68,7 @@ def oneSim(simSetting):
     wireless.indicateElements(dotBots,orchestrator)
     
     # start the UI (call last)
-    #simUI          = SimUI.SimUI(floorplan,dotBots,orchestrator)
+    simUI          = SimUI.SimUI(floorplan,dotBots,orchestrator)
 
     orchestrator.setNavAlgorithm([simSetting['navAlgorithm']])
 
@@ -81,45 +82,54 @@ def oneSim(simSetting):
 
     with open('DotBot.csv', 'w', newline = '') as f:
         writer = csv.writer(f)
-        writer.writerow(["simRun", "PDR", "numRobots","timeToComplete (seconds)"])
+        writer.writerow(["simRun", "PDR", "numRobots","timeToComplete (seconds)", "packetsDropped", "TotalPackets"])
         while True:
-            if orchestrator.mapBuilder.simRun >= 1000:
+            if orchestrator.mapBuilder.simRun >= 100:
                 exit()
-            if orchestrator.mapBuilder.simRun > currentRun:
+            elif orchestrator.mapBuilder.simRun > currentRun:
                 #do all the re-initializing here
                 print('========================RESET===============================')
+                packets_dropped = 0
+                for dotBot in dotBots:
+                    packets_dropped += dotBot.packets_dropped
+
                 kpis = {'numRobots':simSetting['numDotBots'],
                         'timeToComplete':simEngine.timeToCompleation(),
                         'PDR':wireless.PDR,
                         'simRun': currentRun,
+                        'packetsDropped': packets_dropped,
+                        'totalPackets': wireless.packetCounter
                         }
-                writer.writerow([kpis['simRun'], kpis['PDR'], kpis['numRobots'], kpis['timeToComplete']])
-                #f.write(str(kpis)+'\n')
+                writer.writerow([kpis['simRun'], kpis['PDR'], kpis['numRobots'], kpis['timeToComplete'], kpis['packetsDropped'], kpis['totalPackets']])
                 f.flush()
+
                 #set PDR value for next run
-                if orchestrator.mapBuilder.simRun in range(0,100):
+                if orchestrator.mapBuilder.simRun in range(1,11):
                     pdr = 1
-                if orchestrator.mapBuilder.simRun in range(100,200):
+                if orchestrator.mapBuilder.simRun in range(11,21):
                     pdr = 0.9
-                if orchestrator.mapBuilder.simRun in range(200,300):
+                if orchestrator.mapBuilder.simRun in range(21,31):
                     pdr = 0.8
-                if orchestrator.mapBuilder.simRun in range(300,400):
+                if orchestrator.mapBuilder.simRun in range(31,41):
                     pdr = 0.7
-                if orchestrator.mapBuilder.simRun in range(400,500):
+                if orchestrator.mapBuilder.simRun in range(41,51):
                     pdr = 0.6
-                if orchestrator.mapBuilder.simRun in range(500,600):
+                if orchestrator.mapBuilder.simRun in range(51,61):
                     pdr = 0.5
-                if orchestrator.mapBuilder.simRun in range(600,700):
+                if orchestrator.mapBuilder.simRun in range(61,71):
                     pdr = 0.4
-                if orchestrator.mapBuilder.simRun in range(700,800):
+                if orchestrator.mapBuilder.simRun in range(71,81):
                     pdr = 0.3
-                if orchestrator.mapBuilder.simRun in range(800,900):
+                if orchestrator.mapBuilder.simRun in range(81,91):
                     pdr = 0.2
-                if orchestrator.mapBuilder.simRun in range(900,1000):
+                if orchestrator.mapBuilder.simRun in range(91,100):
                     pdr = 0.1
 
                 # reset simEngine
                 simEngine.reset()
+
+                #reset mapbuilder
+                orchestrator.mapBuilder.reset()
 
                 #reset wireless
                 wireless.reset(pdr)
@@ -133,20 +143,18 @@ def oneSim(simSetting):
                 for dotBot in dotBots:
                     dotBot.setInitialPosition(x, y)
 
-                #reset mapbuilder
-                orchestrator.mapBuilder.reset()
 
                 # set orchestrator position
                 (xo, yo) = simSetting['orchLocation']
                 wireless.indicateOrchLocation(xo, yo)
 
-                print('current time', simEngine.currentTime())
-
-                # schedule first event for new simulation run
-                simEngine.schedule(0, orchestrator.startExploration)
+                #print('current time', simEngine.currentTime())
 
                 # reset orchestrator
                 orchestrator.reset()
+
+                # schedule first event for new simulation run
+                simEngine.schedule(0, orchestrator.startExploration)
 
                 # wake dotbots up to start checking packets
                 for dotBot in dotBots:

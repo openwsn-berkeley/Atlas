@@ -1,5 +1,6 @@
 # built-in
 import random
+import time
 import math
 import threading
 import copy
@@ -72,16 +73,15 @@ class MapBuilder(object):
             # decide whether map completed
             self.discoMap['complete'] = self._isMapComplete()
 
-            #this is where we invoke end of current simulation
-
-
         # schedule next consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
 
-        # check if mapping has completed, if it has trigger simulation reset
-        map = self.getMap()
-        if map['complete'] and map['lines'] != [] or self.simEngine.currentTime()>100:
+        # this is where we invoke end of current simulation and trigger resest
+        if self.discoMap['complete'] and self.discoMap['lines'] != [] :
             self.simRun += 1
+            time.sleep(5)
+            print('-------SIM RUM---------------', self.simRun)
+
 
     def _consolidateMap(self):
 
@@ -216,9 +216,9 @@ class MapBuilder(object):
 
             # map is never complete if there are dots remaining
 
-            #if self.discoMap['dots']:
-            #    returnVal = False
-            #    break
+            if self.discoMap['dots']:
+                returnVal = False
+                break
 
             # keep looping until no more todo lines
             alllines = copy.deepcopy(self.discoMap['lines'])

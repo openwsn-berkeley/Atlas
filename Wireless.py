@@ -64,20 +64,16 @@ class Wireless(object):
 
     def toDotBots(self, msg):
         for dotbot in self.dotbots:
-            PDR = self.PDR
-            if PDR == 1 :
-                dotbot.fromOrchestrator(msg)
-            elif random.randint(0, 1) < PDR:
+            rand = random.uniform(0,1)
+            if rand < self.PDR:
                 dotbot.fromOrchestrator(msg)
             else:
                 pass
             self.packetCounter += 1
 
     def toOrchestrator(self, msg):
-        PDR = self.PDR
-        if PDR == 1:
-            self.orchestrator.fromDotBot(msg)
-        elif random.randint(0, 1) < PDR :
+        rand = random.uniform(0,1)
+        if rand < self.PDR :
             self.orchestrator.fromDotBot(msg)
         else:
             pass
@@ -86,23 +82,25 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _get_pisterHack_PDR(self,dotbot):
-        # if self.packetCounter == 0:
-        #     dotbotX = self.orchX
-        #     dotbotY = self.orchY
-        # else:
-        #     dotbotAttitude = dotbot.getAttitude()
-        #     dotbotX = dotbotAttitude['x']
-        #     dotbotY = dotbotAttitude['y']
-        #
-        # distance = int(u.distance((dotbotX,dotbotY),(self.orchX,self.orchY)))
-        # distanceToPDR = {
-        #                 '23': 0.0001, '22': 0.0001, '21': 0.0001, '20': 0.0001, '19': 0.0001,
-        #                 '18': 0.0001, '17': 0.1494, '16': 0.2340, '15': 0.4071, '14': 0.6359,
-        #                 '13': 0.6866, '12': 0.7476, '11':0.8603, '10': 0.8702, '9':   0.9324,
-        #                 '8': 0.9427 , '7': 0.9562, '6': 0.9611, '5': 0.9739, '4': 0.9745,
-        #                 '3': 0.9844, '2': 0.9854, '1': 0.9903, '0': 1.0000,
-        #                 }
-        # PDR = distanceToPDR[str(distance)]
-        PDR = 0.8
+        '''
+        Pister Hack model for PDR calculation based on distance/ signal attenuation
+        '''
+        if self.packetCounter == 0:
+            dotbotX = self.orchX
+            dotbotY = self.orchY
+        else:
+            dotbotAttitude = dotbot.getAttitude()
+            dotbotX = dotbotAttitude['x']
+            dotbotY = dotbotAttitude['y']
+
+        distance = int(u.distance((dotbotX,dotbotY),(self.orchX,self.orchY)))
+        distanceToPDR = {
+                     '23': 0.0001, '22': 0.0001, '21': 0.0001, '20': 0.0001, '19': 0.0001,
+                     '18': 0.0001, '17': 0.1494, '16': 0.2340, '15': 0.4071, '14': 0.6359,
+                     '13': 0.6866, '12': 0.7476, '11':0.8603, '10': 0.8702, '9':   0.9324,
+                      '8': 0.9427 , '7': 0.9562, '6': 0.9611, '5': 0.9739, '4': 0.9745,
+                      '3': 0.9844, '2': 0.9854, '1': 0.9903, '0': 1.0000,
+                         }
+        PDR = distanceToPDR[str(distance)]
 
         return PDR
