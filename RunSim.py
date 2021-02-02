@@ -15,18 +15,26 @@ import SimUI
 SIMSETTINGS = [
     {
         'numDotBots':       1,
-        'floorplanDrawing': # 1m per character
-'''
-............###...
-..................
-....##.....##.....
-....##............
-..............##..
-..............##..
+#          'floorplanDrawing': # 1m per character
+#  '''
+# ............###...
+# ..................
+# ....##.....##.....
+# ....##............
+# ..............##..
+# ..............##..
+# ''',
+         'floorplanDrawing': # 1m per character
+ '''
+..#..
+.....
+.....
+#...#
 ''',
-        'initialPosition':  (5,1),
-        'orchLocation'   :  (5,1),
-        'navAlgorithm'   :   'Ballistic', #set navigation algorithm. options are: 1. Ballistic 2. Atlas_2.0
+
+        'initialPosition':  (1,1),
+        'orchLocation'   :  (1,1),
+        'navAlgorithm'   :   'Atlas_2.0', #set navigation algorithm. options are: 1. Ballistic 2. Atlas_2.0
     }
 
 ]
@@ -84,7 +92,7 @@ def oneSim(simSetting):
         writer = csv.writer(f)
         writer.writerow(["simRun", "PDR", "numRobots","timeToComplete (seconds)", "packetsDropped", "TotalPackets"])
         while True:
-            if orchestrator.mapBuilder.simRun >= 100:
+            if orchestrator.mapBuilder.simRun > 11:
                 exit()
             elif orchestrator.mapBuilder.simRun > currentRun:
                 #do all the re-initializing here

@@ -93,7 +93,7 @@ class DotBot(object):
         #if we have reached here, packet has been recieved, otherwise packetRecieved reamains at its default value as false
         self.packetReceived = True
         self.posTs = self.simEngine.currentTime()
-        print('packet',myMsg['commandId'] ,'received at', self.posTs,'for dotBot',self.dotBotId, 'moving time', self.movingTime)
+        print('packet',myMsg ,'received at', self.posTs,'for dotBot',self.dotBotId, 'moving time', self.movingTime)
 
         # remember what I was asked
         self.lastCommandIdReceived = myMsg['commandId']
@@ -150,7 +150,7 @@ class DotBot(object):
         '''
 
         if not self.packetReceived:
-            print('packet lost at', self.simEngine.currentTime(),'for DotBot', self.dotBotId)
+            #print('packet lost at', self.simEngine.currentTime(),'for DotBot', self.dotBotId)
             self.packets_dropped += 1
             #schedule sending a notification again in 1 second
             self.simEngine.schedule(self.simEngine.currentTime()+5,self._bump)
