@@ -37,7 +37,7 @@ class SimEngine(threading.Thread):
         self._startTsReal         = None
         self._playSpeed           = 1.00
         self.events               = []
-        self.semNumEvents         = threading.Semaphore(0) #number of release()-aquire()
+        self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
         self.semIsRunning.acquire()
@@ -51,6 +51,7 @@ class SimEngine(threading.Thread):
     #======================== thread ==========================================
     
     def run(self):
+        
         while True:
             
             # wait for simulator to be running
@@ -61,9 +62,11 @@ class SimEngine(threading.Thread):
             self.semNumEvents.acquire()
 
             # handle next event
-            (ts,cb) = self.events.pop(0)
+            (ts,cb,selfDestruct) = self.events.pop(0)
             assert self._currentTime<=ts
             self._currentTime = ts
+            if selfDestruct:
+                break
             cb()
 
             # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
@@ -78,27 +81,32 @@ class SimEngine(threading.Thread):
                 if durReal*self._playSpeed<durSim:
                     time.sleep( durSim - (durReal*self._playSpeed) )
 
-    
     #======================== public ==========================================
     
-    #=== from other elements in simulator
-
-    def reset(self):
-        '''
-        Reset SimEngine
-        '''
-        self._currentTime         = 0    # reset current time
-        self._mode                = self.MODE_PAUSE
-        self._startTsSim          = None
-        self._startTsReal         = None
-        self._playSpeed           = 1.00
-        self.events               = []
-        self.semNumEvents         = threading.Semaphore(0) #number of release()-aquire()
-        self.dataLock             = threading.Lock()
-        self.semIsRunning         = threading.Lock()
-        self.semIsRunning.acquire()
-
-
+    #=== admin
+    
+    def destroy(self): 
+        self._instance   = None
+        self._init       = False
+        # FIXME: kill thread
+    
+    def runToCompletion(self,startFunc):
+        assert self._currentTime==0
+        self.schedule(0,startFunc) # schedule the first event
+        self.join()                # block until simEngine thread ends
+    
+    def schedule(self,ts,cb,selfDestruct=False):
+        # add new event
+        self.events += [(ts,cb,selfDestruct)]
+        # reorder list
+        self.events  = sorted(self.events, key = lambda e: e[0])
+        # release semaphore (increments its internal counter)
+        self.semNumEvents.release()
+    
+    def completeRun(self):
+        self.schedule(self._currentTime,None,True)
+    
+    #=== helper functions
 
     def currentTime(self):
         return self._currentTime
@@ -121,18 +129,6 @@ class SimEngine(threading.Thread):
         returnVal           += [']']
         returnVal            = ' '.join(returnVal)
         return returnVal
-
-    def timeToCompleation(self):
-        timeToComp = self._currentTime
-        return timeToComp
-    
-    def schedule(self,ts,cb):
-        # add new event
-        self.events += [(ts,cb)]
-        # reorder list
-        self.events  = sorted(self.events, key = lambda e: e[0])
-        # release semaphore
-        self.semNumEvents.release()
     
     #=== commands from the GUI
     

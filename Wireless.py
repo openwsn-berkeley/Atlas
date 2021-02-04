@@ -4,24 +4,14 @@
 import random
 import Utils as u
 
-
 class Wireless(object):
     '''
     The wireless medium through which DotBot and orchestrator communicate.
     '''
-
-    # TODO: change into a PDR table later on
-
-    #PDR = 0.7
-
-    # singleton pattern: a python design pattern that restrics the instanciation of class to one object only
-    # so that all there is only one global access point to the class instance
+    
+    # singleton pattern
     _instance = None
     _init = False
-
-    # magic methods: called when instance of class is created
-
-    # creates instance of class
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(Wireless, cls).__new__(cls, *args, **kwargs)
@@ -44,9 +34,10 @@ class Wireless(object):
         self.PDR = 1
 
     # ======================== public ==========================================
-    def reset(self,pdr):
-        self.packetCounter = 0
-        self.PDR = pdr
+    
+    def destroy(self): 
+        self._instance   = None
+        self._init       = False
 
     def indicateElements(self, dotbots, orchestrator):
         assert self.dotbots == None

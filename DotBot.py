@@ -42,6 +42,7 @@ class DotBot(object):
         self.movingTime = 0  # time at which robot starts moving after bump
         self.packets_dropped = 0
 
+        # FIXME: call wakeBot
 
     # ======================== public ==========================================
 

@@ -43,6 +43,7 @@ class MapBuilder(object):
         self.exploredCells = []
 
     #======================== public ==========================================
+    
     def reset(self):
         self.discoMap = {
             'complete': False,    # is the map complete?
@@ -78,13 +79,13 @@ class MapBuilder(object):
         # schedule next consolidation activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
 
-        # this is where we invoke end of current simulation and trigger resest
-        if self.discoMap['complete'] and self.discoMap['lines'] != [] :
-            self.simRun += 1
-            time.sleep(5)
+        # stop the simulation run if mapping has completed
+        if self.discoMap['complete']:
+            self.simEngine.completeRun()
 
     def get_explored(self, exploredCells):
         self.exploredCells = exploredCells
+    
     def _consolidateMap(self):
 
         # result list of lines
@@ -216,8 +217,12 @@ class MapBuilder(object):
 
         while True: # "loop" only once
 
+            # map is not complete if mapping hasn't started
+            if (not self.discoMap['dots']) and (not self.discoMap['lines']):
+                returnVal = False
+                break
+            
             # map is never complete if there are dots remaining
-
             if self.discoMap['dots']:
                 returnVal = False
                 break
@@ -225,12 +230,10 @@ class MapBuilder(object):
             # keep looping until no more todo lines
             alllines = copy.deepcopy(self.discoMap['lines'])
             try:
-
                 while alllines:
                     loop      = self._walkloop(alllines,alllines[0])
                     for line in loop:
                         alllines.remove(line)
-
             except ExceptionOpenLoop:
                 returnVal = False
                 break
@@ -297,7 +300,6 @@ class Orchestrator(object):
         # store params
         self.positions         = positions
         self.floorplan         = floorplan
-
 
         # local variables
         self.simEngine         = SimEngine.SimEngine()
@@ -642,7 +644,6 @@ class Orchestrator(object):
         self.frontierCellsTackled = []
         self.previously_unreachable = []
         self.open_cells = [(1,1)]
-
 
     #======================== private =========================================
 
