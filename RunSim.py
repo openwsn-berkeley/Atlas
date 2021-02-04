@@ -39,7 +39,7 @@ SIMSETTINGS = [
 
 #============================ helpers =========================================
 
-def oneSim(simSetting):
+def oneSim(simSetting,simUI):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
@@ -77,9 +77,9 @@ def oneSim(simSetting):
     
     #======================== run
     
-    # start the UI (call last)
-    simUI          = SimUI.SimUI(floorplan,dotBots,orchestrator)
-
+    # let the UI know about the new objects
+    simUI.updateObjectsToQuery(floorplan,dotBots,orchestrator)
+    
     # start a simulaion (blocks until done)
     simEngine.runToCompletion(orchestrator.startExploration)
     
@@ -92,9 +92,16 @@ def oneSim(simSetting):
 #============================ main ============================================
 
 def main():
+
+    # create the UI
+    simUI          = SimUI.SimUI()
+    
+    # run a number of simulations
     for (runNum,simSetting) in enumerate(SIMSETTINGS):
         print('run {}/{}...'.format(runNum+1,len(SIMSETTINGS)))
-        oneSim(simSetting)
+        oneSim(simSetting,simUI)
+    
+    # block until user closes
     input('Press Enter to close simulation.')
 
 if __name__=='__main__':
