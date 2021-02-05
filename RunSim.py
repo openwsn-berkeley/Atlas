@@ -23,7 +23,7 @@ SIMSETTINGS = [
 ...............
 ''',
         'initialPosition':  (1,1),
-        'navAlgorithm'   :  'ballistic',
+        'navAlgorithm'   :  'Ballistic',
         'pdr'            :  0.8,
     },
     {
@@ -36,7 +36,7 @@ SIMSETTINGS = [
 ...............
 ''',
         'initialPosition':  (1,1),
-        'navAlgorithm'   :  'atlas',
+        'navAlgorithm'   :  'Atlas',
         'pdr'            :  0.8,
     }
 ]
@@ -70,8 +70,12 @@ def oneSim(simSetting,simUI):
         dotBot.setInitialPosition(initx,inity)
     
     # create the orchestrator
-    orchestrator   = Orchestrator.Orchestrator([simSetting['initialPosition']]*len(dotBots),floorplan)
-    orchestrator.setNavAlgorithm([simSetting['navAlgorithm']])
+    orchestrator   = Orchestrator.Orchestrator(
+        simSetting['numDotBots'],
+        simSetting['initialPosition'],
+        simSetting['navAlgorithm'],
+        floorplan,
+    )
     
     # position the Orchestrator
     wireless.indicateOrchLocation(initx,inity) # FIXME: position in Orchestrator

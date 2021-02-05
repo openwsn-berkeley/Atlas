@@ -93,8 +93,8 @@ class DotBot(object):
         self.next_bump_y = bump_y
         self.next_bump_ts = bump_ts
 
-        if myMsg['timer'] != None:
-            timeToStop = self.simEngine.currentTime() + myMsg['timer']
+        if myMsg['movementDur'] != None:
+            timeToStop = self.simEngine.currentTime() + myMsg['movementDur']
             if timeToStop < self.next_bump_ts:
                 self.bumped = False
                 self.simEngine.schedule(timeToStop,self._timeOut)

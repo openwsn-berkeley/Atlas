@@ -5,6 +5,7 @@ import math
 import threading
 import copy
 import time
+import sys
 # third-party
 # local
 import SimEngine
@@ -157,8 +158,7 @@ class Navigation(object):
             heading  = (heading - 360) + 90
         return heading
 
-
-class ballistic(Navigation):
+class Navigation_Ballistic(Navigation):
 
     def __init__(self,positions, floorplan):
         Navigation.__init__(self,positions,floorplan)
@@ -170,10 +170,10 @@ class ballistic(Navigation):
         (dotbot['x'], dotbot['y']) = dotbot_position
         new_heading = random.randint(0, 359)
         dotbot['heading'] = new_heading
-        timer = None
-        return new_heading, timer
+        movementDur = None
+        return (new_heading,movementDur)
 
-class atlas(Navigation):
+class Navigation_Atlas(Navigation):
     def __init__(self, positions,floorplan):
         Navigation.__init__(self,positions,floorplan)
         self.exploredCells = []
@@ -196,16 +196,14 @@ class atlas(Navigation):
         #stop when unexplored cells are found
 
         #check easiest cells to reach (directly)
-        #if not avaliable set timer of next heading
+        #if not avaliable set movementDur of next heading
 
         # calculate heading to reach target (or first step towards target)
 
         new_heading = random.randint(0, 359)
-        timer = 1
+        movementDur = 1
 
-        return new_heading, timer
-
-
+        return (new_heading,movementDur)
 
 class MapBuilder(object):
     '''
@@ -477,17 +475,16 @@ class Orchestrator(object):
     The central orchestrator of the expedition.
     '''
 
-    def __init__(self,positions,floorplan):
+    def __init__(self,numDotBots,initialPosition,navAlgorithm,floorplan):
 
         # store params
-        self.positions         = positions
-        self.floorplan         = floorplan
+        self.numDotBots        = numDotBots
+        self.initialPosition   = initialPosition
+        self.floorplan         = floorplan # FIXME: remove
 
         # local variables
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
-        self.navAlgorithm      = None
-        self.mostRecentBumpTs  = self.simEngine.currentTime() #initialise value of last known bumptime to be current time
         self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
             {
                 'x':           x,
@@ -495,232 +492,50 @@ class Orchestrator(object):
                 'posTs':       0,
                 'heading':     0,
                 'speed':       0,
+                'movementDur': None,
                 'commandId':   0,
-                'lastBump':    self.mostRecentBumpTs,
-                'timer':       None
-            } for (x,y) in self.positions
+                'lastBumpTs':  None, # identify notifications which are retransmits # FIXME: replace by notifId
+            } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
+        self.navAlgorithm      = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))([self.initialPosition]*self.numDotBots,self.floorplan)
         self.mapBuilder        = MapBuilder()
-
-
+    
     #======================== public ==========================================
 
+    #=== admin
+    
     def startExploration(self):
         '''
-        Simulation engine, start exploring
+        Simulation engine hands over control to orchestrator
         '''
-
+        
+        # choose an initial movement for the all DotBot # FIXME move to navigationAlgorithm
         for dotbot in self.dotbotsview:
             dotbot['heading'] = random.randint(0, 359)
-            dotbot['speed'] = 1
+            dotbot['speed']   = 1
 
         self._sendDownstreamCommands('command')
 
-    def setNavAlgorithm(self, navigation):
-        if navigation == ['ballistic']:
-            self.navAlgorithm = ballistic(self.positions,self.floorplan)
+    #=== communication
 
-        if navigation == ['atlas']:
-            self.navAlgorithm = atlas(self.positions,self.floorplan)
+    def _sendDownstreamCommands(self, type):
+        '''
+        Send the next heading and speed commands to the robots
+        '''
 
-    def atlas(self,msg):
+        # format msg
+        msg = [
+            {
+                'commandId':   dotbot['commandId'],
+                'heading':     dotbot['heading'],
+                'speed':       dotbot['speed'],
+                'movementDur': dotbot['movementDur']
+            } for dotbot in self.dotbotsview
+        ]
 
-        #initialize
-        (sx,sy) = self.positions[0]
-        self.allFrontierCellsAndDistance = []
-
-        #======================================================================================
-        # calculate new position of robot , register bump, and find which cells have been
-        # explored so far
-        #======================================================================================
-
-        # if msg = initialize then we are setting up the first movement and dot have any peivous
-        # info to backtrack to
-        if msg['bumpTs'] == None:
-            dotbot = self.dotbotsview[msg['dotBotId']]
-            (rx,ry) = (sx,sy)
-            print('INITIALIZING')
-
-        else:
-            # save previous position to find pervious trajectory of movement to know
-            # which cells have been explored
-            dotbot = self.dotbotsview[msg['dotBotId']]
-            (x2, y2) = (dotbot['x'], dotbot['y'])
-            # if bumptime of notification recieved is same as that of the previous notification, it means that its a
-            # re-transmitted message, so x and y values remain the same, otherwise updated position values are calculated
-            if msg['bumpTs'] != dotbot['lastBump']:
-                dotbot['lastBump'] = msg['bumpTs']
-                # compute new theoretical position, based on the bump time - the time the bot started moving after last bump/stop
-                dotbot['x'] += (msg['bumpTs'] - msg['posTs']) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot[
-                    'speed']
-                dotbot['y'] += (msg['bumpTs'] - msg['posTs']) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot[
-                    'speed']
-                dotbot['posTs'] = msg['bumpTs']
-
-                # round
-                dotbot['x'] = round(dotbot['x'], 3)
-                dotbot['y'] = round(dotbot['y'], 3)
-
-                # notify the self.mapBuilder the obstacle location
-                self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
-
-            else:
-                dotbot['x'] += 0
-                dotbot['y'] += 0
-                dotbot['posTs'] = msg['posTs']
-
-            (rx, ry) = (dotbot['x'], dotbot['y']) #shorthand
-
-            map = self.mapBuilder.getMap()
-
-            # find the trajectories that all the robots have taken from last notification to now
-            # check which cells the trajectories pass through
-            # add these cells to explored cells
-            for cell in self.floorplan.overlayCells:
-                cellxmax = cell[0] + self.floorplan.overlayWidth
-                cellymax = cell[1] + self.floorplan.overlayHeight
-                cell_explored = self._trajectory_on_cell(rx,ry,x2,y2,cell[0],cell[1],cellxmax, cellymax)
-                if cell_explored and cell not in self.exploredCells:
-                    self.exploredCells += [cell]
-                    openCell = True
-                    if self._dot_in_cell((rx,ry), cell[0], cellxmax, cell[1], cellymax):
-                        #if (rx <= cell[0] or rx >= cellxmax  or ry <= cell[1] or ry >= cellymax):
-                        x_reverse = rx - (0.01) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
-                        y_reverse = ry - (0.01) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
-                        if x_reverse <= cell[0] or x_reverse >= cellxmax or y_reverse <= cell[1] or y_reverse >= cellymax:
-                            openCell = False
-                    if openCell:
-                        self.open_cells += [cell]
-                #if cell has bump dot on it add this cell to explored cells
-                if map['dots']:
-                    for dot in map['dots']:
-                        if self._dot_in_cell(dot, cell[0], cellxmax, cell[1], cellymax):
-                            if cell not in self.open_cells:
-                                self.obstacle_cells += [cell]
-                                self.exploredCells += [cell]
-
-            self.obstacle_cells = list(set(self.obstacle_cells))
-            self.open_cells = list(set(self.open_cells))
-            print('OBSTACLES AT', self.obstacle_cells)
-
-        #==================================================================================
-        # check for Frontier Cells, [these are] :
-        # - have already been explored
-        # - have at least one 'avaliable' cell in their one hop neighbourhood
-        # =================================================================================
-        for (ex,ey) in self.open_cells:
-
-            # if this cell is already a tackled frontier then skip
-            if (ex,ey) in self.frontierCellsTackled:
-                continue
-
-            avaliable_neighbors = False
-            oneHopN = self._OneHopNeighborhood(ex,ey,shuffle=False)
-            for (nx,ny) in oneHopN:
-                if (nx,ny) not in self.exploredCells:
-                    if (nx,ny) in self.cellsTargeted:
-                        self.previously_unreachable += [(nx,ny)]
-                    elif (nx,ny) in self.previously_unreachable:
-                        continue
-                    else:
-                        self.allFrontierCellsAndDistance += [((ex, ey), u.distance((ex, ey), (sx, sy)))]
-                        avaliable_neighbors = True
-
-
-            if not avaliable_neighbors:
-                self.frontierCellsTackled += [(ex,ey)]
-                continue
-
-        self.allFrontierCellsAndDistance = list(set(self.allFrontierCellsAndDistance))
-
-        next_move_cell = None
-        if self.allFrontierCellsAndDistance:
-
-            # find closed frontier cells (CFS) to start
-            min_frontier_dist= sorted(self.allFrontierCellsAndDistance, key=lambda item: item[1])[0][1]
-            frontierCells = [c for (c, d) in self.allFrontierCellsAndDistance if d == min_frontier_dist]
-
-
-            #===============================================================================
-            # out of all the unexplored neighbors of the closest frontier cells
-            # find the ones that are reachable, as there is a possible Line of Sight
-            # trajectoery connection between the robot and the cell, then out of those,
-            # chose the closest to the robot as the target next
-            #===============================================================================
-
-            # filter out which surrounding cells of the frontires are suitable to move the robot to
-            possible_next = []
-            targets_and_distances = []
-            path_open = True
-
-            for (fx,fy) in frontierCells:
-                for (nx,ny) in self._OneHopNeighborhood(fx,fy):
-                    if ((nx,ny) not in self.exploredCells):
-                            possible_next += [(nx,ny)]
-
-            if possible_next:
-                for (px,py) in possible_next:
-                    # check if there is a direct line of sight connection between robot and cell
-                    for (ox,oy) in self.obstacle_cells:
-                        oxmax = ox + self.floorplan.overlayWidth
-                        oymax = oy + self.floorplan.overlayHeight
-                        if self._trajectory_on_cell(rx,ry,px,py,ox,oy,oxmax,oymax):
-                            path_open = False
-                            self.previously_unreachable += [(px,py)]
-                            break
-
-                    if path_open:
-                        targets_and_distances += [((px,py),u.distance((rx,ry),(px,py)))]
-                    else:
-                        continue
-
-                if targets_and_distances:
-                    min_PT_dist = sorted(targets_and_distances, key=lambda item: item[1])[0][1]
-                    closest_targets = [c for (c, d) in targets_and_distances if d == min_PT_dist]
-                    next_move_cell = random.choice(closest_targets)
-
-        #============================================================================================
-        # if we reach this point and we dont have a next move determined, we should try to target
-        # cells that were previously unreachable again
-        #============================================================================================
-
-        if not self.allFrontierCellsAndDistance or not possible_next or not targets_and_distances:
-            for (pux,puy) in list(set(self.previously_unreachable)):
-                if (pux,puy) in self.exploredCells:
-                    continue
-
-                for (ox, oy) in self.obstacle_cells:
-                    oxmax = ox + self.floorplan.overlayWidth
-                    oymax = oy + self.floorplan.overlayHeight
-                    if not self._trajectory_on_cell(rx, ry, pux, puy, ox, oy, oxmax, oymax):
-                        next_move_cell = (pux,puy)
-                        break
-
-        if next_move_cell == None:
-            #move towards closest bump dot
-            #assert next_move_cell
-            if dotbot ['speed'] == 0:
-                dotbot['speed'] == 1
-            return
-
-        #set next headings
-        (mcx,mcy) = next_move_cell
-        (tx,ty) = (random.uniform(mcx,mcx+self.floorplan.overlayWidth),
-                   mcy + self.floorplan.overlayHeight)
-        new_heading = self._calculate_heading(rx, ry, tx, ty)
-        self.cellsTargeted += [(mcx,mcy)]
-
-        dotbot['heading']  = new_heading
-
-        # set the DotBot's speed
-        dotbot['speed'] = 1
-
-        # bump command Id so DotBot knows this is not a duplicate command
-        dotbot['commandId'] += 1
-        print('new heading', dotbot['heading'], 'target', (tx, ty))
-        print(dotbot, msg['dotBotId'])
-        print('...')
-
+        # hand over to wireless
+        self.wireless.toDotBots(msg)
+    
     def fromDotBot(self,msg):
         '''
         A DotBot indicates its bump sensor was activated at a certain time
@@ -729,19 +544,19 @@ class Orchestrator(object):
         # shorthand
         dotbot = self.dotbotsview[msg['dotBotId']]
 
-        #FIXME: add logic for non-bump msg
+        # FIXME: add logic for non-bump msg
         #re-transmit initial command if dotbot did not receive its initial position
         if msg['bumpTs'] == None:
            self._sendDownstreamCommands('command')
            return
 
         # only calculate new position if the bumptime is different from last msg
-        if msg['bumpTs'] == dotbot['lastBump']:
+        if msg['bumpTs'] == dotbot['lastBumpTs']:
             dotbot['posTs'] = msg['posTs']
 
         else:
 
-            dotbot['lastBump'] = msg['bumpTs']
+            dotbot['lastBumpTs'] = msg['bumpTs']
             # compute new theoretical position (bumptime - time dotbot started moving after last bump/stop)
             dotbot['x'] += (msg['bumpTs'] - msg['posTs']) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
             dotbot['y'] += (msg['bumpTs'] - msg['posTs']) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
@@ -751,13 +566,13 @@ class Orchestrator(object):
             dotbot['x'] = round(dotbot['x'], 3)
             dotbot['y'] = round(dotbot['y'], 3)
 
-        #FIXME: add logic for this to only happen if notification type is bump
+        # FIXME: add logic for this to only happen if notification type is bump
 
         # notify the self.mapBuilder of the obstacle location
         self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
 
-        #FIXME: here we call navigation algorithm
-        (new_heading,timer) = self.navAlgorithm.get_new_heading(msg['dotBotId'],(dotbot['x'], dotbot['y']))
+        # FIXME: here we call navigation algorithm
+        (new_heading,movementDur) = self.navAlgorithm.get_new_heading(msg['dotBotId'],(dotbot['x'], dotbot['y']))
 
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
         dotbot['heading'] = new_heading
@@ -769,46 +584,40 @@ class Orchestrator(object):
         dotbot['commandId'] += 1
 
         # set time limit of movement in new direction if needed
-        dotbot['timer'] = timer
+        dotbot['movementDur'] = movementDur
 
         # send commands to the robots
         self._sendDownstreamCommands('command')
-
+    
+    #=== UI
+    
     def getView(self):
-
+        '''
+        Retrieves the approximate location of the DotBot for visualization.
+        Attempts to compensate for current movement of robots.
+        Might be wrong if DotBot has stopped.
+        '''
+        
         # do NOT write back any results to the DotBot's state as race condition possible
         # compute updated position
 
+        dotbotlocations = [
+            {
+                'x': db['x'],
+                'y': db['y'],
+            } for db in self.dotbotsview
+        ]
+        
+        # compensate for current movement of DotBots
+        # FIXME: change when vectoring is used
+        for (idx,db) in enumerate(self.dotbotsview):
+            if self.dotbotsview[idx]['lastBumpTs']:
+                dotbotlocations[idx]['x'] += (db['posTs']-db['lastBumpTs'])*math.cos(math.radians(db['heading']-90))*db['speed']
+                dotbotlocations[idx]['y'] += (db['posTs']-db['lastBumpTs'])*math.sin(math.radians(db['heading']-90))*db['speed']
+        
         return {
-            'dotbots': [
-                {
-                    'x': db['x']+(db['posTs'] -db['lastBump'])*math.cos(math.radians(db['heading']-90))*db['speed'],
-                    'y': db['y']+(db['posTs'] -db['lastBump'])*math.sin(math.radians(db['heading']-90))*db['speed'],
-                } for db in self.dotbotsview
-            ],
+            'dotbots':  dotbotlocations,
             'discomap': self.mapBuilder.getMap(),
         }
-
-
+    
     #======================== private =========================================
-
-    def _sendDownstreamCommands(self, type):
-        '''
-        Send the next heading and speed commands to the robots
-        '''
-
-        # format msg
-        msg = [
-            {
-                'commandId': dotbot['commandId'],
-                'heading':   dotbot['heading'],
-                'speed':     dotbot['speed'],
-                'timer':     dotbot['timer']
-            } for dotbot in self.dotbotsview
-        ]
-
-        # hand over to wireless
-        self.wireless.toDotBots(msg)
-
-
-

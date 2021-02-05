@@ -99,6 +99,8 @@ class SimUI(object):
                 dotbot['orchestratorview_y'] = orchestratorview['y']
         except AttributeError:
             print('poipoipoi _webhandle_dotbots_GET')
+            import traceback
+            traceback.print_exc()
             returnVal = ''
         
         return returnVal
