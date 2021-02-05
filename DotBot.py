@@ -41,6 +41,7 @@ class DotBot(object):
         self.packetReceived = False  # packet received or not
         self.movingTime = 0  # time at which robot starts moving after bump
         self.packets_dropped = 0
+        self.bumped = False
 
         # FIXME: call wakeBot
 
@@ -55,26 +56,6 @@ class DotBot(object):
         self.x = x
         self.y = y
         self.posTs = self.simEngine.currentTime()
-
-    def reset(self):
-        '''
-        Reset dotbot
-        '''
-        self.posTs = 0  # timestamp, in s, of when was at position (at current calculated position it was this time)
-        self.lastCommandIdReceived = None  # set to None as not a valid command Id
-        self.headingRequested = 0  # the heading, a float between 0 and 360 degrees (0 indicates North) as requested by the orchestrator
-        self.headingInaccuracy = 0  # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
-        self.headingActual = 0  # actual heading, taking into account inaccuracy
-        self.speedRequested = 0  # speed, in m/s, as requested by the orchestrator
-        self.speedInaccuracy = 0  # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
-        self.speedActual = 0  # actual speed, taking into account inaccuracy
-        self.next_bump_x = None  # coordinate the DotBot will bump into next
-        self.next_bump_y = None
-        self.next_bump_ts = None  # time at which DotBot will bump
-        self.packetReceived = False  # packet received or not
-        self.movingTime = 0  # time at which robot starts moving after bump
-        self.packets_dropped = 0
-
 
     def wakeBot(self):
         self._checkPacket()
@@ -91,7 +72,7 @@ class DotBot(object):
         if myMsg['commandId'] == self.lastCommandIdReceived:
             return
 
-        #if we have reached here, packet has been recieved, otherwise packetRecieved reamains at its default value as false
+        #if we have reached here, packet has been recieved
         self.packetReceived = True
         self.posTs = self.simEngine.currentTime()
         print('packet',myMsg ,'received at', self.posTs,'for dotBot',self.dotBotId, 'moving time', self.movingTime)
@@ -112,7 +93,15 @@ class DotBot(object):
         self.next_bump_y = bump_y
         self.next_bump_ts = bump_ts
 
+        if myMsg['timer'] != None:
+            timeToStop = self.simEngine.currentTime() + myMsg['timer']
+            if timeToStop < self.next_bump_ts:
+                self.bumped = False
+                self.simEngine.schedule(timeToStop,self._timeOut)
+                return
+
         # schedule
+        self.bumped = True
         self.simEngine.schedule(self.next_bump_ts, self._bump)
 
     def getAttitude(self):
@@ -147,14 +136,17 @@ class DotBot(object):
 
     def _checkPacket(self):
         '''
-        check if packet has been recieved, if not , transmitt again
+        check if packet has been recieved, if not , transmit again
         '''
 
         if not self.packetReceived:
             #print('packet lost at', self.simEngine.currentTime(),'for DotBot', self.dotBotId)
             self.packets_dropped += 1
             #schedule sending a notification again in 1 second
-            self.simEngine.schedule(self.simEngine.currentTime()+5,self._bump)
+            if self.bumped:
+                self.simEngine.schedule(self.simEngine.currentTime()+5,self._bump)
+            else:
+                self.simEngine.schedule(self.simEngine.currentTime() + 5, self._timeOut)
         else:
             self.packetReceived = False
 
@@ -169,6 +161,9 @@ class DotBot(object):
             'posTs': self.movingTime,
 
         })
+
+        #check if a new packet has been recieved
+        self._checkPacket()
 
     def _bump(self):
         '''
@@ -185,8 +180,21 @@ class DotBot(object):
         #transmit packet
         self._transmit()
 
-        #check if a new packet has been recieved
-        self._checkPacket()
+
+    def _timeOut(self):
+        '''
+        Timer set by orcestrator for guided navgation ran out
+        '''
+        #update my position
+        myData = self.getAttitude()
+        self.x = myData['x']
+        self.y = myData['y']
+
+        # stop moving
+        self.speedActual = 0
+
+        #transmit packet
+        self._transmit()
 
     def _setHeading(self, heading):
         '''

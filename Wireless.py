@@ -31,7 +31,7 @@ class Wireless(object):
         self.orchX = None
         self.orchY = None
         self.packetCounter = 0
-        self.PDR = 1
+        self.PDR = 0.8
 
     # ======================== public ==========================================
     

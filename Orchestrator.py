@@ -14,6 +14,199 @@ import Utils as u
 class ExceptionOpenLoop(Exception):
     pass
 
+class Navigation(object):
+
+    def __init__(self,positions, floorplan):
+        self.positions = positions
+        self.floorplan = floorplan
+        self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
+            {
+                'x':           x,
+                'y':           y,
+                'heading':     0,
+                'last target': positions[0]
+            } for (x,y) in self.positions
+        ]
+    #============================== private
+
+    def _OneHopNeighborhood(self, x, y, shuffle=True):
+        returnVal = []
+        for (nx, ny) in [
+            (x - 0.5, y - 0.5), (x , y-0.5), (x + 0.5, y - 0.5),
+            (x - 0.5, y),                    (x + 0.5, y ),
+            (x - 0.5, y + 0.5), (x , y+0.5), (x + 0.5, y + 0.5),
+        ]:
+
+            # only consider cells inside the realMap
+            if (
+                    (nx >= 0) and
+                    (ny < self.floorplan.height) and
+                    (ny >= 0) and
+                    (nx < self.floorplan.width)
+            ):
+                returnVal += [(nx, ny)]
+
+        if shuffle:
+            random.shuffle(returnVal)
+        return returnVal
+
+    def _TwoHopNeighborhood(self, x, y):
+        returnVal = []
+        for (nx, ny) in [
+            (x - 1, y - 1), (x - 0.5, y - 1), (x , y-1), (x + 0.5, y - 1), (x + 1 , y - 1),
+            (x - 1, y - 0.5),                                              (x + 1, y - 0.5),
+            (x - 1, y),                                                    (x + 1, y  ),
+            (x + 0.5, y - 0.5),                                            (x + 1, y + 0.5),
+            (x - 1, y + 1), (x - 0.5 , y + 1), (x, y+1), (x + 0.5, y + 1), (x + 1, y + 1)
+        ]:
+
+            # only consider cells inside the realMap
+            if (
+                    (nx >= 0) and
+                    (ny < self.floorplan.height) and
+                    (ny >= 0) and
+                    (nx < self.floorplan.width)
+            ):
+                returnVal += [(nx, ny)]
+
+        random.shuffle(returnVal)
+        return returnVal
+
+    def _dot_in_cell(self,dot, cellXmin, cellXmax, cellYmin, cellYmax ):
+        (x_dot, y_dot) = dot
+        if (x_dot >= cellXmin and x_dot <= cellXmax) and (y_dot >= cellYmin and y_dot <= cellYmax):
+            return True
+        else:
+            return False
+
+    def _oneStepCloser(self, rx, ry, tx, ty):
+        (nx, ny) = (None, None)
+        min_dist = None
+        for (x, y) in self._OneHopNeighborhood(rx, ry, shuffle=True):
+            known_map = self.mapBuilder.getMap()
+            cell_has_obstacle = False
+            for dot in known_map['dots']:
+                if self._dot_in_cell(dot, x, y, x + self.floorplan.overlayWidth, y + self.floorplan.overlayHeight):
+                    cell_has_obstacle = True
+                    break
+
+            #no walls and no robots
+            if (
+                    not cell_has_obstacle  and
+                    (x, y) not in self.dotbotsview
+
+            ):
+                distToTarget = u.distance((x, y), (tx, ty))
+                if (
+                        min_dist == None or
+                        distToTarget < min_dist
+                ):
+                    min_dist = distToTarget
+                    (nx, ny) = (x, y)
+        return (nx, ny)
+
+    def _trajectory_on_cell(self, rx, ry, x2, y2, ax, ay, bx, by):
+        # initial calculations (see algorithm)
+        deltax = x2 - rx
+        deltay = y2 - ry
+        #                         left      right     bottom        top
+        p = [-deltax, deltax, -deltay, deltay]
+        q = [rx - ax, bx - rx, ry - ay, by - ry]
+
+        # initialize u1 and u2
+        u1 = 0
+        u2 = 1
+
+        # iterating over the 4 boundaries of the obstacle in order to find the t value for each one.
+        # if p = 0 then the trajectory is parallel to that boundary
+        # if p = 0 and q<0 then line completly outside boundaries
+
+        # update u1 and u2
+        for i in range(4):
+
+            # abort if line outside of boundary
+
+            if p[i] == 0:
+                # line is parallel to boundary i
+
+                if q[i] < 0:
+                    return False
+                pass  # nothing to do
+            else:
+                t = q[i] / p[i]
+                if (p[i] < 0 and u1 < t):
+                    u1 = t
+                elif (p[i] > 0 and u2 > t):
+                    u2 = t
+
+        # if I get here, u1 and u2 should be set
+        assert u1 is not None
+        assert u2 is not None
+
+        # decide what to return
+        if (u1 > 0 and u1 < u2 and u2 < 1) or (0 < u1 < 1 and u1<u2) or (0 < u2 < 1 and u1<u2):
+            return True
+        else:
+            return False
+
+    def _calculate_heading(self, rx,ry,target_x,target_y):
+        heading = (math.atan2(target_y-ry, target_x-rx) * 180.0 / math.pi + 180)-90
+        if heading < 0:
+            heading = (360-abs(heading))
+        if heading > 360:
+            heading  = (heading - 360) + 90
+        return heading
+
+
+class ballistic(Navigation):
+
+    def __init__(self,positions, floorplan):
+        Navigation.__init__(self,positions,floorplan)
+
+    def get_new_heading(self, dotbotID, dotbot_position):
+
+        dotbot = self.dotbotsview[dotbotID]
+
+        (dotbot['x'], dotbot['y']) = dotbot_position
+        new_heading = random.randint(0, 359)
+        dotbot['heading'] = new_heading
+        timer = None
+        return new_heading, timer
+
+class atlas(Navigation):
+    def __init__(self, positions,floorplan):
+        Navigation.__init__(self,positions,floorplan)
+        self.exploredCells = []
+        self.obstacle_cells = []
+        self.open_cells = [positions[0]]
+
+    def get_new_heading(self, dotbotID, dotbot_position):
+
+        #find previous movement trajectory
+
+        #find explored cells
+
+        #check which explored cells are open and which have obstacles
+
+        #check if previous target is in explored cells
+
+        #find new target if previous target has been met
+
+        #start checking cells around robot incrementaly
+        #stop when unexplored cells are found
+
+        #check easiest cells to reach (directly)
+        #if not avaliable set timer of next heading
+
+        # calculate heading to reach target (or first step towards target)
+
+        new_heading = random.randint(0, 359)
+        timer = 1
+
+        return new_heading, timer
+
+
+
 class MapBuilder(object):
     '''
     A background task which consolidates the map.
@@ -43,17 +236,6 @@ class MapBuilder(object):
         self.exploredCells = []
 
     #======================== public ==========================================
-    
-    def reset(self):
-        self.discoMap = {
-            'complete': False,    # is the map complete?
-            'dots':     [],       # each bump becomes a dot
-            'lines':    [],       # close by dots are aggregated into a line
-        }
-
-        # schedule first housekeeping activity
-        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
-        self.exploredCells = []
 
     def notifBump(self,x,y):
 
@@ -305,7 +487,6 @@ class Orchestrator(object):
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
         self.navAlgorithm      = None
-        self.notifrec          = False #whether or not a notification has been recieved from a bot
         self.mostRecentBumpTs  = self.simEngine.currentTime() #initialise value of last known bumptime to be current time
         self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
             {
@@ -315,19 +496,12 @@ class Orchestrator(object):
                 'heading':     0,
                 'speed':       0,
                 'commandId':   0,
-                'lastBump': self.mostRecentBumpTs
+                'lastBump':    self.mostRecentBumpTs,
+                'timer':       None
             } for (x,y) in self.positions
         ]
         self.mapBuilder        = MapBuilder()
-        self.unexploredCells        = self.floorplan.overlayCells
-        self.exploredCells = [self.positions[0]]
-        self.frontierCellsTargeted = []
-        self.allFrontierCellsAndDistance = []
-        self.obstacle_cells = []
-        self.cellsTargeted = []
-        self.frontierCellsTackled = []
-        self.previously_unreachable = []
-        self.open_cells = [(1,1)]
+
 
     #======================== public ==========================================
 
@@ -335,19 +509,19 @@ class Orchestrator(object):
         '''
         Simulation engine, start exploring
         '''
-        for i in range(len(self.dotbotsview)):
-            if self.navAlgorithm == ['Ballistic']:
-                dotbot =  self.dotbotsview[i]
-                dotbot['heading'] = random.randint(0,359)
-                dotbot['speed']   = 1
-            elif self.navAlgorithm == ['Atlas_2.0']:
-                self.atlas({'dotBotId': i , 'bumpTs': None, 'posTs': None})
+
+        for dotbot in self.dotbotsview:
+            dotbot['heading'] = random.randint(0, 359)
+            dotbot['speed'] = 1
 
         self._sendDownstreamCommands('command')
-        print('-----INITIAL COMMANDS SENT------')
 
     def setNavAlgorithm(self, navigation):
-        self.navAlgorithm = navigation
+        if navigation == ['ballistic']:
+            self.navAlgorithm = ballistic(self.positions,self.floorplan)
+
+        if navigation == ['atlas']:
+            self.navAlgorithm = atlas(self.positions,self.floorplan)
 
     def atlas(self,msg):
 
@@ -547,37 +721,46 @@ class Orchestrator(object):
         print(dotbot, msg['dotBotId'])
         print('...')
 
-    def ballistic(self, msg):
+    def fromDotBot(self,msg):
+        '''
+        A DotBot indicates its bump sensor was activated at a certain time
+        '''
+
         # shorthand
         dotbot = self.dotbotsview[msg['dotBotId']]
 
-        # if bumptime of notification recieved is same as that of the previous notification, it means that its a
-        # re-transmitted message, so x and y values remain the same, otherwise updated position values are calculated
+        #FIXME: add logic for non-bump msg
+        #re-transmit initial command if dotbot did not receive its initial position
+        if msg['bumpTs'] == None:
+           self._sendDownstreamCommands('command')
+           return
 
-        if msg['bumpTs'] != dotbot['lastBump']:
+        # only calculate new position if the bumptime is different from last msg
+        if msg['bumpTs'] == dotbot['lastBump']:
+            dotbot['posTs'] = msg['posTs']
+
+        else:
+
             dotbot['lastBump'] = msg['bumpTs']
-            # compute new theoretical position, based on the bump time - the time the bot started moving after last bump/stop
-            dotbot['x'] += (msg['bumpTs'] - msg['posTs']) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot[
-                'speed']
-            dotbot['y'] += (msg['bumpTs'] - msg['posTs']) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot[
-                'speed']
+            # compute new theoretical position (bumptime - time dotbot started moving after last bump/stop)
+            dotbot['x'] += (msg['bumpTs'] - msg['posTs']) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
+            dotbot['y'] += (msg['bumpTs'] - msg['posTs']) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
             dotbot['posTs'] = msg['bumpTs']
 
             # round
             dotbot['x'] = round(dotbot['x'], 3)
             dotbot['y'] = round(dotbot['y'], 3)
 
-        else:
+        #FIXME: add logic for this to only happen if notification type is bump
 
-            dotbot['x'] += 0
-            dotbot['y'] += 0
-            dotbot['posTs'] = msg['posTs']
-
-        # notify the self.mapBuilder the obstacle location
+        # notify the self.mapBuilder of the obstacle location
         self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
 
+        #FIXME: here we call navigation algorithm
+        (new_heading,timer) = self.navAlgorithm.get_new_heading(msg['dotBotId'],(dotbot['x'], dotbot['y']))
+
         # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
-        dotbot['heading'] = random.randint(0, 359)
+        dotbot['heading'] = new_heading
 
         # set the DotBot's speed
         dotbot['speed'] = 1
@@ -585,25 +768,11 @@ class Orchestrator(object):
         # bump command Id so DotBot knows this is not a duplicate command
         dotbot['commandId'] += 1
 
-    def fromDotBot(self,msg):
-        '''
-        A DotBot indicates its bump sensor was activated at a certain time
-        '''
-
-        #if msg['bumpTs'] == None:
-        #    self._sendDownstreamCommands('command')
-        #    return
-
-        if self.navAlgorithm == ['Ballistic']:
-
-            self.ballistic(msg)
-
-        elif self.navAlgorithm == ['Atlas_2.0']:
-            self.atlas(msg)
+        # set time limit of movement in new direction if needed
+        dotbot['timer'] = timer
 
         # send commands to the robots
         self._sendDownstreamCommands('command')
-        print('----------NEW COMMANDS SENT------------')
 
     def getView(self):
 
@@ -620,30 +789,6 @@ class Orchestrator(object):
             'discomap': self.mapBuilder.getMap(),
         }
 
-    def reset(self):
-        '''
-        Reset orchestrator
-        '''
-        self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
-            {
-                'x':           x,
-                'y':           y,
-                'posTs':       0,
-                'heading':     0,
-                'speed':       0,
-                'commandId':   0,
-                'lastBump':    0,
-            } for (x,y) in self.positions
-        ]
-        self.unexploredCells = self.floorplan.overlayCells
-        self.exploredCells = [self.positions[0]]
-        self.frontierCellsTargeted = []
-        self.allFrontierCellsAndDistance = []
-        self.obstacle_cells = []
-        self.cellsTargeted = []
-        self.frontierCellsTackled = []
-        self.previously_unreachable = []
-        self.open_cells = [(1,1)]
 
     #======================== private =========================================
 
@@ -658,138 +803,12 @@ class Orchestrator(object):
                 'commandId': dotbot['commandId'],
                 'heading':   dotbot['heading'],
                 'speed':     dotbot['speed'],
-                'type':      type
+                'timer':     dotbot['timer']
             } for dotbot in self.dotbotsview
         ]
 
         # hand over to wireless
         self.wireless.toDotBots(msg)
 
-    def _OneHopNeighborhood(self, x, y, shuffle=True):
-        returnVal = []
-        for (nx, ny) in [
-            (x - 0.5, y - 0.5), (x , y-0.5), (x + 0.5, y - 0.5),
-            (x - 0.5, y),                    (x + 0.5, y ),
-            (x - 0.5, y + 0.5), (x , y+0.5), (x + 0.5, y + 0.5),
-        ]:
 
-            # only consider cells inside the realMap
-            if (
-                    (nx >= 0) and
-                    (ny < self.floorplan.height) and
-                    (ny >= 0) and
-                    (nx < self.floorplan.width)
-            ):
-                returnVal += [(nx, ny)]
-
-        if shuffle:
-            random.shuffle(returnVal)
-        return returnVal
-
-    def _TwoHopNeighborhood(self, x, y):
-        returnVal = []
-        for (nx, ny) in [
-            (x - 1, y - 1), (x - 0.5, y - 1), (x , y-1), (x + 0.5, y - 1), (x + 1 , y - 1),
-            (x - 1, y - 0.5),                                              (x + 1, y - 0.5),
-            (x - 1, y),                                                    (x + 1, y  ),
-            (x + 0.5, y - 0.5),                                            (x + 1, y + 0.5),
-            (x - 1, y + 1), (x - 0.5 , y + 1), (x, y+1), (x + 0.5, y + 1), (x + 1, y + 1)
-        ]:
-
-            # only consider cells inside the realMap
-            if (
-                    (nx >= 0) and
-                    (ny < self.floorplan.height) and
-                    (ny >= 0) and
-                    (nx < self.floorplan.width)
-            ):
-                returnVal += [(nx, ny)]
-
-        random.shuffle(returnVal)
-        return returnVal
-
-    def _dot_in_cell(self,dot, cellXmin, cellXmax, cellYmin, cellYmax ):
-        (x_dot, y_dot) = dot
-        if (x_dot >= cellXmin and x_dot <= cellXmax) and (y_dot >= cellYmin and y_dot <= cellYmax):
-            return True
-        else:
-            return False
-
-    def _oneStepCloser(self, rx, ry, tx, ty):
-        (nx, ny) = (None, None)
-        min_dist = None
-        for (x, y) in self._OneHopNeighborhood(rx, ry, shuffle=True):
-            known_map = self.mapBuilder.getMap()
-            cell_has_obstacle = False
-            for dot in known_map['dots']:
-                if self._dot_in_cell(dot, x, y, x + self.floorplan.overlayWidth, y + self.floorplan.overlayHeight):
-                    cell_has_obstacle = True
-                    break
-
-            #no walls and no robots
-            if (
-                    not cell_has_obstacle  and
-                    (x, y) not in self.dotbotsview
-
-            ):
-                distToTarget = u.distance((x, y), (tx, ty))
-                if (
-                        min_dist == None or
-                        distToTarget < min_dist
-                ):
-                    min_dist = distToTarget
-                    (nx, ny) = (x, y)
-        return (nx, ny)
-
-    def _trajectory_on_cell(self, rx, ry, x2, y2, ax, ay, bx, by):
-        # initial calculations (see algorithm)
-        deltax = x2 - rx
-        deltay = y2 - ry
-        #                         left      right     bottom        top
-        p = [-deltax, deltax, -deltay, deltay]
-        q = [rx - ax, bx - rx, ry - ay, by - ry]
-
-        # initialize u1 and u2
-        u1 = 0
-        u2 = 1
-
-        # iterating over the 4 boundaries of the obstacle in order to find the t value for each one.
-        # if p = 0 then the trajectory is parallel to that boundary
-        # if p = 0 and q<0 then line completly outside boundaries
-
-        # update u1 and u2
-        for i in range(4):
-
-            # abort if line outside of boundary
-
-            if p[i] == 0:
-                # line is parallel to boundary i
-
-                if q[i] < 0:
-                    return False
-                pass  # nothing to do
-            else:
-                t = q[i] / p[i]
-                if (p[i] < 0 and u1 < t):
-                    u1 = t
-                elif (p[i] > 0 and u2 > t):
-                    u2 = t
-
-        # if I get here, u1 and u2 should be set
-        assert u1 is not None
-        assert u2 is not None
-
-        # decide what to return
-        if (u1 > 0 and u1 < u2 and u2 < 1) or (0 < u1 < 1 and u1<u2) or (0 < u2 < 1 and u1<u2):
-            return True
-        else:
-            return False
-
-    def _calculate_heading(self, rx,ry,target_x,target_y):
-        heading = (math.atan2(target_y-ry, target_x-rx) * 180.0 / math.pi + 180)-90
-        if heading < 0:
-            heading = (360-abs(heading))
-        if heading > 360:
-            heading  = (heading - 360) + 90
-        return heading
 
