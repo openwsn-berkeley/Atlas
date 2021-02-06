@@ -1,5 +1,4 @@
 # built-in
-import random
 import math
 import itertools
 import time
@@ -37,13 +36,10 @@ class DotBot(Wireless.WirelessDevice):
         # timestamps of when movement starts/stops
         self.tsMovementStart      = None
         self.tsMovementStop       = None
-        
-        self.lastCommandIdReceived = None  # set to None as not a valid command Id
-        self.next_bump_x = None  # coordinate the DotBot will bump into next
-        self.next_bump_y = None
-        self.next_bump_ts = None  # time at which DotBot will bump
-        self.packetReceived = False  # packet received or not
-        self.packets_dropped = 0
+        # state maintained by internal bump computation
+        self.next_bump_x          = None  # coordinate the DotBot will bump into next
+        self.next_bump_y          = None
+        self.next_bump_ts         = None  # time at which DotBot will bump
 
     # ======================== public ==========================================
 
@@ -134,6 +130,8 @@ class DotBot(Wireless.WirelessDevice):
 
     # ======================== private =========================================
 
+    #=== bump sensor interrupt handler
+    
     def _bump(self):
         '''
         Bump sensor triggered
@@ -179,21 +177,8 @@ class DotBot(Wireless.WirelessDevice):
         
         # FIXME: arm timer to retransmit
 
-    def _timeOut(self):
-        '''
-        Timer set by orcestrator for guided navgation ran out
-        '''
-        #update my position
-        myData = self.getPositionHeadingSpeed()
-        self.x = myData['x']
-        self.y = myData['y']
-
-        # stop moving
-        self.currentSpeed = 0
-
-        #transmit packet
-        self._transmit()
-
+    #=== motor control
+    
     def _setHeading(self, heading):
         assert heading >= 0
         assert heading < 360
@@ -204,6 +189,8 @@ class DotBot(Wireless.WirelessDevice):
         
         self.currentSpeed = speed
 
+    #=== internal bump computation
+    
     def _computeNextBump(self):
 
         # compute when/where next bump will happen with frame
