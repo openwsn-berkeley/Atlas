@@ -10,216 +10,199 @@ import SimEngine
 import Wireless
 import Utils as u
 
-
-class DotBot(object):
+class DotBot(Wireless.WirelessDevice):
     '''
     A single DotBot.
     '''
 
-    def __init__(self, dotBotId, floorplan):
+    def __init__(self, dotBotId, x, y, floorplan):
 
         # store params
-        self.dotBotId = dotBotId
-        self.floorplan = floorplan
+        self.dotBotId             = dotBotId
+        self.x                    = x
+        self.y                    = y
+        self.floorplan            = floorplan
 
-        # local variables
-        self.simEngine = SimEngine.SimEngine()
-        self.wireless = Wireless.Wireless()
-        self.x = None  # the "real" position, sometimes in the past. Set to None to ensure single initialization
-        self.y = None
-        self.posTs = 0  # timestamp, in s, of when was at position (at current calculated position it was this time)
+        #=== local variables
+        # singletons
+        self.simEngine            = SimEngine.SimEngine()
+        self.wireless             = Wireless.Wireless()
+        # contents of the last received command
+        self.lastHeading          = None
+        self.lastSpeed            = None
+        self.lastMovementDur      = None
+        # current heading and speed
+        self.currentHeading       = 0  # actual heading, taking into account inaccuracy
+        self.currentSpeed         = 0  # actual speed, taking into account inaccuracy
+        # timestamps of when movement starts/stops
+        self.tsMovementStart      = None
+        self.tsMovementStop       = None
+        
         self.lastCommandIdReceived = None  # set to None as not a valid command Id
-        self.headingRequested = 0  # the heading, a float between 0 and 360 degrees (0 indicates North) as requested by the orchestrator
-        self.headingInaccuracy = 0  # innaccuracy, in degrees of the heading. Actual error computed as uniform(-,+)
-        self.headingActual = 0  # actual heading, taking into account inaccuracy
-        self.speedRequested = 0  # speed, in m/s, as requested by the orchestrator
-        self.speedInaccuracy = 0  # innaccuracy, in m/s of the speed. Actual error computed as uniform(-,+)
-        self.speedActual = 0  # actual speed, taking into account inaccuracy
         self.next_bump_x = None  # coordinate the DotBot will bump into next
         self.next_bump_y = None
         self.next_bump_ts = None  # time at which DotBot will bump
         self.packetReceived = False  # packet received or not
-        self.movingTime = 0  # time at which robot starts moving after bump
         self.packets_dropped = 0
-        self.bumped = False
-
-        # FIXME: call wakeBot
 
     # ======================== public ==========================================
 
-    def setInitialPosition(self, x, y):
+    def receive(self, frame):
         '''
-        Call exactly once at start of each simulation run to exactly place the DotBot at its initial position.
+        Received a frame from the orchestrator
         '''
-        #assert self.x == None
-        #assert self.y == None
-        self.x = x
-        self.y = y
-        self.posTs = self.simEngine.currentTime()
+        assert frame['frameType'] in self.FRAMETYPE_ALL
 
-    def wakeBot(self):
-        self._checkPacket()
-
-    def fromOrchestrator(self, packet):
-        '''
-        Received a packet from the orchestrator
-        '''
-
-        # extract portion of orchestrator message which is for me (shorthand)
-        myMsg = packet[self.dotBotId]
-
-        # disregard duplicate command
-        if myMsg['commandId'] == self.lastCommandIdReceived:
+        # drop any frame that is NOT a FRAMETYPE_COMMAND
+        if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
+        
+        # parse frame, extract myMovement
+        myMovement = frame['movements'][self.dotBotId]
 
-        #if we have reached here, packet has been recieved
-        self.packetReceived = True
-        self.posTs = self.simEngine.currentTime()
-        print('packet',myMsg ,'received at', self.posTs,'for dotBot',self.dotBotId, 'moving time', self.movingTime)
+        # filter out duplicates
+        if  (
+            myMovement['heading']    == self.lastHeading and
+            myMovement['speed']      == self.lastSpeed   and
+            myMovement['movementDur']== self.lastMovementDur
+        ):
+            return
+        
+        self.lastHeading          = myMovement['heading']
+        self.lastSpeed            = myMovement['speed']
+        self.lastMovementDur      = myMovement['movementDur']
 
-        # remember what I was asked
-        self.lastCommandIdReceived = myMsg['commandId']
-        self.headingRequested = myMsg['heading']
-        self.speedRequested = myMsg['speed']
+        # if I get here I have receive a NEW movement
+        
+        # cancel notification retransmission
+        # FIXME: handle retransmission of notifications
 
         # apply heading and speed from packet
-        self._setHeading(myMsg['heading'])
-        self._setSpeed(myMsg['speed'])
-
-        # compute when/where next bump will happen
-        (bump_x, bump_y, bump_ts) = self._computeNextBump()
-        # remember
-        self.next_bump_x = bump_x
-        self.next_bump_y = bump_y
-        self.next_bump_ts = bump_ts
-
+        self._setHeading(myMovement['heading'])
+        self._setSpeed(myMovement['speed'])
+        
+        # remember when I started moving, will be indicated in notification
+        self.tsMovementStart      = self.simEngine.currentTime()
+        self.tsMovementStop       = None
+        
+        # FIXME: handle movementDur
+        '''
         if myMsg['movementDur'] != None:
             timeToStop = self.simEngine.currentTime() + myMsg['movementDur']
             if timeToStop < self.next_bump_ts:
-                self.bumped = False
                 self.simEngine.schedule(timeToStop,self._timeOut)
                 return
+        '''
 
-        # schedule
-        self.bumped = True
+        # compute when/where next bump will happen
+        (bump_x, bump_y, bump_ts) = self._computeNextBump()
+        
+        # remember
+        self.next_bump_x          = bump_x
+        self.next_bump_y          = bump_y
+        self.next_bump_ts         = bump_ts
+
+        # schedule the bump event
         self.simEngine.schedule(self.next_bump_ts, self._bump)
 
-    def getAttitude(self):
+    def getPositionHeadingSpeed(self):
         '''
-        "Backdoor" functions used by the simulation engine to compute where the DotBot is now.
-
-        \post updates attributes position and posTs
+        "Backdoor" function to get the current position, heading and speed.
         '''
 
-        # gather state
+        # shorthand
         now = self.simEngine.currentTime()
-        x = self.x
-        y = self.y
-        posTs = self.posTs
-        headingActual = self.headingActual
-        speedActual = self.speedActual
-        # update position
-        newX = x + (now - posTs) * math.cos(math.radians(headingActual - 90)) * speedActual
-        newY = y + (now - posTs) * math.sin(math.radians(headingActual - 90)) * speedActual
-
+        
+        # compute current position based on where it was and where it's going
+        if self.currentSpeed==0:
+            newX = self.x
+            newY = self.y
+        else:
+            newX = self.x + (now - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
+            newX = round(newX, 3)
+            newY = self.y + (now - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
+            newY = round(newY, 3)
+        
         # do NOT write back any results to the DotBot's state as race condition possible
 
         return {
-            'x': newX,
-            'y': newY,
-            'heading': self.headingActual,
-            'speed': self.speedActual,
-
+            'x':       newX,
+            'y':       newY,
+            'heading': self.currentHeading,
+            'speed':   self.currentSpeed,
         }
 
     # ======================== private =========================================
-
-    def _checkPacket(self):
-        '''
-        check if packet has been recieved, if not , transmit again
-        '''
-
-        if not self.packetReceived:
-            #print('packet lost at', self.simEngine.currentTime(),'for DotBot', self.dotBotId)
-            self.packets_dropped += 1
-            #schedule sending a notification again in 1 second
-            if self.bumped:
-                self.simEngine.schedule(self.simEngine.currentTime()+5,self._bump)
-            else:
-                self.simEngine.schedule(self.simEngine.currentTime() + 5, self._timeOut)
-        else:
-            self.packetReceived = False
-
-
-    def _transmit(self):
-        '''
-        transmit a packet to the orchestrator to request a new heading and to notify of obstacle
-        '''
-        self.wireless.toOrchestrator({
-            'dotBotId': self.dotBotId,
-            'bumpTs': self.next_bump_ts,      #time at which robot bumped into obstacle
-            'posTs': self.movingTime,
-
-        })
-
-        #check if a new packet has been recieved
-        self._checkPacket()
 
     def _bump(self):
         '''
         Bump sensor triggered
         '''
+        
+        self._stopAndTransmit()
+    
+    def _stopAndTransmit(self):
+        '''
+        transmit a packet to the orchestrator to request a new heading and to notify of obstacle
+        '''
+
+        # shorthand
+        now                  = self.simEngine.currentTime()
+        
         # update my position
-        if self.lastCommandIdReceived != None:
-            self.x = self.next_bump_x
-            self.y = self.next_bump_y
-
+        res                  = self.getPositionHeadingSpeed()
+        assert res['x']==self.next_bump_x # FIXME: only for bump
+        assert res['y']==self.next_bump_y # FIXME: only for bump
+        assert now==self.next_bump_ts     # FIXME: only for bump or PDR<1.0
+        self.x               = res['x']
+        self.y               = res['y']
+        
         # stop moving
-        self.speedActual = 0
-
-        #transmit packet
-        self._transmit()
-
+        self.currentSpeed    = 0
+        
+        # remember when I stop moving
+        self.tsMovementStop  = now
+        
+        # format frame to transmit
+        frameToTx = {
+            'frameType':          self.FRAMETYPE_NOTIFICATION,
+            'dotBotId':           self.dotBotId,
+            'tsMovementStart':    self.tsMovementStart,
+            'tsMovementStop':     self.tsMovementStop,
+        }
+        
+        # hand over to wireless
+        self.wireless.transmit(
+            frame       = frameToTx,
+            sender      = self,
+        )
+        
+        # FIXME: arm timer to retransmit
 
     def _timeOut(self):
         '''
         Timer set by orcestrator for guided navgation ran out
         '''
         #update my position
-        myData = self.getAttitude()
+        myData = self.getPositionHeadingSpeed()
         self.x = myData['x']
         self.y = myData['y']
 
         # stop moving
-        self.speedActual = 0
+        self.currentSpeed = 0
 
         #transmit packet
         self._transmit()
 
     def _setHeading(self, heading):
-        '''
-        Change the heading of the DotBot.
-        Actual heading affected by self.headingInaccuracy
-        Assumes applying new heading is infinitely fast.
-        '''
         assert heading >= 0
         assert heading < 360
-        if self.headingInaccuracy:  # cut computation in two cases for efficiency
-            self.headingActual = heading + (-1 + (2 * random.random())) * self.headingInaccuracy
-        else:
-            self.headingActual = heading
+        
+        self.currentHeading = heading
 
     def _setSpeed(self, speed):
-        '''
-        Change the speed of the DotBot.
-        Actual speed affected by self.speedInaccuracy
-        Assumes applying new speed is infinitely fast.
-        '''
-        if self.speedInaccuracy:  # cut computation in two cases for efficiency
-            self.speedActual = speed + (-1 + (2 * random.random())) * self.speedInaccuracy
-        else:
-            self.speedActual = speed
-            self.movingTime  = self.simEngine.currentTime()
+        
+        self.currentSpeed = speed
 
     def _computeNextBump(self):
 
@@ -251,16 +234,17 @@ class DotBot(object):
 
         # FIXME: remove this
 
-        bump_x = self.x + (bump_ts - self.posTs) * math.cos(math.radians(self.headingActual - 90)) * self.speedActual
-        bump_y = self.y + (bump_ts - self.posTs) * math.sin(math.radians(self.headingActual - 90)) * self.speedActual
+        bump_x = self.x + (bump_ts - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
+        bump_y = self.y + (bump_ts - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_x = round(bump_x, 3)
         bump_y = round(bump_y, 3)
+        
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
 
     def _computeNextBumpFrame(self):
 
-        if self.headingActual in [90, 270]:
+        if   self.currentHeading in [90, 270]:
             # horizontal edge case
 
             north_x = None  # doesn't cross
@@ -268,7 +252,7 @@ class DotBot(object):
             west_y = self.y
             east_y = self.y
 
-        elif self.headingActual in [0, 180]:
+        elif self.currentHeading in [0, 180]:
             # vertical edge case
 
             north_x = self.x
@@ -280,7 +264,7 @@ class DotBot(object):
             # general case
 
             # find equation of trajectory as y = a*x + b
-            a = math.tan(math.radians(self.headingActual - 90))
+            a = math.tan(math.radians(self.currentHeading - 90))
             b = self.y - (a * self.x)
 
             # compute intersection points with 4 walls
@@ -318,7 +302,7 @@ class DotBot(object):
         # pick the correct intersection point given the heading of the robot
         (x_int0, y_int0) = valid_intersections[0]
         (x_int1, y_int1) = valid_intersections[1]
-        if self.headingActual == 0:
+        if self.currentHeading == 0:
             # going up
 
             # pick top-most intersection
@@ -326,7 +310,7 @@ class DotBot(object):
                 (bump_x, bump_y) = (x_int0, y_int0)
             else:
                 (bump_x, bump_y) = (x_int1, y_int1)
-        elif (0 < self.headingActual and self.headingActual < 180):
+        elif (0 < self.currentHeading and self.currentHeading < 180):
             # going right
 
             # pick right-most intersection
@@ -334,7 +318,7 @@ class DotBot(object):
                 (bump_x, bump_y) = (x_int0, y_int0)
             else:
                 (bump_x, bump_y) = (x_int1, y_int1)
-        elif self.headingActual == 180:
+        elif self.currentHeading == 180:
             # going down
 
             # pick bottom-most intersection
@@ -351,10 +335,10 @@ class DotBot(object):
             else:
                 (bump_x, bump_y) = (x_int1, y_int1)
         # compute time to bump
-        #if self.speedActual == 0:
-        #    self.speedActual = 1
-        timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.speedActual
-        bump_ts = self.posTs + timetobump
+        #if self.currentSpeed == 0:
+        #    self.currentSpeed = 1
+        timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.currentSpeed
+        bump_ts = self.tsMovementStart + timetobump
 
         # round
         bump_x = round(bump_x, 3)
@@ -421,10 +405,10 @@ class DotBot(object):
 
             bump_x = rx + u1 * deltax
             bump_y = ry + u1 * deltay
-            #if self.speedActual == 0:
-            #    self.speedActual = 1
-            timetobump = u.distance((rx, ry), (bump_x, bump_y)) / self.speedActual
-            bump_ts = self.posTs + timetobump
+            #if self.currentSpeed == 0:
+            #    self.currentSpeed = 1
+            timetobump = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
+            bump_ts = self.tsMovementStart + timetobump
             # round
             bump_x = round(bump_x, 3)
             bump_y = round(bump_y, 3)

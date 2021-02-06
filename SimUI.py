@@ -93,7 +93,7 @@ class SimUI(object):
                 'discomap':            orchestratorView['discomap'],
             }
             for dotbot in self.dotbots:
-                returnVal['dotbots'] += [dotbot.getAttitude()]
+                returnVal['dotbots'] += [dotbot.getPositionHeadingSpeed()]
             for (dotbot,orchestratorview) in zip(returnVal['dotbots'],orchestratorView['dotbots']):
                 dotbot['orchestratorview_x'] = orchestratorview['x']
                 dotbot['orchestratorview_y'] = orchestratorview['y']

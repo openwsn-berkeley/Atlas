@@ -50,24 +50,19 @@ def oneSim(simSetting,simUI):
     
     #======================== setup
     
-    # create the wireless communication medium
-    wireless       = Wireless.Wireless()
-    
     # create the SimEngine
     simEngine      = SimEngine.SimEngine()
     
     # create the floorplan
     floorplan      = Floorplan.Floorplan(simSetting['floorplanDrawing'])
     
+    # shorthand
+    (initx,inity)  = simSetting['initialPosition']
+    
     # create the DotBots
     dotBots        = []
     for dotBotId in range(simSetting['numDotBots']):
-        dotBots   += [DotBot.DotBot(dotBotId,floorplan)]
-    
-    # position the DotBots
-    (initx,inity)  = simSetting['initialPosition']
-    for dotBot in dotBots:
-        dotBot.setInitialPosition(initx,inity)
+        dotBots   += [DotBot.DotBot(dotBotId,initx,inity,floorplan)]
     
     # create the orchestrator
     orchestrator   = Orchestrator.Orchestrator(
@@ -77,11 +72,9 @@ def oneSim(simSetting,simUI):
         floorplan,
     )
     
-    # position the Orchestrator
-    wireless.indicateOrchLocation(initx,inity) # FIXME: position in Orchestrator
-    
-    # indicate the elements to the singletons
-    wireless.indicateElements(dotBots,orchestrator) # FIXME: wireless only knows about devices
+    # create the wireless communication medium
+    wireless       = Wireless.Wireless()
+    wireless.indicateDevices(devices = dotBots+[orchestrator])
     
     #======================== run
     

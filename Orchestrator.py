@@ -470,7 +470,7 @@ class MapBuilder(object):
 
         return returnVal
 
-class Orchestrator(object):
+class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
     '''
@@ -540,68 +540,48 @@ class Orchestrator(object):
         Send the next heading and speed commands to the robots
         '''
 
-        # format msg FIXME: ask Nav
-        msg = [
-            {
-                'commandId':   dotbot['commandId'],
-                'heading':     dotbot['heading'],
-                'speed':       dotbot['speed'],
-                'movementDur': dotbot['movementDur']
-            } for dotbot in self.dotbotsview
-        ]
+        # format frame to transmit FIXME: ask Nav
+        frameToTx = {
+            'frameType': self.FRAMETYPE_COMMAND,
+            'movements': [
+                {
+                    'heading':     dotbot['heading'],
+                    'speed':       dotbot['speed'],
+                    'movementDur': dotbot['movementDur']
+                } for dotbot in self.dotbotsview
+            ]
+        }
 
         # hand over to wireless
-        self.wireless.toDotBots(msg) # FIXME: replace by transmit
+        self.wireless.transmit(
+            frame  = frameToTx,
+            sender = self,
+        )
     
-    def fromDotBot(self,msg):
+    def receive(self,frame):
         '''
         A DotBot indicates its bump sensor was activated at a certain time
         '''
+        assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
         # shorthand
-        dotbot = self.dotbotsview[msg['dotBotId']]
+        dotbot = self.dotbotsview[frame['dotBotId']]
 
-        # FIXME: add logic for non-bump msg
-        #re-transmit initial command if dotbot did not receive its initial position
-        if msg['bumpTs'] == None:
-           self._sendDownstreamCommands('command')
-           return
-
-        # only calculate new position if the bumptime is different from last msg
-        if msg['bumpTs'] == dotbot['lastBumpTs']:
-            dotbot['posTs'] = msg['posTs']
-
-        else:
-
-            dotbot['lastBumpTs'] = msg['bumpTs']
-            # compute new theoretical position (bumptime - time dotbot started moving after last bump/stop)
-            dotbot['x'] += (msg['bumpTs'] - msg['posTs']) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
-            dotbot['y'] += (msg['bumpTs'] - msg['posTs']) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
-            dotbot['posTs'] = msg['bumpTs']
-
-            # round
-            dotbot['x'] = round(dotbot['x'], 3)
-            dotbot['y'] = round(dotbot['y'], 3)
-
-        # FIXME: add logic for this to only happen if notification type is bump
+        # compute new position
+        dotbot['x'] += (frame['tsMovementStop'] - frame['tsMovementStart']) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
+        dotbot['y'] += (frame['tsMovementStop'] - frame['tsMovementStart']) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
+        dotbot['x'] = round(dotbot['x'], 3)
+        dotbot['y'] = round(dotbot['y'], 3)
 
         # notify the self.mapBuilder of the obstacle location
+        # FIXME don't notify if not a bump
         self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
 
-        # FIXME: here we call navigation algorithm
-        (new_heading,movementDur) = self.navAlgorithm.get_new_heading(msg['dotBotId'],(dotbot['x'], dotbot['y']))
-
-        # adjust the heading of the DotBot which bumped (avoid immediately bumping into the same wall)
-        dotbot['heading'] = new_heading
-
-        # set the DotBot's speed
-        dotbot['speed'] = 1
-
-        # bump command Id so DotBot knows this is not a duplicate command
-        dotbot['commandId'] += 1
-
-        # set time limit of movement in new direction if needed
-        dotbot['movementDur'] = movementDur
+        # get new movement from navigation algorithm
+        (new_heading,new_movementDur) = self.navAlgorithm.get_new_heading(frame['dotBotId'],(dotbot['x'], dotbot['y']))
+        dotbot['heading']         = new_heading
+        dotbot['speed']           = 1
+        dotbot['movementDur']     = new_movementDur
     
     #=== UI
     
@@ -621,13 +601,6 @@ class Orchestrator(object):
                 'y': db['y'],
             } for db in self.dotbotsview
         ]
-        
-        # compensate for current movement of DotBots
-        # FIXME: change when vectoring is used
-        for (idx,db) in enumerate(self.dotbotsview):
-            if self.dotbotsview[idx]['lastBumpTs']:
-                dotbotlocations[idx]['x'] += (db['posTs']-db['lastBumpTs'])*math.cos(math.radians(db['heading']-90))*db['speed']
-                dotbotlocations[idx]['y'] += (db['posTs']-db['lastBumpTs'])*math.sin(math.radians(db['heading']-90))*db['speed']
         
         return {
             'dotbots':  dotbotlocations,

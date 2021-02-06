@@ -4,10 +4,27 @@
 import random
 import Utils as u
 
+class WirelessDevice(object):
+    '''
+    Abstract class for any device communicating over the wireless medium.
+    '''
+    
+    FRAMETYPE_COMMAND      = 'command'
+    FRAMETYPE_NOTIFICATION = 'notification'
+    FRAMETYPE_ALL          = [
+        FRAMETYPE_COMMAND,
+        FRAMETYPE_NOTIFICATION,
+    ]
+    
+    def receive(self,frame):
+        raise SystemError('Abstract class')
+    
 class Wireless(object):
     '''
     The wireless medium through which DotBot and orchestrator communicate.
     '''
+    
+    PDR = 1.0 # FIXME: PisterHack
     
     # singleton pattern
     _instance = None
@@ -25,54 +42,38 @@ class Wireless(object):
             return
         self._init = True
 
+        # store params
+        self.devices         =  []
+
         # local variables
-        self.dotbots = None
-        self.orchestrator = None
-        self.orchX = None
-        self.orchY = None
-        self.packetCounter = 0
-        self.PDR = 0.8
 
     # ======================== public ==========================================
     
+    def indicateDevices(self,devices):
+        self.devices         =  devices
+    
     def destroy(self): 
-        self._instance   = None
-        self._init       = False
+        self._instance       = None
+        self._init           = False
 
-    def indicateElements(self, dotbots, orchestrator):
-        assert self.dotbots == None
-        assert self.orchestrator == None
-
-        self.dotbots = dotbots
-        self.orchestrator = orchestrator
-
-    def indicateOrchLocation(self, xo, yo):
-        #assert self.orchX == None
-        #assert self.orchY == None
-
-        self.orchX = xo
-        self.orchY = yo
-
-    def toDotBots(self, msg):
-        for dotbot in self.dotbots:
+    def transmit(self, frame, sender):
+        assert self.devices # make sure there are devices
+        for receiver in self.devices:
+            if receiver==sender:
+                continue # ensures transmitter doesn't receive
+            pdr  = self._computePDR(sender,receiver)
             rand = random.uniform(0,1)
-            if rand < self.PDR:
-                dotbot.fromOrchestrator(msg)
+            if rand<pdr:
+                receiver.receive(frame)
             else:
                 pass
-            self.packetCounter += 1
-
-    def toOrchestrator(self, msg):
-        rand = random.uniform(0,1)
-        if rand < self.PDR :
-            self.orchestrator.fromDotBot(msg)
-        else:
-            pass
-        self.packetCounter += 1
 
     # ======================== private =========================================
 
-    def _get_pisterHack_PDR(self,dotbot):
+    def _computePDR(self,sender,receiver):
+        return self.PDR # FIXME: PisterHack
+    
+    def _get_pisterHack_PDR(self,sender,receiver):
         '''
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
@@ -80,7 +81,7 @@ class Wireless(object):
             dotbotX = self.orchX
             dotbotY = self.orchY
         else:
-            dotbotAttitude = dotbot.getAttitude()
+            dotbotAttitude = dotbot.getPositionHeadingSpeed()
             dotbotX = dotbotAttitude['x']
             dotbotY = dotbotAttitude['y']
 
