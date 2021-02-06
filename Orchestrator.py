@@ -474,7 +474,9 @@ class Orchestrator(object):
     '''
     The central orchestrator of the expedition.
     '''
-
+    
+    COMM_DOWNSTREAM_PERIOD_S   = 1
+    
     def __init__(self,numDotBots,initialPosition,navAlgorithm,floorplan):
 
         # store params
@@ -514,16 +516,31 @@ class Orchestrator(object):
             dotbot['heading'] = random.randint(0, 359)
             dotbot['speed']   = 1
 
-        self._sendDownstreamCommands('command')
-
+        # arm first downstream communication
+        self.simEngine.schedule(
+            self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
+            self._downstreamTimeoutCb,
+        )
+        
     #=== communication
 
-    def _sendDownstreamCommands(self, type):
+    def _downstreamTimeoutCb(self):
+        
+        # send downstream command
+        self._sendDownstreamCommands()
+        
+        # arm next downstream communication
+        self.simEngine.schedule(
+            self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
+            self._downstreamTimeoutCb,
+        )
+    
+    def _sendDownstreamCommands(self):
         '''
         Send the next heading and speed commands to the robots
         '''
 
-        # format msg
+        # format msg FIXME: ask Nav
         msg = [
             {
                 'commandId':   dotbot['commandId'],
@@ -534,7 +551,7 @@ class Orchestrator(object):
         ]
 
         # hand over to wireless
-        self.wireless.toDotBots(msg)
+        self.wireless.toDotBots(msg) # FIXME: replace by transmit
     
     def fromDotBot(self,msg):
         '''
@@ -585,9 +602,6 @@ class Orchestrator(object):
 
         # set time limit of movement in new direction if needed
         dotbot['movementDur'] = movementDur
-
-        # send commands to the robots
-        self._sendDownstreamCommands('command')
     
     #=== UI
     
