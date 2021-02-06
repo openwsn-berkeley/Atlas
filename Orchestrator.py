@@ -20,7 +20,7 @@ class Navigation(object):
     def __init__(self,positions, floorplan):
         self.positions = positions
         self.floorplan = floorplan
-        self.dotbotsview       = [ # the Orchestrator's internal view of the DotBots
+        self.dotbotsview = [ # the Orchestrator's internal view of the DotBots
             {
                 'x':           x,
                 'y':           y,
@@ -28,6 +28,7 @@ class Navigation(object):
                 'last target': positions[0]
             } for (x,y) in self.positions
         ]
+    
     #============================== private
 
     def _OneHopNeighborhood(self, x, y, shuffle=True):
@@ -73,7 +74,7 @@ class Navigation(object):
         random.shuffle(returnVal)
         return returnVal
 
-    def _dot_in_cell(self,dot, cellXmin, cellXmax, cellYmin, cellYmax ):
+    def _dot_in_cell(self,dot, cellXmin, cellXmax, cellYmin, cellYmax):
         (x_dot, y_dot) = dot
         if (x_dot >= cellXmin and x_dot <= cellXmax) and (y_dot >= cellYmin and y_dot <= cellYmax):
             return True
@@ -174,6 +175,7 @@ class Navigation_Ballistic(Navigation):
         return (new_heading,movementDur)
 
 class Navigation_Atlas(Navigation):
+
     def __init__(self, positions,floorplan):
         Navigation.__init__(self,positions,floorplan)
         self.exploredCells = []
