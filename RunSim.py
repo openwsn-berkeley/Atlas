@@ -36,7 +36,7 @@ SIMSETTINGS = [
 ...............
 ''',
         'initialPosition':  (1,1),
-        'navAlgorithm'   :  'Atlas',
+        'navAlgorithm'   :  'Ballistic',
         'pdr'            :  0.8,
     }
 ]
@@ -69,7 +69,6 @@ def oneSim(simSetting,simUI):
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
-        floorplan,
     )
     
     # create the wireless communication medium

@@ -29,7 +29,6 @@ class DotBot(Wireless.WirelessDevice):
         # contents of the last received command
         self.lastHeading          = None
         self.lastSpeed            = None
-        self.lastMovementDur      = None
         # current heading and speed
         self.currentHeading       = 0  # actual heading, taking into account inaccuracy
         self.currentSpeed         = 0  # actual speed, taking into account inaccuracy
@@ -59,14 +58,12 @@ class DotBot(Wireless.WirelessDevice):
         # filter out duplicates
         if  (
             myMovement['heading']    == self.lastHeading and
-            myMovement['speed']      == self.lastSpeed   and
-            myMovement['movementDur']== self.lastMovementDur
+            myMovement['speed']      == self.lastSpeed
         ):
             return
         
         self.lastHeading          = myMovement['heading']
         self.lastSpeed            = myMovement['speed']
-        self.lastMovementDur      = myMovement['movementDur']
 
         # if I get here I have receive a NEW movement
         
@@ -80,15 +77,6 @@ class DotBot(Wireless.WirelessDevice):
         # remember when I started moving, will be indicated in notification
         self.tsMovementStart      = self.simEngine.currentTime()
         self.tsMovementStop       = None
-        
-        # FIXME: handle movementDur
-        '''
-        if myMsg['movementDur'] != None:
-            timeToStop = self.simEngine.currentTime() + myMsg['movementDur']
-            if timeToStop < self.next_bump_ts:
-                self.simEngine.schedule(timeToStop,self._timeOut)
-                return
-        '''
 
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
