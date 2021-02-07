@@ -411,7 +411,7 @@ class Navigation_Atlas(Navigation):
         self.hCellsObstacle  = []
         
         # the hCell the DotBot start is in, by definition, open
-        self.hCellsOpen     += [self._hCellCenter2Corners(*initialPosition)]
+        self.hCellsOpen     += [initialPosition]
         
         # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -421,8 +421,8 @@ class Navigation_Atlas(Navigation):
     
     def getExploredCells(self):
         returnVal = {
-            'cellsOpen':     [self._hCellCorners2SvgRect(*c) for c in self.hCellsOpen],
-            'cellsObstacle': [self._hCellCorners2SvgRect(*c) for c in self.hCellsObstacle],
+            'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
+            'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
         }
         return returnVal
     
@@ -435,7 +435,7 @@ class Navigation_Atlas(Navigation):
         
         # stop cell is obstacle
         (x,y) = self._xy2hCell(stopX,stopY)
-        self.hCellsObstacle += [self._hCellCenter2Corners(x,y)]
+        self.hCellsObstacle += [(x,y)]
         
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
@@ -452,11 +452,19 @@ class Navigation_Atlas(Navigation):
         '''
         \post modifies the movement directly in dotbotsview
         '''
-
-        # shorthand
-        dotbot = self.dotbotsview[dotBotId]
         
+        # shuffle open cells (in local copy)
+        opencells = copy.deepcopy(self.hCellsOpen)
+        random.shuffle(opencells)
+        
+        # select a open cell with an unexplored cell around as a target
+        '''
+        for c in opencells:
+            print 
+        '''
+
         # pick new movement
+        dotbot = self.dotbotsview[dotBotId] # shorthand
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
         dotbot['movementSeqNum'] += 1
@@ -482,7 +490,7 @@ class Navigation_Atlas(Navigation):
             y  = startY+(((stopY-startY)*(x-startX))/(stopX-startX))
             
             (cx,cy) = self._xy2hCell(x,y)
-            returnVal += [self._hCellCenter2Corners(cx,cy)]
+            returnVal += [(cx,cy)]
         
         # scan vertically
         y         = startY
@@ -501,7 +509,7 @@ class Navigation_Atlas(Navigation):
             x  = startX+(((stopX-startX)*(y-startY))/(stopY-startY))
             
             (cx,cy) = self._xy2hCell(x,y)
-            returnVal += [self._hCellCenter2Corners(cx,cy)]
+            returnVal += [(cx,cy)]
         
         # filter duplicates
         returnVal = list(set(returnVal))
@@ -517,19 +525,12 @@ class Navigation_Atlas(Navigation):
         
         return (cx,cy)
     
-    def _hCellCenter2Corners(self,cx,cy):
-        ax = cx - (MapBuilder.MINFEATURESIZE_M/4)
-        ay = cy - (MapBuilder.MINFEATURESIZE_M/4)
-        bx = cx + (MapBuilder.MINFEATURESIZE_M/4)
-        by = cy + (MapBuilder.MINFEATURESIZE_M/4)
-        return (ax,ay,bx,by)
-    
-    def _hCellCorners2SvgRect(self,ax,ay,bx,by):
+    def _hCell2SvgRect(self,cx,cy):
         returnVal = {
-            'x':        ax,
-            'y':        ay,
-            'width':    bx-ax,
-            'height':   by-ay,
+            'x':        cx-MapBuilder.MINFEATURESIZE_M/4,
+            'y':        cy-MapBuilder.MINFEATURESIZE_M/4,
+            'width':    MapBuilder.MINFEATURESIZE_M/2,
+            'height':   MapBuilder.MINFEATURESIZE_M/2,
         }
         return returnVal
 
