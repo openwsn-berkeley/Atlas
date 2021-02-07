@@ -104,6 +104,13 @@ class DotBot(Wireless.WirelessDevice):
         
         # do NOT write back any results to the DotBot's state as race condition possible
         return (newX,newY)
+    
+    def getNextBumpPosition(self):
+        '''
+        Retrieve the position of this DotBot's next bump.
+        '''
+
+        return (self.next_bump_x,self.next_bump_y)
 
     # ======================== private =========================================
 

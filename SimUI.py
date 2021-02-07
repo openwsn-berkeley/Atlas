@@ -88,19 +88,20 @@ class SimUI(object):
             orchestratorView = self.orchestrator.getView()
             
             returnValDotBots = []
-            # x,y
+            # x,y,next_bump_x,next_bump_y
             for dotbot in self.dotbots:
-                (x,y) = dotbot.computeCurrentPosition()
+                (x,y)                     = dotbot.computeCurrentPosition()
+                (next_bump_x,next_bump_y) = dotbot.getNextBumpPosition()
                 returnValDotBots += [{
                     'x': x,
                     'y': y,
+                    'next_bump_x': next_bump_x,
+                    'next_bump_y': next_bump_y,
                 }]
             # orchestratorview_x,orchestratorview_y
             for (db,orchestratorview) in zip(returnValDotBots,orchestratorView['dotbotpositions']):
                 db['orchestratorview_x'] = orchestratorview['x']
                 db['orchestratorview_y'] = orchestratorview['y']
-            # next_bump_x,next_bump_y
-            
             
             returnVal = {
                 'mode':                self.simEngine.mode(),
