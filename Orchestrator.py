@@ -363,7 +363,7 @@ class Navigation_Ballistic(Navigation):
         # initialize parent
         super().__init__(numDotBots, initialPosition)
         
-        # pick initial movements
+        # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
