@@ -130,3 +130,14 @@
 .dotbot {
     stroke-width:     0px;
 }
+
+.exploredCellsOpen {
+    fill:             #D5F5E3;
+    opacity:          0.5;
+    stroke:           #27AE60;
+}
+
+.exploredCellsObstacle {
+    fill:             #EBEDEF;
+    opacity:          0.5;
+}

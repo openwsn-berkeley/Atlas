@@ -20,8 +20,8 @@ class MapBuilder(object):
     It declares when the map is complete.
     '''
 
-    PERIOD         = 1 # s, in simulated time
-    MINFEATURESIZE = 0.9 # shortest wall, narrowest opening
+    HOUSEKEEPING_PERIOD_S    = 1   # in simulated time
+    MINFEATURESIZE_M         = 1.0 # shortest wall, narrowest opening
 
     def __init__(self):
 
@@ -30,15 +30,14 @@ class MapBuilder(object):
         # local variables
         self.simEngine       = SimEngine.SimEngine()
         self.dataLock        = threading.RLock()
-        self.simRun = 1
-        self.discoMap = {
+        self.discoMap        = {
             'complete': False,    # is the map complete?
             'dots':     [],       # each bump becomes a dot
             'lines':    [],       # closeby dots are aggregated into a line
         }
 
         # schedule first housekeeping activity
-        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
+        self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
         self.exploredCells = []
 
     #======================== public ==========================================
@@ -65,7 +64,7 @@ class MapBuilder(object):
             self.discoMap['complete'] = self._isMapComplete()
 
         # schedule next consolidation activity
-        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
+        self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
 
         # stop the simulation run if mapping has completed
         if self.discoMap['complete']:
@@ -135,7 +134,7 @@ class MapBuilder(object):
                         continue
                     vnext                    = thesedots[idx+1]
 
-                    if vnext-v<=self.MINFEATURESIZE:
+                    if vnext-v<=self.MINFEATURESIZE_M:
 
                         if direction=='horizontal':
                             theselines      += [(v,ref,vnext,ref)]
@@ -262,16 +261,16 @@ class MapBuilder(object):
         returnVal = False
 
         while True: # "loop" only once
-            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<=self.MINFEATURESIZE:
+            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<=self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1ax,l1ay),(l2bx,l2by))<=self.MINFEATURESIZE:
+            if  u.distance((l1ax,l1ay),(l2bx,l2by))<=self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2ax,l2ay))<=self.MINFEATURESIZE:
+            if  u.distance((l1bx,l1by),(l2ax,l2ay))<=self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2bx,l2by))<=self.MINFEATURESIZE:
+            if  u.distance((l1bx,l1by),(l2bx,l2by))<=self.MINFEATURESIZE_M:
                 returnVal = True
                 break
             break
@@ -302,6 +301,31 @@ class Navigation(object):
     
     #======================== public ==========================================
     
+    def receiveNotification(self,frame):
+        '''
+        We just received a notification for a DotBot.
+        '''
+        
+        # shorthand
+        dotbot = self.dotbotsview[frame['dotBotId']]
+
+        # update DotBot's position
+        (newX,newY) = u.computeCurrentPosition(
+            currentX = dotbot['x'],
+            currentY = dotbot['y'],
+            heading  = dotbot['heading'],
+            speed    = dotbot['speed'],
+            duration = frame['tsMovementStop'] - frame['tsMovementStart'],
+        )
+        self._notifyDotBotMoved(dotbot['x'],dotbot['y'],newX,newY)
+        (dotbot['x'],dotbot['y']) = (newX,newY)
+
+        # notify the mapBuilder of the obstacle location
+        self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
+
+        # compute new DotBot movement
+        self._updateMovement(frame['dotBotId'])
+    
     def getEvaluatedPositions(self):
         '''
         Retrieve the evaluated positions of each DotBot.
@@ -327,31 +351,13 @@ class Navigation(object):
         ]
         return returnVal
     
-    def receiveNotification(self,frame):
-        '''
-        We just received a notification for a DotBot.
-        '''
-        
-        # shorthand
-        dotbot = self.dotbotsview[frame['dotBotId']]
-
-        # update DotBot's position
-        (dotbot['x'],dotbot['y']) = u.computeCurrentPosition(
-            currentX = dotbot['x'],
-            currentY = dotbot['y'],
-            heading  = dotbot['heading'],
-            speed    = dotbot['speed'],
-            duration = frame['tsMovementStop'] - frame['tsMovementStart'],
-        )
-
-        # notify the mapBuilder of the obstacle location
-        # FIXME don't notify if not a bump
-        self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
-
-        # update DotBot's movement
-        self._updateMovement(frame['dotBotId'])
+    def getExploredCells(self):
+        raise SystemError('abstract method')
     
     #======================== private =========================================
+    
+    def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
+        raise SystemError('abstract method')
     
     def _updateMovement(self,dotBotId):
         raise SystemError('abstract method')
@@ -367,6 +373,16 @@ class Navigation_Ballistic(Navigation):
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
+    #======================== public ==========================================
+    
+    def getExploredCells(self):
+        return {} # Ballistic doesn't keep track of explored areas
+    
+    #======================== private =========================================
+    
+    def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
+        pass # Ballistic doesn't act on DotBot movement
+    
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
@@ -387,10 +403,34 @@ class Navigation_Atlas(Navigation):
         # initialize parent
         super().__init__(numDotBots, initialPosition)
         
+        # (additional) local variables
+        # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
+        self.hCellsOpen      = []
+        self.hCellsObstacle  = []
+        
+        # the hCell the DotBot start is in, by definition, open
+        self.hCellsOpen     += [self._hCellCenter2Corners(*initialPosition)]
+        
         # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
+    #======================== public ==========================================
+    
+    def getExploredCells(self):
+        returnVal = {
+            'cellsOpen':     [self._hCellCorners2SvgRect(*c) for c in self.hCellsOpen],
+            'cellsObstacle': [self._hCellCorners2SvgRect(*c) for c in self.hCellsObstacle],
+        }
+        
+        return returnVal
+    
+    #======================== private =========================================
+    
+    def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
+        # TODO update hCellsOpen and hCellsObstacle
+        pass
+    
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
@@ -403,6 +443,22 @@ class Navigation_Atlas(Navigation):
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
         dotbot['movementSeqNum'] += 1
+    
+    def _hCellCenter2Corners(self,cx,cy):
+        ax = cx - (MapBuilder.MINFEATURESIZE_M/4)
+        ay = cy - (MapBuilder.MINFEATURESIZE_M/4)
+        bx = cx + (MapBuilder.MINFEATURESIZE_M/4)
+        by = cy + (MapBuilder.MINFEATURESIZE_M/4)
+        return (ax,ay,bx,by)
+    
+    def _hCellCorners2SvgRect(self,ax,ay,bx,by):
+        returnVal = {
+            'x':      ax,
+            'y':      ay,
+            'width':   bx-ax,
+            'height':  by-ay,
+        }
+        return returnVal
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -487,6 +543,7 @@ class Orchestrator(Wireless.WirelessDevice):
         returnVal = {
             'dotbotpositions':    self.navigation.getEvaluatedPositions(),
             'discomap':           self.navigation.mapBuilder.getMap(),
+            'exploredCells':      self.navigation.getExploredCells(),
         }
         
         return returnVal

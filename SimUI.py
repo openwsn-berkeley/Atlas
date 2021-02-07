@@ -108,6 +108,7 @@ class SimUI(object):
                 'simulatedTime':       self.simEngine.formatSimulatedTime(),
                 'dotbots':             returnValDotBots,
                 'discomap':            orchestratorView['discomap'],
+                'exploredCells':       orchestratorView['exploredCells'],
             }
             
         except AttributeError:
