@@ -94,7 +94,7 @@ class DotBot(Wireless.WirelessDevice):
         if self.currentSpeed==0:
             (newX,newY) = (self.x,self.y)
         else:
-            (newX,newY) = u.computeFuturePosition(
+            (newX,newY) = u.computeCurrentPosition(
                 currentX = self.x,
                 currentY = self.y,
                 heading  = self.currentHeading,

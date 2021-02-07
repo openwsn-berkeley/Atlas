@@ -14,17 +14,17 @@ UI_ACTIVE     = False
 
 SIMSETTINGS   = [
     {
-        'numDotBots':       5,
-        'floorplanDrawing': # 1m per character
+        'numDotBots'         : 5,
+        'floorplanDrawing'   : # 1m per character
  '''
 ...............
 ...............
 #..............
 ...............
 ''',
-        'initialPosition':  (1,1),
-        'navAlgorithm'   :  'Ballistic',
-        'pdr'            :  1.0,
+        'initialPosition'    :  (1,1),
+        'navAlgorithm'       :  'Ballistic',
+        'pdr'                :  1.0,
     }
 ] * 10
 

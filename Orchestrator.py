@@ -336,7 +336,7 @@ class Navigation(object):
         dotbot = self.dotbotsview[frame['dotBotId']]
 
         # update DotBot's position
-        (dotbot['x'],dotbot['y']) = u.computeFuturePosition(
+        (dotbot['x'],dotbot['y']) = u.computeCurrentPosition(
             currentX = dotbot['x'],
             currentY = dotbot['y'],
             heading  = dotbot['heading'],
