@@ -10,9 +10,11 @@ import SimUI
 
 #============================ defines =========================================
 
-SIMSETTINGS = [
+UI_ACTIVE     = False
+
+SIMSETTINGS   = [
     {
-        'numDotBots':       1,
+        'numDotBots':       5,
         'floorplanDrawing': # 1m per character
  '''
 ...............
@@ -22,22 +24,9 @@ SIMSETTINGS = [
 ''',
         'initialPosition':  (1,1),
         'navAlgorithm'   :  'Ballistic',
-        'pdr'            :  0.8,
-    },
-    {
-        'numDotBots':       1,
-        'floorplanDrawing': # 1m per character
- '''
-...............
-...............
-#..............
-...............
-''',
-        'initialPosition':  (1,1),
-        'navAlgorithm'   :  'Ballistic',
-        'pdr'            :  0.8,
+        'pdr'            :  1.0,
     }
-]
+] * 10
 
 #============================ helpers =========================================
 
@@ -76,28 +65,39 @@ def oneSim(simSetting,simUI):
     #======================== run
     
     # let the UI know about the new objects
-    simUI.updateObjectsToQuery(floorplan,dotBots,orchestrator)
+    if simUI:
+        simUI.updateObjectsToQuery(floorplan,dotBots,orchestrator)
+    
+    # if there is no UI, run as fast as possible
+    if not simUI:
+       simEngine.commandFastforward()
     
     # start a simulaion (blocks until done)
-    simEngine.runToCompletion(orchestrator.startExploration)
+    timeToFullMapping = simEngine.runToCompletion(orchestrator.startExploration)
     
     #======================== teardown
 
     # destroy singletons
     simEngine.destroy()
     wireless.destroy()
+    
+    return timeToFullMapping
 
 #============================ main ============================================
 
 def main():
 
     # create the UI
-    simUI          = SimUI.SimUI()
+    if UI_ACTIVE:
+        simUI          = SimUI.SimUI()
+    else:
+        simUI          = None
     
     # run a number of simulations
     for (runNum,simSetting) in enumerate(SIMSETTINGS):
-        print('run {}/{}...'.format(runNum+1,len(SIMSETTINGS)))
-        oneSim(simSetting,simUI)
+        print('run {:>3}/{}...'.format(runNum+1,len(SIMSETTINGS)),end='')
+        timeToFullMapping = oneSim(simSetting,simUI)
+        print(' completed in {:>7} s'.format(timeToFullMapping))
     
     # block until user closes
     input('Press Enter to close simulation.')

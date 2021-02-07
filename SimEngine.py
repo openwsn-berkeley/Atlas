@@ -94,6 +94,8 @@ class SimEngine(threading.Thread):
         assert self._currentTime==0
         self.schedule(0,startFunc) # schedule the first event
         self.join()                # block until simEngine thread ends
+        
+        return self._currentTime
     
     def schedule(self,ts,cb,selfDestruct=False):
         # add new event
