@@ -290,11 +290,12 @@ class Navigation(object):
         self.dotbotsview     = [
             {
                 # evaluated position of the DotBot when it last stopped
-                'x':           x,
-                'y':           y,
+                'x':              x,
+                'y':              y,
                 # current movement
-                'heading':     0,
-                'speed':       0,
+                'heading':        0,
+                'speed':          0,
+                'movementSeqNum': 0,
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
         self.mapBuilder      = MapBuilder()
@@ -319,8 +320,9 @@ class Navigation(object):
         '''
         returnVal = [
             {
-                'heading':     dotbot['heading'],
-                'speed':       dotbot['speed'],
+                'heading':        dotbot['heading'],
+                'speed':          dotbot['speed'],
+                'movementSeqNum': dotbot['movementSeqNum'],
             } for dotbot in self.dotbotsview
         ]
         return returnVal
@@ -376,6 +378,7 @@ class Navigation_Ballistic(Navigation):
         # pick new movement
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
+        dotbot['movementSeqNum'] += 1
 
 class Orchestrator(Wireless.WirelessDevice):
     '''

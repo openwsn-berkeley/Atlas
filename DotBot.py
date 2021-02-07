@@ -25,12 +25,11 @@ class DotBot(Wireless.WirelessDevice):
         # singletons
         self.simEngine            = SimEngine.SimEngine()
         self.wireless             = Wireless.Wireless()
-        # contents of the last received command
-        self.lastHeading          = None
-        self.lastSpeed            = None
+        # last received movementSeqNum (to filter out duplicate commands)
+        self.lastMovementSeqNum   = None
         # current heading and speed
-        self.currentHeading       = 0  # actual heading, taking into account inaccuracy
-        self.currentSpeed         = 0  # actual speed, taking into account inaccuracy
+        self.currentHeading       = 0
+        self.currentSpeed         = 0
         # timestamps of when movement starts/stops
         self.tsMovementStart      = None
         self.tsMovementStop       = None
@@ -55,14 +54,9 @@ class DotBot(Wireless.WirelessDevice):
         myMovement = frame['movements'][self.dotBotId]
 
         # filter out duplicates
-        if  (
-            myMovement['heading']    == self.lastHeading and
-            myMovement['speed']      == self.lastSpeed
-        ):
+        if myMovement['movementSeqNum']==self.lastMovementSeqNum:
             return
-        
-        self.lastHeading          = myMovement['heading']
-        self.lastSpeed            = myMovement['speed']
+        self.lastMovementSeqNum   = myMovement['movementSeqNum']
 
         # if I get here I have receive a NEW movement
         
