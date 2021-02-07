@@ -380,6 +380,30 @@ class Navigation_Ballistic(Navigation):
         dotbot['speed']           = 1
         dotbot['movementSeqNum'] += 1
 
+class Navigation_Atlas(Navigation):
+
+    def __init__(self, numDotBots, initialPosition):
+    
+        # initialize parent
+        super().__init__(numDotBots, initialPosition)
+        
+        # initial movements are random
+        for (dotBotId,_) in enumerate(self.dotbotsview):
+            self._updateMovement(dotBotId)
+
+    def _updateMovement(self, dotBotId):
+        '''
+        \post modifies the movement directly in dotbotsview
+        '''
+
+        # shorthand
+        dotbot = self.dotbotsview[dotBotId]
+        
+        # pick new movement
+        dotbot['heading']         = random.randint(0, 359)
+        dotbot['speed']           = 1
+        dotbot['movementSeqNum'] += 1
+
 class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
