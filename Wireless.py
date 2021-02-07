@@ -50,8 +50,11 @@ class Wireless(object):
     # ======================== public ==========================================
     
     def indicateDevices(self,devices):
-        self.devices         =  devices
-    
+        self.devices         = devices
+
+    def overridePDR(self,pdr):
+        self.PDR             = pdr
+
     def destroy(self): 
         self._instance       = None
         self._init           = False

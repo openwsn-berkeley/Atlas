@@ -290,12 +290,14 @@ class Navigation(object):
         self.dotbotsview     = [
             {
                 # evaluated position of the DotBot when it last stopped
-                'x':              x,
-                'y':              y,
+                'x':                  x,
+                'y':                  y,
                 # current movement
-                'heading':        0,
-                'speed':          0,
-                'movementSeqNum': 0,
+                'heading':            0,
+                'speed':              0,
+                'movementSeqNum':     0,
+                'lastNotificationID': 0,
+
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
         self.mapBuilder      = MapBuilder()
@@ -335,21 +337,32 @@ class Navigation(object):
         # shorthand
         dotbot = self.dotbotsview[frame['dotBotId']]
 
-        # update DotBot's position
-        (dotbot['x'],dotbot['y']) = u.computeFuturePosition(
-            currentX = dotbot['x'],
-            currentY = dotbot['y'],
-            heading  = dotbot['heading'],
-            speed    = dotbot['speed'],
-            duration = frame['tsMovementStop'] - frame['tsMovementStart'],
-        )
+        if dotbot['lastNotificationID'] != frame['notificationID']:
 
-        # notify the mapBuilder of the obstacle location
-        # FIXME don't notify if not a bump
-        self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
+            # update last notification ID
+            dotbot['lastNotificationID'] = frame['notificationID']
 
-        # update DotBot's movement
-        self._updateMovement(frame['dotBotId'])
+            # find duration of movement
+            if frame['tsMovementStart'] == None or frame['tsMovementStop'] == None:
+                movementDuration = 0
+            else:
+                movementDuration = frame['tsMovementStop'] - frame['tsMovementStart']
+
+            # update DotBot's position
+            (dotbot['x'],dotbot['y']) = u.computeFuturePosition(
+                currentX = dotbot['x'],
+                currentY = dotbot['y'],
+                heading  = dotbot['heading'],
+                speed    = dotbot['speed'],
+                duration = movementDuration,
+            )
+
+            # notify the mapBuilder of the obstacle location
+            # FIXME don't notify if not a bump
+            self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
+
+            # update DotBot's movement
+            self._updateMovement(frame['dotBotId'])
     
     #======================== private =========================================
     

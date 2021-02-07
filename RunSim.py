@@ -10,7 +10,7 @@ import SimUI
 
 #============================ defines =========================================
 
-UI_ACTIVE     = False
+UI_ACTIVE     = True
 
 SIMSETTINGS   = [
     {
@@ -24,7 +24,7 @@ SIMSETTINGS   = [
 ''',
         'initialPosition':  (1,1),
         'navAlgorithm'   :  'Ballistic',
-        'pdr'            :  1.0,
+        'pdr'            :  0.5,
     }
 ] * 10
 
@@ -61,6 +61,7 @@ def oneSim(simSetting,simUI):
     # create the wireless communication medium
     wireless       = Wireless.Wireless()
     wireless.indicateDevices(devices = dotBots+[orchestrator])
+    wireless.overridePDR(simSetting['pdr'])
     
     #======================== run
     

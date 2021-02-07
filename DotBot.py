@@ -37,6 +37,8 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
+        self.newMovementReceived  = True
+        self.notificationID       = 0
 
     # ======================== public ==========================================
 
@@ -58,7 +60,8 @@ class DotBot(Wireless.WirelessDevice):
             return
         self.lastMovementSeqNum   = myMovement['movementSeqNum']
 
-        # if I get here I have receive a NEW movement
+        # if I get here I have received a NEW movement
+        self.newMovementReceived = True
         
         # cancel notification retransmission
         # FIXME: handle retransmission of notifications
@@ -132,32 +135,48 @@ class DotBot(Wireless.WirelessDevice):
         now                  = self.simEngine.currentTime()
         
         # update my position
-        assert now==self.next_bump_ts       # FIXME: only for bump or PDR<1.0
         (self.x,self.y)      = self.computeCurrentPosition()
-        assert self.x==self.next_bump_x     # FIXME: only for bump
-        assert self.y==self.next_bump_y     # FIXME: only for bump
-        
+
         # stop moving
         self.currentSpeed    = 0
         
         # remember when I stop moving
         self.tsMovementStop  = now
+
+        #update notification ID
+        self.notificationID += 1
+
+        # transmit
+        self._transmit()
         
+
+    def _transmit(self):
+        '''
+        frame formating a transmission
+        '''
+        # Short hand
+        now = self.simEngine.currentTime()
+
         # format frame to transmit
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
             'dotBotId':           self.dotBotId,
+            'notificationID':     self.notificationID,
             'tsMovementStart':    self.tsMovementStart,
             'tsMovementStop':     self.tsMovementStop,
         }
-        
+
+        self.newMovementReceived = False
+
         # hand over to wireless
         self.wireless.transmit(
             frame       = frameToTx,
             sender      = self,
         )
-        
+
         # FIXME: arm timer to retransmit
+        if not self.newMovementReceived:
+            self.simEngine.schedule(now+1, self._transmit)
 
     #=== motor control
     
