@@ -334,10 +334,13 @@ class Navigation(object):
         dotbot = self.dotbotsview[frame['dotBotId']]
 
         # update DotBot's position
-        dotbot['x'] += (frame['tsMovementStop'] - frame['tsMovementStart']) * math.cos(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
-        dotbot['y'] += (frame['tsMovementStop'] - frame['tsMovementStart']) * math.sin(math.radians(dotbot['heading'] - 90)) * dotbot['speed']
-        dotbot['x'] = round(dotbot['x'], 3)
-        dotbot['y'] = round(dotbot['y'], 3)
+        (dotbot['x'],dotbot['y']) = u.computeFuturePosition(
+            currentX = dotbot['x'],
+            currentY = dotbot['y'],
+            heading  = dotbot['heading'],
+            speed    = dotbot['speed'],
+            duration = frame['tsMovementStop'] - frame['tsMovementStart'],
+        )
 
         # notify the mapBuilder of the obstacle location
         # FIXME don't notify if not a bump

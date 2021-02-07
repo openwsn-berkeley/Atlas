@@ -98,16 +98,17 @@ class DotBot(Wireless.WirelessDevice):
         
         # compute current position based on where it was and where it's going
         if self.currentSpeed==0:
-            newX = self.x
-            newY = self.y
+            (newX,newY) = (self.x,self.y)
         else:
-            newX = self.x + (now - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
-            newX = round(newX, 3)
-            newY = self.y + (now - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
-            newY = round(newY, 3)
+            (newX,newY) = u.computeFuturePosition(
+                currentX = self.x,
+                currentY = self.y,
+                heading  = self.currentHeading,
+                speed    = self.currentSpeed,
+                duration = now - self.tsMovementStart,
+            )
         
         # do NOT write back any results to the DotBot's state as race condition possible
-
         return {
             'x':       newX,
             'y':       newY,
@@ -184,30 +185,37 @@ class DotBot(Wireless.WirelessDevice):
         (bump_x_frame, bump_y_frame, bump_ts_frame) = self._computeNextBumpFrame()
 
         # start by considering you will bump into the frame
-        bump_x = bump_x_frame
-        bump_y = bump_y_frame
-        bump_ts = bump_ts_frame
+        bump_x     = bump_x_frame
+        bump_y     = bump_y_frame
+        bump_ts    = bump_ts_frame
 
-        # loop through obstables, lookign for closer bump coordinates
+        # loop through obstables, looking for closer bump coordinates
         for obstacle in self.floorplan.obstacles:
 
-            # coordinates of obstacble upper left and lower right corner
-            ax = obstacle['x']
-            ay = obstacle['y']
-            bx = ax + obstacle['width']
-            by = ay + obstacle['height']
+            # coordinates of obstacle's upper-left and lower-right corner
+            ax     = obstacle['x']
+            ay     = obstacle['y']
+            bx     = ax + obstacle['width']
+            by     = ay + obstacle['height']
 
             # compute bump coordinate for this obstacle (if exist)
             # Note: return (None,None,None) if no bump
-            (bump_xo, bump_yo, bump_tso) = self._computeNextBumpObstacle(self.x, self.y, bump_x_frame, bump_y_frame, ax,
-                                                                         ay, bx, by)
+            (bump_xo, bump_yo, bump_tso) = self._computeNextBumpObstacle(
+                self.x,
+                self.y,
+                bump_x_frame,
+                bump_y_frame,
+                ax,
+                ay,
+                bx,
+                by,
+            )
 
             # update bump coordinates if closer
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
 
         # FIXME: remove this
-
         bump_x = self.x + (bump_ts - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_y = self.y + (bump_ts - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_x = round(bump_x, 3)
@@ -221,37 +229,37 @@ class DotBot(Wireless.WirelessDevice):
         if   self.currentHeading in [90, 270]:
             # horizontal edge case
 
-            north_x = None  # doesn't cross
-            south_x = None  # doesn't cross
-            west_y = self.y
-            east_y = self.y
+            north_x     = None  # doesn't cross
+            south_x     = None  # doesn't cross
+            west_y      = self.y
+            east_y      = self.y
 
-        elif self.currentHeading in [0, 180]:
+        elif self.currentHeading in [ 0, 180]:
             # vertical edge case
 
-            north_x = self.x
-            south_x = self.x
-            west_y = None  # doesn't cross
-            east_y = None  # doesn't cross
+            north_x     = self.x
+            south_x     = self.x
+            west_y      = None  # doesn't cross
+            east_y      = None  # doesn't cross
 
         else:
             # general case
 
             # find equation of trajectory as y = a*x + b
-            a = math.tan(math.radians(self.currentHeading - 90))
-            b = self.y - (a * self.x)
+            a           = math.tan(math.radians(self.currentHeading - 90))
+            b           = self.y - (a * self.x)
 
             # compute intersection points with 4 walls
-            north_x = (0 - b) / a  # intersection with North wall (y=0)
-            south_x = (self.floorplan.height - b) / a  # intersection with South wall (y=self.floorplan.height)
-            west_y = 0 * a + b  # intersection with West wall (x=0)
-            east_y = self.floorplan.width * a + b  # intersection with West wall (x=self.floorplan.width)
+            north_x     = (0 - b) / a                      # intersection with North wall (y=0)
+            south_x     = (self.floorplan.height - b) / a  # intersection with South wall (y=self.floorplan.height)
+            west_y      = 0 * a + b                        # intersection with West  wall (x=0)
+            east_y      = self.floorplan.width * a + b     # intersection with East  wall (x=self.floorplan.width)
 
             # round
-            north_x = round(north_x, 3)
-            south_x = round(south_x, 3)
-            west_y = round(west_y, 3)
-            east_y = round(east_y, 3)
+            north_x     = round(north_x, 3)
+            south_x     = round(south_x, 3)
+            west_y      = round(west_y,  3)
+            east_y      = round(east_y,  3)
 
         # pick the two intersection points on the floorplan perimeter
         valid_intersections = []
@@ -266,8 +274,11 @@ class DotBot(Wireless.WirelessDevice):
 
         # if more than 2 valid points, pick the pair that is furthest apart
         if len(valid_intersections) > 2:
-            distances = [(u.distance(a, b), a, b) for (a, b) in
-                         itertools.product(valid_intersections, valid_intersections)]
+            distances = [
+                (u.distance(a, b), a, b)
+                    for (a, b) in
+                        itertools.product(valid_intersections, valid_intersections)
+            ]
             distances = sorted(distances, key=lambda e: e[0])
             valid_intersections = [distances[-1][1], distances[-1][2]]
 
@@ -308,15 +319,14 @@ class DotBot(Wireless.WirelessDevice):
                 (bump_x, bump_y) = (x_int0, y_int0)
             else:
                 (bump_x, bump_y) = (x_int1, y_int1)
+        
         # compute time to bump
-        #if self.currentSpeed == 0:
-        #    self.currentSpeed = 1
         timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.currentSpeed
-        bump_ts = self.tsMovementStart + timetobump
+        bump_ts    = self.tsMovementStart + timetobump
 
         # round
-        bump_x = round(bump_x, 3)
-        bump_y = round(bump_y, 3)
+        bump_x     = round(bump_x, 3)
+        bump_y     = round(bump_y, 3)
 
         return (bump_x, bump_y, bump_ts)
 
@@ -338,19 +348,19 @@ class DotBot(Wireless.WirelessDevice):
         '''
 
         # initial calculations (see algorithm)
-        deltax = x2 - rx
-        deltay = y2 - ry
-        #                         left      right     bottom        top
-        p = [-deltax, deltax, -deltay, deltay]
-        q = [rx - ax, bx - rx, ry - ay, by - ry]
+        deltax     = x2 - rx
+        deltay     = y2 - ry
+        #                left    right   bottom      top
+        p          = [-deltax,  deltax, -deltay,  deltay]
+        q          = [rx - ax, bx - rx, ry - ay, by - ry]
 
         # initialize u1 and u2
-        u1 = -math.inf
-        u2 = math.inf
+        u1         = -math.inf
+        u2         =  math.inf
 
         # iterating over the 4 boundaries of the obstacle in order to find the t value for each one.
-        # if p = 0 then the trajectory is parallel to that boundary
-        # if p = 0 and q<0 then line completly outside boundaries
+        #     if p = 0 then the trajectory is parallel to that boundary
+        #     if p = 0 and q<0 then line completly outside boundaries
 
         # update u1 and u2
         for i in range(4):
@@ -377,15 +387,15 @@ class DotBot(Wireless.WirelessDevice):
         # decide what to return
         if (u1 >= 0 and u1 <= u2 and u2 <= 1):
 
-            bump_x = rx + u1 * deltax
-            bump_y = ry + u1 * deltay
-            #if self.currentSpeed == 0:
-            #    self.currentSpeed = 1
-            timetobump = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
-            bump_ts = self.tsMovementStart + timetobump
+            bump_x      = rx + u1 * deltax
+            bump_y      = ry + u1 * deltay
+            
+            timetobump  = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
+            bump_ts     = self.tsMovementStart + timetobump
+            
             # round
-            bump_x = round(bump_x, 3)
-            bump_y = round(bump_y, 3)
+            bump_x      = round(bump_x, 3)
+            bump_y      = round(bump_y, 3)
 
             return (bump_x, bump_y, bump_ts)
 
