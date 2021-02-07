@@ -1,6 +1,5 @@
 # built-in
 import random
-import math
 import threading
 import copy
 import sys
@@ -20,8 +19,8 @@ class MapBuilder(object):
     It declares when the map is complete.
     '''
 
-    HOUSEKEEPING_PERIOD_S    = 1   # in simulated time
-    MINFEATURESIZE_M         = 1.0 # shortest wall, narrowest opening
+    HOUSEKEEPING_PERIOD_S    = 1    # in simulated time
+    MINFEATURESIZE_M         = 1.00 # shortest wall, narrowest opening
 
     def __init__(self):
 
@@ -134,7 +133,7 @@ class MapBuilder(object):
                         continue
                     vnext                    = thesedots[idx+1]
 
-                    if vnext-v<=self.MINFEATURESIZE_M:
+                    if vnext-v<self.MINFEATURESIZE_M:
 
                         if direction=='horizontal':
                             theselines      += [(v,ref,vnext,ref)]
@@ -261,16 +260,16 @@ class MapBuilder(object):
         returnVal = False
 
         while True: # "loop" only once
-            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<=self.MINFEATURESIZE_M:
+            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1ax,l1ay),(l2bx,l2by))<=self.MINFEATURESIZE_M:
+            if  u.distance((l1ax,l1ay),(l2bx,l2by))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2ax,l2ay))<=self.MINFEATURESIZE_M:
+            if  u.distance((l1bx,l1by),(l2ax,l2ay))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2bx,l2by))<=self.MINFEATURESIZE_M:
+            if  u.distance((l1bx,l1by),(l2bx,l2by))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
             break
@@ -404,6 +403,9 @@ class Navigation_Atlas(Navigation):
         super().__init__(numDotBots, initialPosition)
         
         # (additional) local variables
+        # shorthands for initial x,y position
+        self.ix              = initialPosition[0]
+        self.iy              = initialPosition[1]
         # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
         self.hCellsOpen      = []
         self.hCellsObstacle  = []
@@ -422,14 +424,29 @@ class Navigation_Atlas(Navigation):
             'cellsOpen':     [self._hCellCorners2SvgRect(*c) for c in self.hCellsOpen],
             'cellsObstacle': [self._hCellCorners2SvgRect(*c) for c in self.hCellsObstacle],
         }
-        
         return returnVal
     
     #======================== private =========================================
     
-    def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
-        # TODO update hCellsOpen and hCellsObstacle
-        pass
+    def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
+        
+        # intermediate cells are open
+        self.hCellsOpen += self._cellsTraversed(startX,startY,stopX,stopY)
+        
+        # stop cell is obstacle
+        (x,y) = self._xy2hCell(stopX,stopY)
+        self.hCellsObstacle += [self._hCellCenter2Corners(x,y)]
+        
+        # if a cell is obstacle, remove from open cells
+        for c in self.hCellsObstacle:
+            try:
+                self.hCellsOpen.remove(c)
+            except ValueError:
+                pass
+        
+        # filter duplicates in either list
+        self.hCellsOpen      = list(set(self.hCellsOpen))
+        self.hCellsObstacle  = list(set(self.hCellsObstacle))
     
     def _updateMovement(self, dotBotId):
         '''
@@ -444,6 +461,62 @@ class Navigation_Atlas(Navigation):
         dotbot['speed']           = 1
         dotbot['movementSeqNum'] += 1
     
+    def _cellsTraversed(self,startX,startY,stopX,stopY):
+        returnVal = []
+        
+        # scan horizontally
+        x         = startX
+        while True:
+            
+            if startX<stopX:
+                # going right
+                x += MapBuilder.MINFEATURESIZE_M/2
+                if x>stopX:
+                    break
+            else:
+                # going left
+                x -= MapBuilder.MINFEATURESIZE_M/2
+                if x<stopX:
+                    break
+            
+            y  = startY+(((stopY-startY)*(x-startX))/(stopX-startX))
+            
+            (cx,cy) = self._xy2hCell(x,y)
+            returnVal += [self._hCellCenter2Corners(cx,cy)]
+        
+        # scan vertically
+        y         = startY
+        while True:
+            
+            if startY<stopY:
+                # going down
+                y += MapBuilder.MINFEATURESIZE_M/2
+                if y>stopY:
+                    break
+            else:
+                y -= MapBuilder.MINFEATURESIZE_M/2
+                if y<stopY:
+                    break
+            
+            x  = startX+(((stopX-startX)*(y-startY))/(stopY-startY))
+            
+            (cx,cy) = self._xy2hCell(x,y)
+            returnVal += [self._hCellCenter2Corners(cx,cy)]
+        
+        # filter duplicates
+        returnVal = list(set(returnVal))
+        
+        return returnVal
+    
+    def _xy2hCell(self,x,y):
+        
+        xsteps = int(round((x-self.ix)/ (MapBuilder.MINFEATURESIZE_M/2),0))
+        cx     = self.ix+xsteps*(MapBuilder.MINFEATURESIZE_M/2)
+        ysteps = int(round((y-self.iy)/ (MapBuilder.MINFEATURESIZE_M/2),0))
+        cy     = self.iy+ysteps*(MapBuilder.MINFEATURESIZE_M/2)
+        
+        return (cx,cy)
+    
     def _hCellCenter2Corners(self,cx,cy):
         ax = cx - (MapBuilder.MINFEATURESIZE_M/4)
         ay = cy - (MapBuilder.MINFEATURESIZE_M/4)
@@ -453,10 +526,10 @@ class Navigation_Atlas(Navigation):
     
     def _hCellCorners2SvgRect(self,ax,ay,bx,by):
         returnVal = {
-            'x':      ax,
-            'y':      ay,
-            'width':   bx-ax,
-            'height':  by-ay,
+            'x':        ax,
+            'y':        ay,
+            'width':    bx-ax,
+            'height':   by-ay,
         }
         return returnVal
 

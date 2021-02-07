@@ -200,6 +200,11 @@ function drawDotBots(data) {
     // explored cells
     var exploredCellsOpen  = svg.selectAll(".exploredCellsOpen")
         .data(data.exploredCells.cellsOpen);
+    exploredCellsOpen
+        .attr("x",      function(d) { return scaleFactor*d.x; })
+        .attr("y",      function(d) { return scaleFactor*d.y; })
+        .attr("width",  function(d) { return scaleFactor*d.width; })
+        .attr("height", function(d) { return scaleFactor*d.height; });
     exploredCellsOpen.enter().append("rect")
             .attr("x",      function(d) { return scaleFactor*d.x; })
             .attr("y",      function(d) { return scaleFactor*d.y; })
@@ -211,6 +216,11 @@ function drawDotBots(data) {
             .remove();
     var exploredCellsObstacle  = svg.selectAll(".exploredCellsObstacle")
         .data(data.exploredCells.cellsObstacle);
+    exploredCellsObstacle
+        .attr("x",      function(d) { return scaleFactor*d.x; })
+        .attr("y",      function(d) { return scaleFactor*d.y; })
+        .attr("width",  function(d) { return scaleFactor*d.width; })
+        .attr("height", function(d) { return scaleFactor*d.height; });
     exploredCellsObstacle.enter().append("rect")
             .attr("x",      function(d) { return scaleFactor*d.x; })
             .attr("y",      function(d) { return scaleFactor*d.y; })

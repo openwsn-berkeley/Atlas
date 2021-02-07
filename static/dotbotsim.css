@@ -132,12 +132,15 @@
 }
 
 .exploredCellsOpen {
-    fill:             #D5F5E3;
-    opacity:          0.5;
-    stroke:           #27AE60;
+    fill:             #28B463;
+    opacity:          0.2;
+    stroke:           #0B5345;
+    stroke-width:     1px;
 }
 
 .exploredCellsObstacle {
-    fill:             #EBEDEF;
-    opacity:          0.5;
+    fill:             #2E86C1;
+    opacity:          0.2;
+    stroke:           #154360;
+    stroke-width:     1px;
 }

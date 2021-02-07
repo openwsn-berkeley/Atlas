@@ -10,11 +10,11 @@ import SimUI
 
 #============================ defines =========================================
 
-UI_ACTIVE     = True
+UI_ACTIVE     = False
 
 SIMSETTINGS   = [
     {
-        'numDotBots'         : 1,
+        'numDotBots'         : 10,
         'floorplanDrawing'   : # 1m per character
  '''
 ...............
@@ -26,7 +26,7 @@ SIMSETTINGS   = [
         'navAlgorithm'       :  'Atlas',
         'pdr'                :  1.0,
     }
-]
+] * 100
 
 #============================ helpers =========================================
 
