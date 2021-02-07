@@ -112,8 +112,8 @@
 }
 
 .positionerror {
-    stroke:           red;
-    stroke-width:     2px;
+    stroke:           grey;
+    stroke-width:     1px;
 }
 
 .orchestratorview {
@@ -123,6 +123,7 @@
 }
 
 .collisionpath {
+    stroke:           grey;
     stroke-width:     1px;
     stroke-dasharray: 2;
 }
