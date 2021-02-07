@@ -82,9 +82,9 @@ class DotBot(Wireless.WirelessDevice):
         # schedule the bump event
         self.simEngine.schedule(self.next_bump_ts, self._bump)
 
-    def getPositionHeadingSpeed(self):
+    def computeCurrentPosition(self):
         '''
-        "Backdoor" function to get the current position, heading and speed.
+        Compute the current position based on previous position and movement.
         '''
 
         # shorthand
@@ -103,12 +103,7 @@ class DotBot(Wireless.WirelessDevice):
             )
         
         # do NOT write back any results to the DotBot's state as race condition possible
-        return {
-            'x':       newX,
-            'y':       newY,
-            'heading': self.currentHeading,
-            'speed':   self.currentSpeed,
-        }
+        return (newX,newY)
 
     # ======================== private =========================================
 
@@ -130,12 +125,10 @@ class DotBot(Wireless.WirelessDevice):
         now                  = self.simEngine.currentTime()
         
         # update my position
-        res                  = self.getPositionHeadingSpeed()
-        assert res['x']==self.next_bump_x # FIXME: only for bump
-        assert res['y']==self.next_bump_y # FIXME: only for bump
-        assert now==self.next_bump_ts     # FIXME: only for bump or PDR<1.0
-        self.x               = res['x']
-        self.y               = res['y']
+        assert now==self.next_bump_ts       # FIXME: only for bump or PDR<1.0
+        (self.x,self.y)      = self.computeCurrentPosition()
+        assert self.x==self.next_bump_x     # FIXME: only for bump
+        assert self.y==self.next_bump_y     # FIXME: only for bump
         
         # stop moving
         self.currentSpeed    = 0

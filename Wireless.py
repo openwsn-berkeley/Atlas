@@ -81,9 +81,7 @@ class Wireless(object):
             dotbotX = self.orchX
             dotbotY = self.orchY
         else:
-            dotbotAttitude = dotbot.getPositionHeadingSpeed()
-            dotbotX = dotbotAttitude['x']
-            dotbotY = dotbotAttitude['y']
+            (dotbotX,dotbotY) = dotbot.computeCurrentPosition()
 
         distance = int(u.distance((dotbotX,dotbotY),(self.orchX,self.orchY)))
         distanceToPDR = {

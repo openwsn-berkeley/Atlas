@@ -86,17 +86,29 @@ class SimUI(object):
         
         try:
             orchestratorView = self.orchestrator.getView()
+            
+            returnValDotBots = []
+            # x,y
+            for dotbot in self.dotbots:
+                (x,y) = dotbot.computeCurrentPosition()
+                returnValDotBots += [{
+                    'x': x,
+                    'y': y,
+                }]
+            # orchestratorview_x,orchestratorview_y
+            for (db,orchestratorview) in zip(returnValDotBots,orchestratorView['dotbotpositions']):
+                db['orchestratorview_x'] = orchestratorview['x']
+                db['orchestratorview_y'] = orchestratorview['y']
+            # next_bump_x,next_bump_y
+            
+            
             returnVal = {
                 'mode':                self.simEngine.mode(),
                 'simulatedTime':       self.simEngine.formatSimulatedTime(),
-                'dotbots':             [],
+                'dotbots':             returnValDotBots,
                 'discomap':            orchestratorView['discomap'],
             }
-            for dotbot in self.dotbots:
-                returnVal['dotbots'] += [dotbot.getPositionHeadingSpeed()]
-            for (dotbot,orchestratorview) in zip(returnVal['dotbots'],orchestratorView['dotbots']):
-                dotbot['orchestratorview_x'] = orchestratorview['x']
-                dotbot['orchestratorview_y'] = orchestratorview['y']
+            
         except AttributeError:
             print('poipoipoi _webhandle_dotbots_GET')
             import traceback

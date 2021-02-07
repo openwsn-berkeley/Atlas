@@ -461,8 +461,8 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         
         returnVal = {
-            'dotbots':  self.navigation.getEvaluatedPositions(),
-            'discomap': self.navigation.mapBuilder.getMap(),
+            'dotbotpositions':    self.navigation.getEvaluatedPositions(),
+            'discomap':           self.navigation.mapBuilder.getMap(),
         }
         
         return returnVal
