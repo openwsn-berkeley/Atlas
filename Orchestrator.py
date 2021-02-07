@@ -1,10 +1,8 @@
 # built-in
 import random
-import time
 import math
 import threading
 import copy
-import time
 import sys
 # third-party
 # local

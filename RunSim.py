@@ -1,7 +1,5 @@
 # built-in
 # third-party
-import csv
-import time
 # local
 import Floorplan
 import DotBot

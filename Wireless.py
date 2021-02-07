@@ -1,7 +1,7 @@
 # built-in
+import random
 # third-party
 # local
-import random
 import Utils as u
 
 class WirelessDevice(object):

@@ -2,7 +2,6 @@
 import math
 import itertools
 import time
-import threading
 # third-party
 # local
 import SimEngine
