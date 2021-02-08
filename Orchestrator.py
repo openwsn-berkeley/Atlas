@@ -290,13 +290,13 @@ class Navigation(object):
         self.dotbotsview     = [
             {
                 # evaluated position of the DotBot when it last stopped
-                'x':                  x,
-                'y':                  y,
+                'x':                      x,
+                'y':                      y,
                 # current movement
-                'heading':            0,
-                'speed':              0,
-                'movementSeqNum':     0,
-                'lastNotificationID': 0,
+                'heading':                0,
+                'speed':                  0,
+                'seqNumMovement':         0,
+                'lastSeqNumNotification': 0,
 
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
@@ -324,7 +324,7 @@ class Navigation(object):
             {
                 'heading':        dotbot['heading'],
                 'speed':          dotbot['speed'],
-                'movementSeqNum': dotbot['movementSeqNum'],
+                'seqNumMovement': dotbot['seqNumMovement'],
             } for dotbot in self.dotbotsview
         ]
         return returnVal
@@ -337,10 +337,10 @@ class Navigation(object):
         # shorthand
         dotbot = self.dotbotsview[frame['dotBotId']]
 
-        if dotbot['lastNotificationID'] != frame['notificationID']:
+        if dotbot['lastSeqNumNotification'] != frame['seqNumNotification']:
 
             # update last notification ID
-            dotbot['lastNotificationID'] = frame['notificationID']
+            dotbot['lastSeqNumNotification'] = frame['seqNumNotification']
 
             # find duration of movement
             if frame['tsMovementStart'] == None or frame['tsMovementStop'] == None:
@@ -391,7 +391,7 @@ class Navigation_Ballistic(Navigation):
         # pick new movement
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
-        dotbot['movementSeqNum'] += 1
+        dotbot['seqNumMovement'] += 1
 
 class Orchestrator(Wireless.WirelessDevice):
     '''

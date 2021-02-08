@@ -25,8 +25,8 @@ class DotBot(Wireless.WirelessDevice):
         # singletons
         self.simEngine            = SimEngine.SimEngine()
         self.wireless             = Wireless.Wireless()
-        # last received movementSeqNum (to filter out duplicate commands)
-        self.lastMovementSeqNum   = None
+        # last received seqNumMovement (to filter out duplicate commands)
+        self.lastSeqNumMovement   = None
         # current heading and speed
         self.currentHeading       = 0
         self.currentSpeed         = 0
@@ -37,8 +37,7 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
-        self.newMovementReceived  = True
-        self.notificationID       = 0
+        self.seqNumNotification   = 0
 
     # ======================== public ==========================================
 
@@ -56,15 +55,16 @@ class DotBot(Wireless.WirelessDevice):
         myMovement = frame['movements'][self.dotBotId]
 
         # filter out duplicates
-        if myMovement['movementSeqNum']==self.lastMovementSeqNum:
+        if myMovement['seqNumMovement']==self.lastSeqNumMovement:
+
+            self.simEngine.schedule(self.simEngine.currentTime() + 1, self._transmit)
             return
-        self.lastMovementSeqNum   = myMovement['movementSeqNum']
+
+        self.lastSeqNumMovement   = myMovement['seqNumMovement']
 
         # if I get here I have received a NEW movement
-        self.newMovementReceived = True
         
         # cancel notification retransmission
-        # FIXME: handle retransmission of notifications
 
         # apply heading and speed from packet
         self._setHeading(myMovement['heading'])
@@ -133,18 +133,21 @@ class DotBot(Wireless.WirelessDevice):
 
         # shorthand
         now                  = self.simEngine.currentTime()
-        
+
         # update my position
         (self.x,self.y)      = self.computeCurrentPosition()
 
+        assert self.x == self.next_bump_x  # FIXME: only for bump
+        assert self.y == self.next_bump_y  # FIXME: only for bump
+
         # stop moving
-        self.currentSpeed    = 0
+        self.currentSpeed        = 0
         
         # remember when I stop moving
-        self.tsMovementStop  = now
+        self.tsMovementStop      = now
 
-        #update notification ID
-        self.notificationID += 1
+        # update notification ID
+        self.seqNumNotification += 1
 
         # transmit
         self._transmit()
@@ -154,29 +157,21 @@ class DotBot(Wireless.WirelessDevice):
         '''
         frame formating a transmission
         '''
-        # Short hand
-        now = self.simEngine.currentTime()
 
         # format frame to transmit
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
             'dotBotId':           self.dotBotId,
-            'notificationID':     self.notificationID,
+            'seqNumNotification': self.seqNumNotification,
             'tsMovementStart':    self.tsMovementStart,
             'tsMovementStop':     self.tsMovementStop,
         }
-
-        self.newMovementReceived = False
 
         # hand over to wireless
         self.wireless.transmit(
             frame       = frameToTx,
             sender      = self,
         )
-
-        # FIXME: arm timer to retransmit
-        if not self.newMovementReceived:
-            self.simEngine.schedule(now+1, self._transmit)
 
     #=== motor control
     

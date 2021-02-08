@@ -44,6 +44,7 @@ class Wireless(object):
 
         # store params
         self.devices         =  []
+        self.constantPDR     =  self.PDR
 
         # local variables
 
@@ -53,7 +54,7 @@ class Wireless(object):
         self.devices         = devices
 
     def overridePDR(self,pdr):
-        self.PDR             = pdr
+        self.constantPDR             = pdr
 
     def destroy(self): 
         self._instance       = None
@@ -74,7 +75,7 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _computePDR(self,sender,receiver):
-        return self.PDR # FIXME: PisterHack
+        return  self.constantPDR # FIXME: PisterHack
     
     def _get_pisterHack_PDR(self,sender,receiver):
         '''
