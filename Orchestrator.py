@@ -3,6 +3,7 @@ import random
 import threading
 import copy
 import sys
+import math
 # third-party
 # local
 import SimEngine
@@ -413,7 +414,7 @@ class Navigation_Atlas(Navigation):
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen     += [initialPosition]
         
-        # initial movements are random
+        # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
@@ -457,15 +458,33 @@ class Navigation_Atlas(Navigation):
         opencells = copy.deepcopy(self.hCellsOpen)
         random.shuffle(opencells)
         
-        # select a open cell with an unexplored cell around as a target
-        '''
+        # select target: an unexplored cell next to an open cell
+        target = None
         for c in opencells:
-            print 
-        '''
-
-        # pick new movement
-        dotbot = self.dotbotsview[dotBotId] # shorthand
-        dotbot['heading']         = random.randint(0, 359)
+            for n in self._oneHopNeighborsShuffled(*c):
+                (nx,ny) = n
+                if (
+                    (nx>=0)                           and
+                    (ny>=0)                           and
+                    (n not in self.hCellsOpen)        and
+                    (n not in self.hCellsObstacle)
+                ):
+                    target = n
+                    break
+        assert(target)
+        
+         # shorthand
+        dotbot = self.dotbotsview[dotBotId]
+        
+        # compute heading to that target
+        # FIXME: fails if DotBot is behind corner
+        (tx,ty) = target # shorthand
+        x       = dotbot['x']
+        y       = dotbot['y']
+        heading = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
+        
+        # store new movement
+        dotbot['heading']         = heading
         dotbot['speed']           = 1
         dotbot['movementSeqNum'] += 1
     
@@ -532,6 +551,16 @@ class Navigation_Atlas(Navigation):
             'width':    MapBuilder.MINFEATURESIZE_M/2,
             'height':   MapBuilder.MINFEATURESIZE_M/2,
         }
+        return returnVal
+    
+    def _oneHopNeighborsShuffled(self,cx,cy):
+        s = MapBuilder.MINFEATURESIZE_M/2 # shorthand
+        returnVal = [
+            (cx-s,cy-s),(cx,cy-s),(cx+s,cy-s),
+            (cx-s,cy  )          ,(cx+s,cy  ),
+            (cx-s,cy+s),(cx,cy+s),(cx+s,cy+s),
+        ]
+        random.shuffle(returnVal)
         return returnVal
 
 class Orchestrator(Wireless.WirelessDevice):

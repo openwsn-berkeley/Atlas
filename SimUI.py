@@ -77,7 +77,6 @@ class SimUI(object):
         try:
             returnVal = self.floorplan.getJSON()
         except AttributeError:
-            print('poipoipoi _webhandle_floorplan_GET')
             returnVal = ''
         return returnVal
     
@@ -112,9 +111,6 @@ class SimUI(object):
             }
             
         except AttributeError:
-            print('poipoipoi _webhandle_dotbots_GET')
-            import traceback
-            traceback.print_exc()
             returnVal = ''
         
         return returnVal
