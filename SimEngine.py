@@ -88,7 +88,6 @@ class SimEngine(threading.Thread):
     def destroy(self): 
         self._instance   = None
         self._init       = False
-        # FIXME: kill thread
     
     def runToCompletion(self,startFunc):
         assert self._currentTime==0

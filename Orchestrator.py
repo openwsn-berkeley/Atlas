@@ -615,7 +615,7 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
-        # format frame to transmit FIXME: ask Nav
+        # format frame to transmit
         frameToTx = {
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': self.navigation.getMovements(),
