@@ -62,11 +62,14 @@ class SimEngine(threading.Thread):
             self.semNumEvents.acquire()
 
             # handle next event
-            (ts,cb,selfDestruct) = self.events.pop(0)
+            (ts,cb,tag) = self.events.pop(0)
+
             assert self._currentTime<=ts
             self._currentTime = ts
-            if selfDestruct:
+
+            if tag == 'selfDestruct':
                 break
+
             cb()
 
             # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
@@ -97,16 +100,28 @@ class SimEngine(threading.Thread):
         
         return self._currentTime
     
-    def schedule(self,ts,cb,selfDestruct=False):
+    def schedule(self,ts,cb,tag='None'):
         # add new event
-        self.events += [(ts,cb,selfDestruct)]
+        self.events += [(ts,cb,tag)]
         # reorder list
         self.events  = sorted(self.events, key = lambda e: e[0])
         # release semaphore (increments its internal counter)
         self.semNumEvents.release()
-    
+
+        # reorder list
+        self.events  = sorted(self.events, key = lambda e: e[0])
+        print('events', self.events)
+        # release semaphore (increments its internal counter)
+        self.semNumEvents.release()
+
+    def cancelEvent(self, tag):
+        for (idx,event) in enumerate(self.events):
+            if event[2] == tag:
+                self.events.pop(idx)
+
+
     def completeRun(self):
-        self.schedule(self._currentTime,None,True)
+        self.schedule(self._currentTime,None,tag='selfDestruct')
     
     #=== helper functions
 

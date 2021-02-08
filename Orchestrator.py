@@ -336,34 +336,31 @@ class Navigation(object):
         
         # shorthand
         dotbot = self.dotbotsview[frame['dotBotId']]
+        if dotbot['lastSeqNumNotification'] == frame['seqNumNotification']:
+            return
 
-        if dotbot['lastSeqNumNotification'] != frame['seqNumNotification']:
+        # update last notification sequence number
+        dotbot['lastSeqNumNotification'] = frame['seqNumNotification']
 
-            # update last notification ID
-            dotbot['lastSeqNumNotification'] = frame['seqNumNotification']
+        assert  frame['tsMovementStart'] != None
+        assert  frame['tsMovementStop']  != None
 
-            # find duration of movement
-            if frame['tsMovementStart'] == None or frame['tsMovementStop'] == None:
-                movementDuration = 0
-            else:
-                movementDuration = frame['tsMovementStop'] - frame['tsMovementStart']
+        # update DotBot's position
+        (dotbot['x'],dotbot['y']) = u.computeFuturePosition(
+            currentX = dotbot['x'],
+            currentY = dotbot['y'],
+            heading  = dotbot['heading'],
+            speed    = dotbot['speed'],
+            duration = frame['tsMovementStop'] - frame['tsMovementStart'],
+        )
 
-            # update DotBot's position
-            (dotbot['x'],dotbot['y']) = u.computeFuturePosition(
-                currentX = dotbot['x'],
-                currentY = dotbot['y'],
-                heading  = dotbot['heading'],
-                speed    = dotbot['speed'],
-                duration = movementDuration,
-            )
+        # notify the mapBuilder of the obstacle location
+        # FIXME don't notify if not a bump
+        self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
 
-            # notify the mapBuilder of the obstacle location
-            # FIXME don't notify if not a bump
-            self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
+        # update DotBot's movement
+        self._updateMovement(frame['dotBotId'])
 
-            # update DotBot's movement
-            self._updateMovement(frame['dotBotId'])
-    
     #======================== private =========================================
     
     def _updateMovement(self,dotBotId):
@@ -392,6 +389,7 @@ class Navigation_Ballistic(Navigation):
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
+
 
 class Orchestrator(Wireless.WirelessDevice):
     '''

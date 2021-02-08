@@ -43,14 +43,11 @@ class Floorplan(object):
         height = self.height
         cell_width = 0.5
         cell_height = 0.5
-        #print('w',width,'h',height)
         cells = []
         for y in [y*0.5 for y in range(0, height*2)]:
             for x in [x*0.5 for x in range(0, width*2)]:
                 cells += [(x,y)]
-        #-----------------------debug prints - remove later--------------------------
-        #print(len(cells))
-        #print(cells)
+
         return (cell_width,cell_height,cells)
 
 
