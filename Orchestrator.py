@@ -459,6 +459,7 @@ class Navigation_Atlas(Navigation):
         random.shuffle(opencells)
         
         # select target: an unexplored cell next to an open cell
+        # FIXME: pick the unexplored cell closest to the DotBot by building a gradient starting at the DotBot
         target = None
         for c in opencells:
             for n in self._oneHopNeighborsShuffled(*c):
@@ -471,7 +472,7 @@ class Navigation_Atlas(Navigation):
                 ):
                     target = n
                     break
-        assert(target)
+        assert(target) # (x,y) coordinates of the center of the target hCell
         
          # shorthand
         dotbot = self.dotbotsview[dotBotId]
