@@ -64,8 +64,8 @@ class DotBot(Wireless.WirelessDevice):
         self.lastSeqNumMovement   = myMovement['seqNumMovement']
 
         # if I get here I have received a NEW movement
-        # cancel notification retransmission
 
+        # cancel notification retransmission
         self.simEngine.cancelEvent(tag = (str(self.seqNumNotification) + str(self.dotBotId)))
 
         # apply heading and speed from packet

@@ -110,7 +110,7 @@ class SimEngine(threading.Thread):
 
         # reorder list
         self.events  = sorted(self.events, key = lambda e: e[0])
-        print('events', self.events)
+
         # release semaphore (increments its internal counter)
         self.semNumEvents.release()
 
