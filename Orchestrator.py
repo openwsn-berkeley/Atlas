@@ -1,9 +1,9 @@
 # built-in
 import random
-import math
 import threading
 import copy
 import sys
+import math
 # third-party
 # local
 import SimEngine
@@ -20,8 +20,8 @@ class MapBuilder(object):
     It declares when the map is complete.
     '''
 
-    PERIOD         = 1 # s, in simulated time
-    MINFEATURESIZE = 0.9 # shortest wall, narrowest opening
+    HOUSEKEEPING_PERIOD_S    = 1    # in simulated time
+    MINFEATURESIZE_M         = 1.00 # shortest wall, narrowest opening
 
     def __init__(self):
 
@@ -30,15 +30,14 @@ class MapBuilder(object):
         # local variables
         self.simEngine       = SimEngine.SimEngine()
         self.dataLock        = threading.RLock()
-        self.simRun = 1
-        self.discoMap = {
+        self.discoMap        = {
             'complete': False,    # is the map complete?
             'dots':     [],       # each bump becomes a dot
             'lines':    [],       # closeby dots are aggregated into a line
         }
 
         # schedule first housekeeping activity
-        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
+        self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
         self.exploredCells = []
 
     #======================== public ==========================================
@@ -65,7 +64,7 @@ class MapBuilder(object):
             self.discoMap['complete'] = self._isMapComplete()
 
         # schedule next consolidation activity
-        self.simEngine.schedule(self.simEngine.currentTime()+self.PERIOD,self._houseKeeping)
+        self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
 
         # stop the simulation run if mapping has completed
         if self.discoMap['complete']:
@@ -135,7 +134,7 @@ class MapBuilder(object):
                         continue
                     vnext                    = thesedots[idx+1]
 
-                    if vnext-v<=self.MINFEATURESIZE:
+                    if vnext-v<self.MINFEATURESIZE_M:
 
                         if direction=='horizontal':
                             theselines      += [(v,ref,vnext,ref)]
@@ -262,16 +261,16 @@ class MapBuilder(object):
         returnVal = False
 
         while True: # "loop" only once
-            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<=self.MINFEATURESIZE:
+            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1ax,l1ay),(l2bx,l2by))<=self.MINFEATURESIZE:
+            if  u.distance((l1ax,l1ay),(l2bx,l2by))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2ax,l2ay))<=self.MINFEATURESIZE:
+            if  u.distance((l1bx,l1by),(l2ax,l2ay))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2bx,l2by))<=self.MINFEATURESIZE:
+            if  u.distance((l1bx,l1by),(l2bx,l2by))<self.MINFEATURESIZE_M:
                 returnVal = True
                 break
             break
@@ -304,6 +303,31 @@ class Navigation(object):
     
     #======================== public ==========================================
     
+    def receiveNotification(self,frame):
+        '''
+        We just received a notification for a DotBot.
+        '''
+        
+        # shorthand
+        dotbot = self.dotbotsview[frame['dotBotId']]
+
+        # update DotBot's position
+        (newX,newY) = u.computeCurrentPosition(
+            currentX = dotbot['x'],
+            currentY = dotbot['y'],
+            heading  = dotbot['heading'],
+            speed    = dotbot['speed'],
+            duration = frame['tsMovementStop'] - frame['tsMovementStart'],
+        )
+        self._notifyDotBotMoved(dotbot['x'],dotbot['y'],newX,newY)
+        (dotbot['x'],dotbot['y']) = (newX,newY)
+
+        # notify the mapBuilder of the obstacle location
+        self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
+
+        # compute new DotBot movement
+        self._updateMovement(frame['dotBotId'])
+    
     def getEvaluatedPositions(self):
         '''
         Retrieve the evaluated positions of each DotBot.
@@ -329,39 +353,26 @@ class Navigation(object):
         ]
         return returnVal
     
-    def receiveNotification(self,frame):
+
+    def receive(self,frame):
         '''
-        We just received a notification for a DotBot.
+        Notification received from a DotBot.
         '''
-        
-        # shorthand
-        dotbot = self.dotbotsview[frame['dotBotId']]
-        if dotbot['lastSeqNumNotification'] == frame['seqNumNotification']:
-            return
+        assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
-        # update last notification sequence number
-        dotbot['lastSeqNumNotification'] = frame['seqNumNotification']
+        # hand received frame to navigation algorithm
+        self.navigation.receiveNotification(frame)
 
-        assert  frame['tsMovementStart'] != None
-        assert  frame['tsMovementStop']  != None
 
-        # update DotBot's position
-        (dotbot['x'],dotbot['y']) = u.computeFuturePosition(
-            currentX = dotbot['x'],
-            currentY = dotbot['y'],
-            heading  = dotbot['heading'],
-            speed    = dotbot['speed'],
-            duration = frame['tsMovementStop'] - frame['tsMovementStart'],
-        )
 
-        # notify the mapBuilder of the obstacle location
-        # FIXME don't notify if not a bump
-        self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
-
-        # update DotBot's movement
-        self._updateMovement(frame['dotBotId'])
+    def getExploredCells(self):
+        raise SystemError('abstract method')
+    
 
     #======================== private =========================================
+    
+    def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
+        raise SystemError('abstract method')
     
     def _updateMovement(self,dotBotId):
         raise SystemError('abstract method')
@@ -373,10 +384,20 @@ class Navigation_Ballistic(Navigation):
         # initialize parent
         super().__init__(numDotBots, initialPosition)
         
-        # pick initial movements
+        # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
+    #======================== public ==========================================
+    
+    def getExploredCells(self):
+        return {} # Ballistic doesn't keep track of explored areas
+    
+    #======================== private =========================================
+    
+    def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
+        pass # Ballistic doesn't act on DotBot movement
+    
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
@@ -390,6 +411,238 @@ class Navigation_Ballistic(Navigation):
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
+
+class Navigation_Atlas(Navigation):
+
+    def __init__(self, numDotBots, initialPosition):
+    
+        # initialize parent
+        super().__init__(numDotBots, initialPosition)
+        
+        # (additional) local variables
+        # shorthands for initial x,y position
+        self.ix              = initialPosition[0]
+        self.iy              = initialPosition[1]
+        # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
+        self.hCellsOpen      = []
+        self.hCellsObstacle  = []
+        
+        # the hCell the DotBot start is in, by definition, open
+        self.hCellsOpen     += [initialPosition]
+        
+        # initial movements
+        for (dotBotId,_) in enumerate(self.dotbotsview):
+            self._updateMovement(dotBotId)
+
+    #======================== public ==========================================
+    
+    def getExploredCells(self):
+        returnVal = {
+            'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
+            'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
+        }
+        return returnVal
+    
+    #======================== private =========================================
+    
+    def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
+        
+        # intermediate cells are open
+        self.hCellsOpen += self._cellsTraversed(startX,startY,stopX,stopY)
+        
+        # stop cell is obstacle
+        (x,y) = self._xy2hCell(stopX,stopY)
+        self.hCellsObstacle += [(x,y)]
+        
+        # if a cell is obstacle, remove from open cells
+        for c in self.hCellsObstacle:
+            try:
+                self.hCellsOpen.remove(c)
+            except ValueError:
+                pass
+        
+        # filter duplicates in either list
+        self.hCellsOpen      = list(set(self.hCellsOpen))
+        self.hCellsObstacle  = list(set(self.hCellsObstacle))
+    
+    def _updateMovement(self, dotBotId):
+        '''
+        \post modifies the movement directly in dotbotsview
+        '''
+
+        # shorthand
+        dotbot                 = self.dotbotsview[dotBotId]
+        centreCell             = (dotbot['x'],dotbot['y'])
+        avaliableTargetCells   = [] # cells that are closest to DotBot and are unexplored
+        distanceRank           = 0  # distance rank between DotBot position and surrounding cell set
+        target                 = None
+
+        while True:
+            distanceRank += 1
+
+            avaliableTargetCells += self._rankHopNeighbourhood(centreCell,distanceRank)
+
+            if avaliableTargetCells:
+                break
+
+        target = random.choice(avaliableTargetCells)
+        path   = self._path2Target(centreCell,target)
+
+        # compute heading to that target
+        # FIXME: fails if DotBot is behind corner
+        (tx,ty) = target # shorthand
+        x       = dotbot['x']
+        y       = dotbot['y']
+        heading = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
+        
+        # store new movement
+        dotbot['heading']         = heading
+        dotbot['speed']           = 1
+        dotbot['movementSeqNum'] += 1
+
+    def _rankHopNeighbourhood(self, c0, distanceRank):
+
+        avaliableTargetCells = []
+
+        # shorthand
+        (c0x,c0y) = c0
+
+        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
+        numberOfSurroundingCells = 8 * distanceRank
+
+        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
+        # find centres of surrounding cells based on DotBot speed and angle
+        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
+        for idx in range(numberOfSurroundingCells):
+            (x, y) = u.computeCurrentPosition(c0x, c0y,
+                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
+                                              1,  # assume speed to be 1 meter per second
+                                              0.5)  # duration to move from hcell to hcell = 0.5 seconds
+            (scx, scy) = self._xy2hCell(x, y)
+
+            if ((scx, scy) not in self.hCellsOpen) and ((scx, scy) not in self.hCellsObstacle):
+                avaliableTargetCells += [(scx, scy)]
+        return avaliableTargetCells
+
+    def _path2Target(self, start, target):
+        '''
+        A* Algorithm for finding shortest path to target
+        '''
+
+        openCells            = [{'position': start, 'gCost': 0, 'hCost': 0, 'fCost':0}]
+        closedCells          = []
+        parentsAndChildCells = [(None,start)]
+
+        for (idx,cell) in enumerate(openCells):
+
+            # find open cell with lowest F cost
+            if cell['position'] != sorted(openCells, key=lambda item: item['fCost'])[0]['position']:
+                continue
+
+            parent = cell
+            currentPosition = parent['position']
+            openCells.pop(idx)
+            closedCells += [parent]
+
+            if currentPosition == target: # we have reached target, backtrack direct path
+                directPathCells              = []
+
+                while currentPosition is not None:
+                    directPathCells         += [currentPosition]
+                    currentPosition          = [p[0] for p in parentsAndChildCells
+                                               if (p[1] == currentPosition and p[1] != None)][0]
+                    if currentPosition == []:
+                        break
+                directPathCells.reverse()
+                return directPathCells
+
+            for child in self._oneHopNeighborsShuffled(*currentPosition):
+                # skip neighbour if obstacle or already evaluated (closed)
+                if ( (child in self.hCellsObstacle) or
+                     (child in [cell['position'] for cell in closedCells]) or
+                     (child in [cell['position'] for cell in openCells])
+                    ):
+                    continue
+                gCost  = parent['gCost'] + 1
+                hCost  = u.distance(child,target)
+                fCost  = gCost + hCost
+                openCells += [{'position': child, 'gCost': gCost, 'hCost': hCost, 'fCost':fCost}]
+                parentsAndChildCells += [(currentPosition,child)]
+
+    def _cellsTraversed(self,startX,startY,stopX,stopY):
+        returnVal = []
+        
+        # scan horizontally
+        x         = startX
+        while True:
+            
+            if startX<stopX:
+                # going right
+                x += MapBuilder.MINFEATURESIZE_M/2
+                if x>stopX:
+                    break
+            else:
+                # going left
+                x -= MapBuilder.MINFEATURESIZE_M/2
+                if x<stopX:
+                    break
+            
+            y  = startY+(((stopY-startY)*(x-startX))/(stopX-startX))
+            
+            (cx,cy) = self._xy2hCell(x,y)
+            returnVal += [(cx,cy)]
+        
+        # scan vertically
+        y         = startY
+        while True:
+            
+            if startY<stopY:
+                # going down
+                y += MapBuilder.MINFEATURESIZE_M/2
+                if y>stopY:
+                    break
+            else:
+                y -= MapBuilder.MINFEATURESIZE_M/2
+                if y<stopY:
+                    break
+            
+            x  = startX+(((stopX-startX)*(y-startY))/(stopY-startY))
+            
+            (cx,cy) = self._xy2hCell(x,y)
+            returnVal += [(cx,cy)]
+        
+        # filter duplicates
+        returnVal = list(set(returnVal))
+        
+        return returnVal
+    
+    def _xy2hCell(self,x,y):
+        
+        xsteps = int(round((x-self.ix)/ (MapBuilder.MINFEATURESIZE_M/2),0))
+        cx     = self.ix+xsteps*(MapBuilder.MINFEATURESIZE_M/2)
+        ysteps = int(round((y-self.iy)/ (MapBuilder.MINFEATURESIZE_M/2),0))
+        cy     = self.iy+ysteps*(MapBuilder.MINFEATURESIZE_M/2)
+        
+        return (cx,cy)
+    
+    def _hCell2SvgRect(self,cx,cy):
+        returnVal = {
+            'x':        cx-MapBuilder.MINFEATURESIZE_M/4,
+            'y':        cy-MapBuilder.MINFEATURESIZE_M/4,
+            'width':    MapBuilder.MINFEATURESIZE_M/2,
+            'height':   MapBuilder.MINFEATURESIZE_M/2,
+        }
+        return returnVal
+    
+    def _oneHopNeighborsShuffled(self,cx,cy):
+        s = MapBuilder.MINFEATURESIZE_M/2 # shorthand
+        returnVal = [
+            (cx-s,cy-s),(cx,cy-s),(cx+s,cy-s),
+            (cx-s,cy  )          ,(cx+s,cy  ),
+            (cx-s,cy+s),(cx,cy+s),(cx+s,cy+s),
+        ]
+        random.shuffle(returnVal)
+        return returnVal
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -443,7 +696,7 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
-        # format frame to transmit FIXME: ask Nav
+        # format frame to transmit
         frameToTx = {
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': self.navigation.getMovements(),
@@ -474,6 +727,7 @@ class Orchestrator(Wireless.WirelessDevice):
         returnVal = {
             'dotbotpositions':    self.navigation.getEvaluatedPositions(),
             'discomap':           self.navigation.mapBuilder.getMap(),
+            'exploredCells':      self.navigation.getExploredCells(),
         }
         
         return returnVal

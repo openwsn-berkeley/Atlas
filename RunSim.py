@@ -14,20 +14,19 @@ UI_ACTIVE     = True
 
 SIMSETTINGS   = [
     {
-        'numDotBots':       10,
-        'floorplanDrawing': # 1m per character
+        'numDotBots'         : 1,
+        'floorplanDrawing'   : # 1m per character
  '''
 ...............
 ...............
-#..............
+...............
 ...............
 ''',
-        'initialPosition':  (1,1),
-        'navAlgorithm'   :  'Ballistic',
-        'pdr'            :  0.5,
+        'initialPosition'    :  (1,1),
+        'navAlgorithm'       :  'Atlas',
+        'pdr'                :  1.0,
     }
-] * 10
-
+]
 #============================ helpers =========================================
 
 def oneSim(simSetting,simUI):
