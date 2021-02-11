@@ -453,29 +453,25 @@ class Navigation_Atlas(Navigation):
         '''
         \post modifies the movement directly in dotbotsview
         '''
-        
-        # shuffle open cells (in local copy)
-        opencells = copy.deepcopy(self.hCellsOpen)
-        random.shuffle(opencells)
-        
-        # select target: an unexplored cell next to an open cell
-        target = None
-        for c in opencells:
-            for n in self._oneHopNeighborsShuffled(*c):
-                (nx,ny) = n
-                if (
-                    (nx>=0)                           and
-                    (ny>=0)                           and
-                    (n not in self.hCellsOpen)        and
-                    (n not in self.hCellsObstacle)
-                ):
-                    target = n
-                    break
-        assert(target)
-        
-         # shorthand
-        dotbot = self.dotbotsview[dotBotId]
-        
+
+        # shorthand
+        dotbot                 = self.dotbotsview[dotBotId]
+        centreCell             = (dotbot['x'],dotbot['y'])
+        avaliableTargetCells   = [] # cells that are closest to DotBot and are unexplored
+        distanceRank           = 0  # distance rank between DotBot position and surrounding cell set
+        target                 = None
+
+        while True:
+            distanceRank += 1
+
+            avaliableTargetCells += self._rankHopNeighbourhood(centreCell,distanceRank)
+
+            if avaliableTargetCells:
+                break
+
+        target = random.choice(avaliableTargetCells)
+        path   = self._path2Target(centreCell,target)
+
         # compute heading to that target
         # FIXME: fails if DotBot is behind corner
         (tx,ty) = target # shorthand
@@ -487,7 +483,76 @@ class Navigation_Atlas(Navigation):
         dotbot['heading']         = heading
         dotbot['speed']           = 1
         dotbot['movementSeqNum'] += 1
-    
+
+    def _rankHopNeighbourhood(self, c0, distanceRank):
+
+        avaliableTargetCells = []
+
+        # shorthand
+        (c0x,c0y) = c0
+
+        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
+        numberOfSurroundingCells = 8 * distanceRank
+
+        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
+        # find centres of surrounding cells based on DotBot speed and angle
+        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
+        for idx in range(numberOfSurroundingCells):
+            (x, y) = u.computeCurrentPosition(c0x, c0y,
+                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
+                                              1,  # assume speed to be 1 meter per second
+                                              0.5)  # duration to move from hcell to hcell = 0.5 seconds
+            (scx, scy) = self._xy2hCell(x, y)
+
+            if ((scx, scy) not in self.hCellsOpen) and ((scx, scy) not in self.hCellsObstacle):
+                avaliableTargetCells += [(scx, scy)]
+        return avaliableTargetCells
+
+    def _path2Target(self, start, target):
+        '''
+        A* Algorithm for finding shortest path to target
+        '''
+
+        openCells            = [{'position': start, 'gCost': 0, 'hCost': 0, 'fCost':0}]
+        closedCells          = []
+        parentsAndChildCells = [(None,start)]
+
+        for (idx,cell) in enumerate(openCells):
+
+            # find open cell with lowest F cost
+            if cell['position'] != sorted(openCells, key=lambda item: item['fCost'])[0]['position']:
+                continue
+
+            parent = cell
+            currentPosition = parent['position']
+            openCells.pop(idx)
+            closedCells += [parent]
+
+            if currentPosition == target: # we have reached target, backtrack direct path
+                directPathCells              = []
+
+                while currentPosition is not None:
+                    directPathCells         += [currentPosition]
+                    currentPosition          = [p[0] for p in parentsAndChildCells
+                                               if (p[1] == currentPosition and p[1] != None)][0]
+                    if currentPosition == []:
+                        break
+                directPathCells.reverse()
+                return directPathCells
+
+            for child in self._oneHopNeighborsShuffled(*currentPosition):
+                # skip neighbour if obstacle or already evaluated (closed)
+                if ( (child in self.hCellsObstacle) or
+                     (child in [cell['position'] for cell in closedCells]) or
+                     (child in [cell['position'] for cell in openCells])
+                    ):
+                    continue
+                gCost  = parent['gCost'] + 1
+                hCost  = u.distance(child,target)
+                fCost  = gCost + hCost
+                openCells += [{'position': child, 'gCost': gCost, 'hCost': hCost, 'fCost':fCost}]
+                parentsAndChildCells += [(currentPosition,child)]
+
     def _cellsTraversed(self,startX,startY,stopX,stopY):
         returnVal = []
         
