@@ -2,12 +2,16 @@
 import math
 import itertools
 import time
+import logging
 # third-party
 # local
 import SimEngine
 import Orchestrator
 import Wireless
 import Utils as u
+
+# logging
+log = logging.getLogger('DotBot')
 
 class DotBot(Wireless.WirelessDevice):
     '''
@@ -27,8 +31,8 @@ class DotBot(Wireless.WirelessDevice):
         self.simEngine            = SimEngine.SimEngine()
         self.wireless             = Wireless.Wireless()
         # sequence numbers (to filter out duplicate commands and notifications)
-        self.lastSeqNumMovement   = None
-        self.seqNumNotification = 0
+        self.seqNumMovement       = None
+        self.seqNumNotification   = 0
         # current heading and speed
         self.currentHeading       = 0
         self.currentSpeed         = 0
@@ -39,7 +43,6 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
-
 
     # ======================== public ==========================================
 
@@ -59,11 +62,14 @@ class DotBot(Wireless.WirelessDevice):
         # shorthand
         now = self.simEngine.currentTime()
 
+        # log
+        log.debug('[{:>10.3f}]    --> RX command {}'.format(now,myMovement['seqNumMovement']))
+        
         # filter out duplicates
-        if myMovement['seqNumMovement'] == self.lastSeqNumMovement:
+        if myMovement['seqNumMovement'] == self.seqNumMovement:
             return
-
-        self.lastSeqNumMovement   = myMovement['seqNumMovement']
+        
+        self.seqNumMovement       = myMovement['seqNumMovement']
 
         # if I get here I have received a NEW movement
 
@@ -128,6 +134,9 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
         
+        # log
+        log.debug('[{:>10.3f}] ================== bump'.format(self.simEngine.currentTime()))
+        
         self._stopAndTransmit()
     
     def _stopAndTransmit(self):
@@ -166,6 +175,9 @@ class DotBot(Wireless.WirelessDevice):
             'tsMovementStop':     self.tsMovementStop,
         }
 
+        # log
+        log.debug('[{:>10.3f}]    <-- TX notif {}'.format(self.simEngine.currentTime(),self.seqNumNotification))
+        
         # hand over to wireless
         self.wireless.transmit(
             frame       = frameToTx,

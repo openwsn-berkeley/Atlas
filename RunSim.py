@@ -1,4 +1,60 @@
+LOGGING_CONFIG = { 
+    'version':                    1,
+    'disable_existing_loggers':   True,
+    'formatters': { 
+        'formatter_console': { 
+            #'format':             '%(message)s',
+            'style':              '{',
+            'format':             '{message}',
+        },
+        'formatter_file': {
+            'style':              '{',
+            'format':             '{asctime} [{levelname:>8}] {name:>12}: {message}',
+        },
+    },
+    'handlers': { 
+        'handler_console': { 
+            'level':              'INFO',
+            'formatter':          'formatter_console',
+            'class':              'logging.StreamHandler',
+        },
+        'handler_file': {
+            'level':              'DEBUG',
+            'formatter':          'formatter_file',
+            'class':              'logging.handlers.RotatingFileHandler',
+            'filename':           'Atlas.log',
+            'maxBytes':           1000000,
+            'backupCount':        10
+        },
+    },
+    'loggers': { 
+        '': { # root
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'RunSim': { 
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'Orchestrator': { 
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'DotBot': { 
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+    } 
+}
+
 # built-in
+import logging
+import logging.config
+logging.config.dictConfig(LOGGING_CONFIG)
 # third-party
 # local
 import Floorplan
@@ -7,6 +63,7 @@ import Orchestrator
 import Wireless
 import SimEngine
 import SimUI
+
 
 #============================ defines =========================================
 
@@ -23,10 +80,11 @@ SIMSETTINGS   = [
 ...............
 ''',
         'initialPosition'    :  (1,1),
-        'navAlgorithm'       :  'Atlas',
-        'pdr'                :  0.9,
+        'navAlgorithm'       :  'Ballistic',
+        'pdr'                :  0.5,
     }
 ]
+
 #============================ helpers =========================================
 
 def oneSim(simSetting,simUI):
@@ -85,8 +143,14 @@ def oneSim(simSetting,simUI):
 
 #============================ main ============================================
 
-def main():
+# logging
+log = logging.getLogger('RunSim')
 
+def main():
+    
+    # log
+    log.debug('simulation starting')
+    
     # create the UI
     if UI_ACTIVE:
         simUI          = SimUI.SimUI()
@@ -95,9 +159,10 @@ def main():
     
     # run a number of simulations
     for (runNum,simSetting) in enumerate(SIMSETTINGS):
-        print('run {:>3}/{}...'.format(runNum+1,len(SIMSETTINGS)),end='')
+        # log
+        log.info('run {:>3}/{} starting'.format(runNum+1,len(SIMSETTINGS)))
         timeToFullMapping = oneSim(simSetting,simUI)
-        print(' completed in {:>7} s'.format(timeToFullMapping))
+        log.info('    run {:>3}/{} completed in {:>7} s'.format(runNum+1,len(SIMSETTINGS),timeToFullMapping))
     
     # block until user closes
     input('Press Enter to close simulation.')

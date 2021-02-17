@@ -4,11 +4,15 @@ import threading
 import copy
 import sys
 import math
+import logging
 # third-party
 # local
 import SimEngine
 import Wireless
 import Utils as u
+
+# logging
+log = logging.getLogger('Orchestrator')
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -295,8 +299,7 @@ class Navigation(object):
                 'heading':                0,
                 'speed':                  0,
                 'seqNumMovement':         0,
-                'lastSeqNumNotification': 0,
-
+                'seqNumNotification':     None,
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
         self.mapBuilder      = MapBuilder()
@@ -311,6 +314,11 @@ class Navigation(object):
         # shorthand
         dotbot = self.dotbotsview[frame['dotBotId']]
 
+        # filter out duplicates
+        if frame['seqNumNotification'] == dotbot['seqNumNotification']:
+            return
+        dotbot['seqNumNotification'] = frame['seqNumNotification']
+        
         # update DotBot's position
         (newX,newY) = u.computeCurrentPosition(
             currentX = dotbot['x'],
@@ -352,22 +360,9 @@ class Navigation(object):
             } for dotbot in self.dotbotsview
         ]
         return returnVal
-    
-
-    def receive(self,frame):
-        '''
-        Notification received from a DotBot.
-        '''
-        assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
-
-        # hand received frame to navigation algorithm
-        self.navigation.receiveNotification(frame)
-
-
 
     def getExploredCells(self):
         raise SystemError('abstract method')
-    
 
     #======================== private =========================================
     
@@ -647,9 +642,9 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
     '''
-    
+
     COMM_DOWNSTREAM_PERIOD_S   = 1
-    
+
     def __init__(self,numDotBots,initialPosition,navAlgorithm):
 
         # store params
@@ -700,6 +695,9 @@ class Orchestrator(Wireless.WirelessDevice):
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': self.navigation.getMovements(),
         }
+        
+        # log
+        log.debug('[{:>10.3f}] --> TX command {}'.format(self.simEngine.currentTime(),frameToTx['movements']))
 
         # hand over to wireless
         self.wireless.transmit(
@@ -713,6 +711,9 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
+        # log
+        log.debug('[{:>10.3f}] <-- RX notif {}'.format(self.simEngine.currentTime(),frame))
+        
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
     
