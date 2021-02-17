@@ -63,7 +63,7 @@ class DotBot(Wireless.WirelessDevice):
         now = self.simEngine.currentTime()
 
         # log
-        log.debug('[{:>10.3f}]    --> RX command {}'.format(now,myMovement['seqNumMovement']))
+        log.debug('[%10.3f]    --> RX command %s',now,myMovement['seqNumMovement'])
         
         # filter out duplicates
         if myMovement['seqNumMovement'] == self.seqNumMovement:
@@ -135,7 +135,7 @@ class DotBot(Wireless.WirelessDevice):
         '''
         
         # log
-        log.debug('[{:>10.3f}] ================== bump'.format(self.simEngine.currentTime()))
+        log.debug('[%10.3f] ================== bump',self.simEngine.currentTime())
         
         self._stopAndTransmit()
     
@@ -176,7 +176,7 @@ class DotBot(Wireless.WirelessDevice):
         }
 
         # log
-        log.debug('[{:>10.3f}]    <-- TX notif {}'.format(self.simEngine.currentTime(),self.seqNumNotification))
+        log.debug('[%10.3f]    <-- TX notif %s',self.simEngine.currentTime(),self.seqNumNotification)
         
         # hand over to wireless
         self.wireless.transmit(

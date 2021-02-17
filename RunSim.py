@@ -1,60 +1,10 @@
-LOGGING_CONFIG = { 
-    'version':                    1,
-    'disable_existing_loggers':   True,
-    'formatters': { 
-        'formatter_console': { 
-            #'format':             '%(message)s',
-            'style':              '{',
-            'format':             '{message}',
-        },
-        'formatter_file': {
-            'style':              '{',
-            'format':             '{asctime} [{levelname:>8}] {name:>12}: {message}',
-        },
-    },
-    'handlers': { 
-        'handler_console': { 
-            'level':              'INFO',
-            'formatter':          'formatter_console',
-            'class':              'logging.StreamHandler',
-        },
-        'handler_file': {
-            'level':              'DEBUG',
-            'formatter':          'formatter_file',
-            'class':              'logging.handlers.RotatingFileHandler',
-            'filename':           'Atlas.log',
-            'maxBytes':           1000000,
-            'backupCount':        10
-        },
-    },
-    'loggers': { 
-        '': { # root
-            'handlers':           ['handler_console','handler_file'],
-            'level':              'DEBUG',
-            'propagate':          False
-        },
-        'RunSim': { 
-            'handlers':           ['handler_console','handler_file'],
-            'level':              'DEBUG',
-            'propagate':          False
-        },
-        'Orchestrator': { 
-            'handlers':           ['handler_console','handler_file'],
-            'level':              'DEBUG',
-            'propagate':          False
-        },
-        'DotBot': { 
-            'handlers':           ['handler_console','handler_file'],
-            'level':              'DEBUG',
-            'propagate':          False
-        },
-    } 
-}
-
-# built-in
+# logging (do first)
+import AtlasLogging
 import logging
 import logging.config
-logging.config.dictConfig(LOGGING_CONFIG)
+logging.config.dictConfig(AtlasLogging.LOGGING_CONFIG)
+
+# built-in
 # third-party
 # local
 import Floorplan
@@ -67,7 +17,7 @@ import SimUI
 
 #============================ defines =========================================
 
-UI_ACTIVE     = True
+UI_ACTIVE     = False
 
 SIMSETTINGS   = [
     {
@@ -160,9 +110,9 @@ def main():
     # run a number of simulations
     for (runNum,simSetting) in enumerate(SIMSETTINGS):
         # log
-        log.info('run {:>3}/{} starting'.format(runNum+1,len(SIMSETTINGS)))
+        log.info('run %d/%d starting',runNum+1,len(SIMSETTINGS))
         timeToFullMapping = oneSim(simSetting,simUI)
-        log.info('    run {:>3}/{} completed in {:>7} s'.format(runNum+1,len(SIMSETTINGS),timeToFullMapping))
+        log.info('    run %d/%d completed in %d s',runNum+1,len(SIMSETTINGS),timeToFullMapping)
     
     # block until user closes
     input('Press Enter to close simulation.')

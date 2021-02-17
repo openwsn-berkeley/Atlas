@@ -697,7 +697,7 @@ class Orchestrator(Wireless.WirelessDevice):
         }
         
         # log
-        log.debug('[{:>10.3f}] --> TX command {}'.format(self.simEngine.currentTime(),frameToTx['movements']))
+        log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
 
         # hand over to wireless
         self.wireless.transmit(
@@ -712,7 +712,7 @@ class Orchestrator(Wireless.WirelessDevice):
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
         # log
-        log.debug('[{:>10.3f}] <-- RX notif {}'.format(self.simEngine.currentTime(),frame))
+        log.debug('[%10.3f] <-- RX notif %s',self.simEngine.currentTime(),frame)
         
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
