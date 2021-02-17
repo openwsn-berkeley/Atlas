@@ -170,7 +170,7 @@ class DotBot(Wireless.WirelessDevice):
             frame       = frameToTx,
             sender      = self,
         )
-
+        print(frameToTx)
         # schedule re-transmit
         self.simEngine.schedule( self.simEngine.currentTime() + 1, self._transmit,
                                  tag = (str(self.seqNumNotification)+str(self.dotBotId)))

@@ -289,13 +289,16 @@ class Navigation(object):
         self.dotbotsview     = [
             {
                 # evaluated position of the DotBot when it last stopped
-                'x':                      x,
-                'y':                      y,
+                'x':                        x,
+                'y':                        y,
                 # current movement
-                'heading':                0,
-                'speed':                  0,
-                'seqNumMovement':         0,
-                'lastSeqNumNotification': 0,
+                'heading':                  0,
+                'speed':                    0,
+                'seqNumMovement':           0,
+                'lastSeqNumNotification':   0,
+                'target':                   None,
+                'timer':                    None,
+                'previousPath':             None,
 
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
@@ -346,13 +349,15 @@ class Navigation(object):
         '''
         returnVal = [
             {
-                'heading':        dotbot['heading'],
-                'speed':          dotbot['speed'],
-                'seqNumMovement': dotbot['seqNumMovement'],
+                'heading':                   dotbot['heading'],
+                'speed':                     dotbot['speed'],
+                'seqNumMovement':            dotbot['seqNumMovement'],
+                'target':                    dotbot['target'],
+                'timer':                     dotbot['timer'],
+                'previousPath':              dotbot['previousPath']
             } for dotbot in self.dotbotsview
         ]
         return returnVal
-    
 
     def receive(self,frame):
         '''
@@ -363,11 +368,8 @@ class Navigation(object):
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
 
-
-
     def getExploredCells(self):
         raise SystemError('abstract method')
-    
 
     #======================== private =========================================
     
@@ -411,7 +413,6 @@ class Navigation_Ballistic(Navigation):
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
-
 class Navigation_Atlas(Navigation):
 
     def __init__(self, numDotBots, initialPosition):
@@ -450,6 +451,7 @@ class Navigation_Atlas(Navigation):
         # intermediate cells are open
         self.hCellsOpen += self._cellsTraversed(startX,startY,stopX,stopY)
         
+        # FIXME : only when bumps happens
         # stop cell is obstacle
         (x,y) = self._xy2hCell(stopX,stopY)
         self.hCellsObstacle += [(x,y)]
@@ -472,36 +474,71 @@ class Navigation_Atlas(Navigation):
 
         # shorthand
         dotbot                 = self.dotbotsview[dotBotId]
-        centreCell             = (dotbot['x'],dotbot['y'])
+        centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbotis in
         avaliableTargetCells   = [] # cells that are closest to DotBot and are unexplored
         distanceRank           = 0  # distance rank between DotBot position and surrounding cell set
         target                 = None
 
-        while True:
-            distanceRank += 1
+        if ((dotbot['target'] in self.hCellsOpen or dotbot['target'] in self.hCellsObstacle)
+                or centreCellcentre == (self.ix, self.iy)):
+            # Chose next target cell to move to
+            while True:
+                distanceRank += 1
 
-            avaliableTargetCells += self._rankHopNeighbourhood(centreCell,distanceRank)
+                avaliableTargetCells += self._rankHopNeighbourhood(centreCellcentre,distanceRank)
 
-            if avaliableTargetCells:
-                break
+                if avaliableTargetCells:
+                    break
 
-        target = random.choice(avaliableTargetCells)
-        path   = self._path2Target(centreCell,target)
-        print('avaliable cells', avaliableTargetCells)
-        print('target', target)
-        print('path', path)
+            assert  avaliableTargetCells
+            target = random.choice(avaliableTargetCells)
+            path2target = self._path2Target(centreCellcentre, target)
 
-        # compute heading to that target
-        # FIXME: fails if DotBot is behind corner
-        (tx,ty) = target # shorthand
-        x       = dotbot['x']
-        y       = dotbot['y']
-        heading = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
-        
+        else:
+            target = dotbot['target']
+            # Find shortest path to reach target destination
+            path2target           = self._path2Target(centreCellcentre,target, dotbot['previousPath'])
+
+        assert len(path2target)>1
+        path2target.pop(0)
+        # FIXME: need alternative for when there is no path
+        # FIXME: need to make sure A* doesnt give the same path 2 times in a row
+
+        print('target and path', target, path2target)
+        print('...')
+
+        # Find headings to reach each cell on path2target
+        pathHeadings=[]
+        for nextCell in path2target:
+            (tx,ty) = nextCell # shorthand
+            x       = dotbot['x']
+            y       = dotbot['y']
+            heading = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
+            pathHeadings += [heading]
+
+        # Find Timer duration (time till stop) for each heading
+        pathTimers = []
+        for idx in range(len(pathHeadings)):
+            timeTillStop = 0.5   # takes 0.5 seconds to move from cell centre to cell centre
+            if idx>0 and (pathHeadings[idx] == pathHeadings[idx-1]):
+                pathHeadings.pop(idx-1)
+                pathTimers.pop(idx-1)
+                timeTillStop += 0.5
+            pathTimers += [timeTillStop]
+
+        print('headings', pathHeadings, 'timers', pathTimers)
+
+        headingsAndTimers2Target = list(zip(pathHeadings,pathTimers))
+        print('headingsandTargets', headingsAndTimers2Target)
+
         # store new movement
-        dotbot['heading']         = heading
+        dotbot['target'] = target
+        dotbot['heading']         = headingsAndTimers2Target[0][0]
+        dotbot['timer']           = headingsAndTimers2Target[0][1]
+        dotbot['previousPath']    = path2target
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
+
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
 
@@ -520,57 +557,78 @@ class Navigation_Atlas(Navigation):
             (x, y) = u.computeCurrentPosition(c0x, c0y,
                                               ((360 / numberOfSurroundingCells) * (idx + 1)),
                                               1,  # assume speed to be 1 meter per second
-                                              0.5)  # duration to move from hcell to hcell = 0.5 seconds
-            (scx, scy) = self._xy2hCell(x, y)
+                                              0.5*distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
 
-            if ((scx, scy) not in self.hCellsOpen) and ((scx, scy) not in self.hCellsObstacle):
-                avaliableTargetCells += [(scx, scy)]
+            (scx,scy) = self._xy2hCell(x, y)
+
+            if ((scx,scy)  not in self.hCellsOpen) and ((scx,scy)  not in self.hCellsObstacle):
+                #if self._path2Target(c0, (scx,scy)):
+                avaliableTargetCells += [(scx,scy) ]
+
         return avaliableTargetCells
 
-    def _path2Target(self, start, target):
+    def _path2Target(self, start, target,path2Avoid=None):
         '''
         A* Algorithm for finding shortest path to target
         '''
 
-        openCells            = [{'position': start, 'gCost': 0, 'hCost': 0, 'fCost':0}]
+        openCells            = [{'cellCentre': start, 'gCost': 0, 'hCost': 0, 'fCost':0}]
         closedCells          = []
-        parentsAndChildCells = [(None,start)]
+        parentAndChildCells = [(None,start)]
 
-        for (idx,cell) in enumerate(openCells):
+        while openCells:
 
             # find open cell with lowest F cost
-            if cell['position'] != sorted(openCells, key=lambda item: item['fCost'])[0]['position']:
-                continue
+            print('OPEN', openCells)
+            openCells = sorted(openCells, key=lambda item: item['fCost'])
+            print('OPEN SORTED', openCells)
+            parent               = openCells[0]
+            currentCell          = parent['cellCentre']
+            openCells.pop(0)
+            print('OPEN AFTER POP', openCells)
+            closedCells         += [parent]
 
-            parent = cell
-            currentPosition = parent['position']
-            openCells.pop(idx)
-            closedCells += [parent]
 
-            if currentPosition == target: # we have reached target, backtrack direct path
+            if currentCell == target: # we have reached target, backtrack direct path
                 directPathCells              = []
 
-                while currentPosition is not None:
-                    directPathCells         += [currentPosition]
-                    currentPosition          = [p[0] for p in parentsAndChildCells
-                                               if (p[1] == currentPosition and p[1] != None)][0]
-                    if currentPosition == []:
-                        break
+                while currentCell is not None:
+                    directPathCells         += [currentCell]
+                    currentCell              = [p[0] for p in parentAndChildCells
+                                               if (p[1] == currentCell and p[1] != None)][0]
+
                 directPathCells.reverse()
                 return directPathCells
 
-            for child in self._oneHopNeighborsShuffled(*currentPosition):
+            for child in self._oneHopNeighborsShuffled(*currentCell):
                 # skip neighbour if obstacle or already evaluated (closed)
-                if ( (child in self.hCellsObstacle) or
-                     (child in [cell['position'] for cell in closedCells]) or
-                     (child in [cell['position'] for cell in openCells])
-                    ):
+                if (child in self.hCellsObstacle):
                     continue
+
                 gCost  = parent['gCost'] + 1
                 hCost  = u.distance(child,target)
                 fCost  = gCost + hCost
-                openCells += [{'position': child, 'gCost': gCost, 'hCost': hCost, 'fCost':fCost}]
-                parentsAndChildCells += [(currentPosition,child)]
+
+
+                if (child in [cell['cellCentre'] for cell in closedCells
+                    if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
+                    continue
+
+                if (child in [cell['cellCentre'] for cell in openCells
+                    if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
+                    continue
+
+                if path2Avoid:
+                    print(path2Avoid, 'child', child, gCost)
+                    if gCost<= len(path2Avoid) and path2Avoid[gCost-1] == child:
+                        continue
+
+                openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
+                parentAndChildCells += [(currentCell, child)]
+
+
+
+
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
         returnVal = []
