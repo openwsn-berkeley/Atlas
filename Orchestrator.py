@@ -501,11 +501,6 @@ class Navigation_Atlas(Navigation):
 
         assert len(path2target)>1
         path2target.pop(0)
-        # FIXME: need alternative for when there is no path
-        # FIXME: need to make sure A* doesnt give the same path 2 times in a row
-
-        print('target and path', target, path2target)
-        print('...')
 
         # Find headings to reach each cell on path2target
         pathHeadings=[]
@@ -526,10 +521,7 @@ class Navigation_Atlas(Navigation):
                 timeTillStop += 0.5
             pathTimers += [timeTillStop]
 
-        print('headings', pathHeadings, 'timers', pathTimers)
-
         headingsAndTimers2Target = list(zip(pathHeadings,pathTimers))
-        print('headingsandTargets', headingsAndTimers2Target)
 
         # store new movement
         dotbot['target'] = target
@@ -579,13 +571,10 @@ class Navigation_Atlas(Navigation):
         while openCells:
 
             # find open cell with lowest F cost
-            print('OPEN', openCells)
             openCells = sorted(openCells, key=lambda item: item['fCost'])
-            print('OPEN SORTED', openCells)
             parent               = openCells[0]
             currentCell          = parent['cellCentre']
             openCells.pop(0)
-            print('OPEN AFTER POP', openCells)
             closedCells         += [parent]
 
 
@@ -619,7 +608,6 @@ class Navigation_Atlas(Navigation):
                     continue
 
                 if path2Avoid:
-                    print(path2Avoid, 'child', child, gCost)
                     if gCost<= len(path2Avoid) and path2Avoid[gCost-1] == child:
                         continue
 
