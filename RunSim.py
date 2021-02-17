@@ -1,3 +1,9 @@
+# logging (do first)
+import AtlasLogging
+import logging
+import logging.config
+logging.config.dictConfig(AtlasLogging.LOGGING_CONFIG)
+
 # built-in
 # third-party
 # local
@@ -7,6 +13,7 @@ import Orchestrator
 import Wireless
 import SimEngine
 import SimUI
+
 
 #============================ defines =========================================
 
@@ -23,8 +30,8 @@ SIMSETTINGS   = [
 ...............
 ''',
         'initialPosition'    :  (1,1),
-        'navAlgorithm'       :  'Atlas',
-        'pdr'                :  1.0,
+        'navAlgorithm'       :  'Ballistic',
+        'pdr'                :  0.5,
     }
 ]
 
@@ -61,6 +68,7 @@ def oneSim(simSetting,simUI):
     # create the wireless communication medium
     wireless       = Wireless.Wireless()
     wireless.indicateDevices(devices = dotBots+[orchestrator])
+    wireless.overridePDR(simSetting['pdr'])
     
     #======================== run
     
@@ -85,8 +93,14 @@ def oneSim(simSetting,simUI):
 
 #============================ main ============================================
 
-def main():
+# logging
+log = logging.getLogger('RunSim')
 
+def main():
+    
+    # log
+    log.debug('simulation starting')
+    
     # create the UI
     if UI_ACTIVE:
         simUI          = SimUI.SimUI()
@@ -95,9 +109,10 @@ def main():
     
     # run a number of simulations
     for (runNum,simSetting) in enumerate(SIMSETTINGS):
-        print('run {:>3}/{}...'.format(runNum+1,len(SIMSETTINGS)),end='')
+        # log
+        log.info('run %d/%d starting',runNum+1,len(SIMSETTINGS))
         timeToFullMapping = oneSim(simSetting,simUI)
-        print(' completed in {:>7} s'.format(timeToFullMapping))
+        log.info('    run %d/%d completed in %d s',runNum+1,len(SIMSETTINGS),timeToFullMapping)
     
     # block until user closes
     input('Press Enter to close simulation.')

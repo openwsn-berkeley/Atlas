@@ -23,8 +23,8 @@ class Wireless(object):
     '''
     The wireless medium through which DotBot and orchestrator communicate.
     '''
-    
-    PDR = 1.0 # FIXME: PisterHack
+
+    DFLT_PDR = 1.0 # FIXME: PisterHack
     
     # singleton pattern
     _instance = None
@@ -44,14 +44,18 @@ class Wireless(object):
 
         # store params
         self.devices         =  []
+        self.constantPDR     =  self.DFLT_PDR
 
         # local variables
 
     # ======================== public ==========================================
     
     def indicateDevices(self,devices):
-        self.devices         =  devices
-    
+        self.devices                 = devices
+
+    def overridePDR(self,pdr):
+        self.constantPDR             = pdr
+
     def destroy(self): 
         self._instance       = None
         self._init           = False
@@ -71,7 +75,7 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _computePDR(self,sender,receiver):
-        return self.PDR # FIXME: PisterHack
+        return  self.constantPDR # FIXME: PisterHack
     
     def _get_pisterHack_PDR(self,sender,receiver):
         '''

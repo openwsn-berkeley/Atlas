@@ -4,11 +4,15 @@ import threading
 import copy
 import sys
 import math
+import logging
 # third-party
 # local
 import SimEngine
 import Wireless
 import Utils as u
+
+# logging
+log = logging.getLogger('Orchestrator')
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -289,12 +293,13 @@ class Navigation(object):
         self.dotbotsview     = [
             {
                 # evaluated position of the DotBot when it last stopped
-                'x':              x,
-                'y':              y,
+                'x':                      x,
+                'y':                      y,
                 # current movement
-                'heading':        0,
-                'speed':          0,
-                'movementSeqNum': 0,
+                'heading':                0,
+                'speed':                  0,
+                'seqNumMovement':         0,
+                'seqNumNotification':     None,
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
         self.mapBuilder      = MapBuilder()
@@ -309,6 +314,11 @@ class Navigation(object):
         # shorthand
         dotbot = self.dotbotsview[frame['dotBotId']]
 
+        # filter out duplicates
+        if frame['seqNumNotification'] == dotbot['seqNumNotification']:
+            return
+        dotbot['seqNumNotification'] = frame['seqNumNotification']
+        
         # update DotBot's position
         (newX,newY) = u.computeCurrentPosition(
             currentX = dotbot['x'],
@@ -346,14 +356,14 @@ class Navigation(object):
             {
                 'heading':        dotbot['heading'],
                 'speed':          dotbot['speed'],
-                'movementSeqNum': dotbot['movementSeqNum'],
+                'seqNumMovement': dotbot['seqNumMovement'],
             } for dotbot in self.dotbotsview
         ]
         return returnVal
-    
+
     def getExploredCells(self):
         raise SystemError('abstract method')
-    
+
     #======================== private =========================================
     
     def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
@@ -394,7 +404,7 @@ class Navigation_Ballistic(Navigation):
         # pick new movement
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
-        dotbot['movementSeqNum'] += 1
+        dotbot['seqNumMovement'] += 1
 
 class Navigation_Atlas(Navigation):
 
@@ -471,7 +481,7 @@ class Navigation_Atlas(Navigation):
 
         target = random.choice(avaliableTargetCells)
         path   = self._path2Target(centreCell,target)
-
+        
         # compute heading to that target
         # FIXME: fails if DotBot is behind corner
         (tx,ty) = target # shorthand
@@ -482,7 +492,7 @@ class Navigation_Atlas(Navigation):
         # store new movement
         dotbot['heading']         = heading
         dotbot['speed']           = 1
-        dotbot['movementSeqNum'] += 1
+        dotbot['seqNumMovement'] += 1
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
 
@@ -632,9 +642,9 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
     '''
-    
+
     COMM_DOWNSTREAM_PERIOD_S   = 1
-    
+
     def __init__(self,numDotBots,initialPosition,navAlgorithm):
 
         # store params
@@ -685,6 +695,9 @@ class Orchestrator(Wireless.WirelessDevice):
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': self.navigation.getMovements(),
         }
+        
+        # log
+        log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
 
         # hand over to wireless
         self.wireless.transmit(
@@ -698,6 +711,9 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
+        # log
+        log.debug('[%10.3f] <-- RX notif %s',self.simEngine.currentTime(),frame)
+        
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
     
