@@ -5,6 +5,7 @@ import time
 # third-party
 # local
 import SimEngine
+import Orchestrator
 import Wireless
 import Utils as u
 
@@ -25,7 +26,7 @@ class DotBot(Wireless.WirelessDevice):
         # singletons
         self.simEngine            = SimEngine.SimEngine()
         self.wireless             = Wireless.Wireless()
-        # last received seqNumMovement (to filter out duplicate commands and notifications)
+        # sequence numbers (to filter out duplicate commands and notifications)
         self.lastSeqNumMovement   = None
         self.seqNumNotification = 0
         # current heading and speed
@@ -55,6 +56,7 @@ class DotBot(Wireless.WirelessDevice):
         # parse frame, extract myMovement
         myMovement = frame['movements'][self.dotBotId]
 
+        # shorthand
         now = self.simEngine.currentTime()
 
         # filter out duplicates
@@ -66,7 +68,7 @@ class DotBot(Wireless.WirelessDevice):
         # if I get here I have received a NEW movement
 
         # cancel notification retransmission
-        self.simEngine.cancelEvent(tag = (str(self.seqNumNotification) + str(self.dotBotId)))
+        self.simEngine.cancelEvent(tag = "retransmission_DotBot_{}".format(self.dotBotId))
 
         # apply heading and speed from packet
         self._setHeading(myMovement['heading'])
@@ -136,7 +138,6 @@ class DotBot(Wireless.WirelessDevice):
         # update my position
         (self.x,self.y)      = self.computeCurrentPosition()
 
-        assert self.x == self.next_bump_x  # FIXME: only for bump
         assert self.y == self.next_bump_y  # FIXME: only for bump
 
         # stop moving
@@ -172,8 +173,11 @@ class DotBot(Wireless.WirelessDevice):
         )
 
         # schedule re-transmit
-        self.simEngine.schedule( self.simEngine.currentTime() + 1, self._transmit,
-                                 tag = (str(self.seqNumNotification)+str(self.dotBotId)))
+        self.simEngine.schedule(
+            ts  = self.simEngine.currentTime() + Orchestrator.Orchestrator.COMM_DOWNSTREAM_PERIOD_S,
+            cb  = self._transmit,
+            tag = "retransmission_DotBot_{}".format(self.dotBotId),
+        )
 
     #=== motor control
     

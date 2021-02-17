@@ -411,7 +411,6 @@ class Navigation_Ballistic(Navigation):
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
-
 class Navigation_Atlas(Navigation):
 
     def __init__(self, numDotBots, initialPosition):
@@ -487,10 +486,7 @@ class Navigation_Atlas(Navigation):
 
         target = random.choice(avaliableTargetCells)
         path   = self._path2Target(centreCell,target)
-        print('avaliable cells', avaliableTargetCells)
-        print('target', target)
-        print('path', path)
-
+        
         # compute heading to that target
         # FIXME: fails if DotBot is behind corner
         (tx,ty) = target # shorthand
