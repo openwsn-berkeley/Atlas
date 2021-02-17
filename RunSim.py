@@ -17,7 +17,7 @@ import SimUI
 
 #============================ defines =========================================
 
-UI_ACTIVE     = False
+UI_ACTIVE     = True
 
 SIMSETTINGS   = [
     {
