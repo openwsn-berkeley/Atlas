@@ -312,10 +312,11 @@ class Navigation(object):
         '''
         
         # shorthand
-        dotbot = self.dotbotsview[frame['dotBotId']]
+        dotbot      = self.dotbotsview[frame['dotBotId']]
+        self.bump   = frame['bump']
 
         # update DotBot's position
-        (newX,newY) = u.computeCurrentPosition(
+        (newX,newY)  = u.computeCurrentPosition(
             currentX = dotbot['x'],
             currentY = dotbot['y'],
             heading  = dotbot['heading'],
@@ -325,8 +326,9 @@ class Navigation(object):
         self._notifyDotBotMoved(dotbot['x'],dotbot['y'],newX,newY)
         (dotbot['x'],dotbot['y']) = (newX,newY)
 
-        # notify the mapBuilder of the obstacle location
-        self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
+        if self.bump == True:
+            # notify the mapBuilder of the obstacle location
+            self.mapBuilder.notifBump(dotbot['x'], dotbot['y'])
 
         # compute new DotBot movement
         self._updateMovement(frame['dotBotId'])
@@ -450,11 +452,11 @@ class Navigation_Atlas(Navigation):
         
         # intermediate cells are open
         self.hCellsOpen += self._cellsTraversed(startX,startY,stopX,stopY)
-        
-        # FIXME : only when bumps happens
-        # stop cell is obstacle
-        (x,y) = self._xy2hCell(stopX,stopY)
-        self.hCellsObstacle += [(x,y)]
+
+        if self.bump == True:
+            # stop cell is obstacle
+            (x,y) = self._xy2hCell(stopX,stopY)
+            self.hCellsObstacle += [(x,y)]
         
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
@@ -479,6 +481,7 @@ class Navigation_Atlas(Navigation):
         distanceRank           = 0  # distance rank between DotBot position and surrounding cell set
         target                 = None
 
+
         if ((dotbot['target'] in self.hCellsOpen or dotbot['target'] in self.hCellsObstacle)
                 or centreCellcentre == (self.ix, self.iy)):
             # Chose next target cell to move to
@@ -491,42 +494,46 @@ class Navigation_Atlas(Navigation):
                     break
 
             assert  avaliableTargetCells
-            target = random.choice(avaliableTargetCells)
+            target = self._xy2hCell(*random.choice(avaliableTargetCells))
+
             path2target = self._path2Target(centreCellcentre, target)
 
         else:
             target = dotbot['target']
             # Find shortest path to reach target destination
+            assert target != centreCellcentre
             path2target           = self._path2Target(centreCellcentre,target, dotbot['previousPath'])
 
-        assert len(path2target)>1
-        path2target.pop(0)
+        print('========= start, target, and path', centreCellcentre, target, path2target)
+
+        #FIXME
+        if len(path2target) > 1:
+            path2target.pop(0)
 
         # Find headings to reach each cell on path2target
         pathHeadings=[]
         for nextCell in path2target:
-            (tx,ty) = nextCell # shorthand
-            x       = dotbot['x']
-            y       = dotbot['y']
-            heading = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
-            pathHeadings += [heading]
+            (tx,ty)       = nextCell # shorthand
+            x             = dotbot['x']
+            y             = dotbot['y']
+            heading       = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
+            timeStep      = u.distance((x,y),(tx,ty))
+            pathHeadings += [(heading,timeStep)]
 
-        # Find Timer duration (time till stop) for each heading
-        pathTimers = []
-        for idx in range(len(pathHeadings)):
-            timeTillStop = 0.5   # takes 0.5 seconds to move from cell centre to cell centre
-            if idx>0 and (pathHeadings[idx] == pathHeadings[idx-1]):
-                pathHeadings.pop(idx-1)
-                pathTimers.pop(idx-1)
-                timeTillStop += 0.5
-            pathTimers += [timeTillStop]
+        # Find Timer duration (time till stop) for first heading
+        timeTillStop    = 0
 
-        headingsAndTimers2Target = list(zip(pathHeadings,pathTimers))
+        for (idx,h) in enumerate(pathHeadings):
+            if pathHeadings[idx][0] == pathHeadings[0][0]:
+                timeTillStop += pathHeadings[idx][1]
+            else:
+                break
 
+        print('all headings and next timer',pathHeadings, timeTillStop)
         # store new movement
         dotbot['target'] = target
-        dotbot['heading']         = headingsAndTimers2Target[0][0]
-        dotbot['timer']           = headingsAndTimers2Target[0][1]
+        dotbot['heading']         = pathHeadings[0][0]
+        dotbot['timer']           = timeTillStop
         dotbot['previousPath']    = path2target
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
