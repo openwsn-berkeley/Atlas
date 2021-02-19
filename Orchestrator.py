@@ -539,16 +539,6 @@ class Navigation_Atlas(Navigation):
                 timeTillStop += pathHeadings[idx][1]
             else:
                 break
-
-        target = random.choice(avaliableTargetCells)
-        path   = self._path2Target(centreCell,target)
-        
-        # compute heading to that target
-        # FIXME: fails if DotBot is behind corner
-        (tx,ty) = target # shorthand
-        x       = dotbot['x']
-        y       = dotbot['y']
-        heading = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
         
         # store new movement
         dotbot['target'] = target

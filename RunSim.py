@@ -30,8 +30,8 @@ SIMSETTINGS   = [
 ...............
 ''',
         'initialPosition'    :  (1,1),
-        'navAlgorithm'       :  'Ballistic',
-        'pdr'                :  0.5,
+        'navAlgorithm'       :  'Atlas',
+        'pdr'                :  1,
     }
 ]
 
