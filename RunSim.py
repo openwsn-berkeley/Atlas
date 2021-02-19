@@ -24,7 +24,7 @@ SIMSETTINGS   = [
 ''',
         'initialPosition'    :  (1,1),
         'navAlgorithm'       :  'Atlas',
-        'pdr'                :  0.9,
+        'pdr'                :  1,
     }
 ]
 #============================ helpers =========================================

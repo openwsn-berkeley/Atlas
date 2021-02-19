@@ -424,18 +424,22 @@ class Navigation_Atlas(Navigation):
         
         # (additional) local variables
         # shorthands for initial x,y position
-        self.ix              = initialPosition[0]
-        self.iy              = initialPosition[1]
+        self.ix                = initialPosition[0]
+        self.iy                = initialPosition[1]
         # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
-        self.hCellsOpen      = []
-        self.hCellsObstacle  = []
-        
+        self.hCellsOpen        = []
+        self.hCellsObstacle    = []
+        self.hCellsUnreachable = []
         # the hCell the DotBot start is in, by definition, open
-        self.hCellsOpen     += [initialPosition]
+        self.hCellsOpen       += [initialPosition]
+
+        # attempts per target cell
+        self.attempt2ReachTargetCounter = 0
         
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
+
 
     #======================== public ==========================================
     
@@ -477,28 +481,35 @@ class Navigation_Atlas(Navigation):
         # shorthand
         dotbot                 = self.dotbotsview[dotBotId]
         centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbotis in
+        lastHeading            = dotbot['heading']
         avaliableTargetCells   = [] # cells that are closest to DotBot and are unexplored
         distanceRank           = 0  # distance rank between DotBot position and surrounding cell set
         target                 = None
 
+        if ((dotbot['target'] in self.hCellsOpen or dotbot['target'] in self.hCellsObstacle) or
+                centreCellcentre == (self.ix, self.iy) or
+                self.attempt2ReachTargetCounter >= 2):
 
-        if ((dotbot['target'] in self.hCellsOpen or dotbot['target'] in self.hCellsObstacle)
-                or centreCellcentre == (self.ix, self.iy)):
+            if self.attempt2ReachTargetCounter >= 2:
+                self.hCellsUnreachable += [dotbot['target']]
+
+            self.attempt2ReachTargetCounter = 0
             # Chose next target cell to move to
             while True:
                 distanceRank += 1
 
-                avaliableTargetCells += self._rankHopNeighbourhood(centreCellcentre,distanceRank)
+                avaliableTargetCells += self._rankHopNeighbourhood(centreCellcentre,distanceRank, lastHeading)
 
                 if avaliableTargetCells:
                     break
 
             assert  avaliableTargetCells
-            target = self._xy2hCell(*random.choice(avaliableTargetCells))
+            target = random.choice(avaliableTargetCells)
 
             path2target = self._path2Target(centreCellcentre, target)
 
         else:
+            self.attempt2ReachTargetCounter += 1
             target = dotbot['target']
             # Find shortest path to reach target destination
             assert target != centreCellcentre
@@ -538,8 +549,40 @@ class Navigation_Atlas(Navigation):
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
+    def _cellReachable(self,currentPosition, targetCellPosition, heading):
 
-    def _rankHopNeighbourhood(self, c0, distanceRank):
+        #check if cell is on a mapped line
+        currentMap    = self.mapBuilder.getMap()
+        allLines      = currentMap['lines']
+        blockingLines = []
+
+        for line in allLines:
+            A = line[0],line[1]
+            B = line[2],line[3]
+            C = currentPosition
+            if ((u.distance((A[0],A[1]),(C[0],C[1])) + u.distance((C[0],C[1]),(B[0],B[1]))) ==
+                 u.distance((A[0],A[1]),(B[0],B[1])) ):
+                blockingLines += [line]
+
+        if not blockingLines:
+            return True
+
+        # get slightly reversed position (0.1 secs ago on same previously taken trajectory) of robot
+        # so that robot trajectory doesnt intersect with all surrounding cells, we only want cells beyond boundary
+
+        dotbotReversedPosition = u.computeCurrentPosition(currentPosition[0], currentPosition[1],heading,1, 0.1 )
+        trajectory2Target      = [dotbotReversedPosition[0],dotbotReversedPosition[1],
+                                  targetCellPosition[0], targetCellPosition[1]]
+        # check if trajectory from dotbotReversedPosition to target cell centre intersects with any blocking line
+        for line in blockingLines:
+            if u.lineSegentsIntersect(trajectory2Target,line):
+                return False
+
+        return True
+
+
+
+    def _rankHopNeighbourhood(self, c0, distanceRank, lastHeading):
 
         avaliableTargetCells = []
 
@@ -560,9 +603,12 @@ class Navigation_Atlas(Navigation):
 
             (scx,scy) = self._xy2hCell(x, y)
 
-            if ((scx,scy)  not in self.hCellsOpen) and ((scx,scy)  not in self.hCellsObstacle):
-                #if self._path2Target(c0, (scx,scy)):
-                avaliableTargetCells += [(scx,scy) ]
+            if (((scx,scy)  not in self.hCellsOpen) and
+               ((scx,scy)  not in self.hCellsObstacle) and
+               ((scx, scy) not in self.hCellsUnreachable)):
+                if self._cellReachable(c0,(scx,scy), (lastHeading + 180)):
+                    if ((scx,scy) not in self.hCellsUnreachable):
+                        avaliableTargetCells += [(scx,scy)]
 
         return avaliableTargetCells
 
