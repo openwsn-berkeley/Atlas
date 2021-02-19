@@ -491,7 +491,7 @@ class Navigation_Atlas(Navigation):
                 self.attempt2ReachTargetCounter >= 2):
 
             if self.attempt2ReachTargetCounter >= 2:
-                self.hCellsUnreachable += [dotbot['target']]
+                self.hCellsObstacle += [dotbot['target']]
 
             self.attempt2ReachTargetCounter = 0
             # Chose next target cell to move to
@@ -512,7 +512,6 @@ class Navigation_Atlas(Navigation):
             self.attempt2ReachTargetCounter += 1
             target = dotbot['target']
             # Find shortest path to reach target destination
-            assert target != centreCellcentre
             path2target           = self._path2Target(centreCellcentre,target, dotbot['previousPath'])
 
         print('========= start, target, and path', centreCellcentre, target, path2target)
@@ -605,9 +604,8 @@ class Navigation_Atlas(Navigation):
             if (((scx,scy)  not in self.hCellsOpen) and
                ((scx,scy)  not in self.hCellsObstacle) and
                ((scx, scy) not in self.hCellsUnreachable)):
-                if self._cellReachable(c0,(scx,scy), (lastHeading + 180)):
-                    if ((scx,scy) not in self.hCellsUnreachable):
-                        avaliableTargetCells += [(scx,scy)]
+                if self._path2Target((c0[0],c0[1]), (scx, scy)):
+                    avaliableTargetCells += [(scx,scy)]
 
         return avaliableTargetCells
 
