@@ -99,7 +99,7 @@ class SimEngine(threading.Thread):
         
         return self._currentTime
     
-    def schedule(self,ts,cb,tag='None'):
+    def schedule(self,ts,cb,tag=None):
         # add new event
         self.events += [(ts,cb,tag)]
         # reorder list
@@ -107,16 +107,13 @@ class SimEngine(threading.Thread):
         # release semaphore (increments its internal counter)
         self.semNumEvents.release()
 
-        # reorder list
-        self.events  = sorted(self.events, key = lambda e: e[0])
-
-        # release semaphore (increments its internal counter)
-        self.semNumEvents.release()
-
     def cancelEvent(self, tag):
-        for (idx,event) in enumerate(self.events):
-            if event[2] == tag:
+        idx = 0
+        while idx<len(self.events):
+            if self.events[idx][2]==tag:
                 self.events.pop(idx)
+            else:
+                idx += 1
 
 
     def completeRun(self):

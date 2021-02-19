@@ -2,11 +2,16 @@
 import math
 import itertools
 import time
+import logging
 # third-party
 # local
 import SimEngine
+import Orchestrator
 import Wireless
 import Utils as u
+
+# logging
+log = logging.getLogger('DotBot')
 
 class DotBot(Wireless.WirelessDevice):
     '''
@@ -25,9 +30,9 @@ class DotBot(Wireless.WirelessDevice):
         # singletons
         self.simEngine            = SimEngine.SimEngine()
         self.wireless             = Wireless.Wireless()
-        # last received seqNumMovement (to filter out duplicate commands and notifications)
-        self.lastSeqNumMovement   = None
-        self.seqNumNotification = 0
+        # sequence numbers (to filter out duplicate commands and notifications)
+        self.seqNumMovement       = None
+        self.seqNumNotification   = 0
         # current heading and speed
         self.currentHeading       = 0
         self.currentSpeed         = 0
@@ -38,7 +43,6 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
-
 
     # ======================== public ==========================================
 
@@ -58,16 +62,19 @@ class DotBot(Wireless.WirelessDevice):
         now      = self.simEngine.currentTime()
         stopTime = now + myMovement['timer']
 
+        # log
+        log.debug('[%10.3f]    --> RX command %s',now,myMovement['seqNumMovement'])
+        
         # filter out duplicates
-        if myMovement['seqNumMovement'] == self.lastSeqNumMovement:
+        if myMovement['seqNumMovement'] == self.seqNumMovement:
             return
-
-        self.lastSeqNumMovement   = myMovement['seqNumMovement']
+        
+        self.seqNumMovement       = myMovement['seqNumMovement']
 
         # if I get here I have received a NEW movement
 
         # cancel notification retransmission
-        self.simEngine.cancelEvent(tag = (str(self.seqNumNotification) + str(self.dotBotId)))
+        self.simEngine.cancelEvent(tag = "retransmission_DotBot_{}".format(self.dotBotId))
 
         # apply heading and speed from packet
         self._setHeading(myMovement['heading'])
@@ -132,6 +139,9 @@ class DotBot(Wireless.WirelessDevice):
         '''
 
         self.bump = True
+        # log
+        log.debug('[%10.3f] ================== bump',self.simEngine.currentTime())
+        
         self._stopAndTransmit()
 
     def _timeout(self):
@@ -181,6 +191,9 @@ class DotBot(Wireless.WirelessDevice):
             'bump':               self.bump
         }
 
+        # log
+        log.debug('[%10.3f]    <-- TX notif %s',self.simEngine.currentTime(),self.seqNumNotification)
+        
         # hand over to wireless
         self.wireless.transmit(
             frame       = frameToTx,
@@ -188,8 +201,11 @@ class DotBot(Wireless.WirelessDevice):
         )
 
         # schedule re-transmit
-        self.simEngine.schedule( self.simEngine.currentTime() + 1, self._transmit,
-                                 tag = (str(self.seqNumNotification)+str(self.dotBotId)))
+        self.simEngine.schedule(
+            ts  = self.simEngine.currentTime() + Orchestrator.Orchestrator.COMM_DOWNSTREAM_PERIOD_S,
+            cb  = self._transmit,
+            tag = "retransmission_DotBot_{}".format(self.dotBotId),
+        )
 
     #=== motor control
     

@@ -4,11 +4,15 @@ import threading
 import copy
 import sys
 import math
+import logging
 # third-party
 # local
 import SimEngine
 import Wireless
 import Utils as u
+
+# logging
+log = logging.getLogger('Orchestrator')
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -295,7 +299,7 @@ class Navigation(object):
                 'heading':                  0,
                 'speed':                    0,
                 'seqNumMovement':           0,
-                'lastSeqNumNotification':   0,
+                'seqNumNotification':     None,
                 'target':                   None,
                 'timer':                    None,
                 'previousPath':             None,
@@ -315,6 +319,11 @@ class Navigation(object):
         dotbot      = self.dotbotsview[frame['dotBotId']]
         self.bump   = frame['bump']
 
+        # filter out duplicates
+        if frame['seqNumNotification'] == dotbot['seqNumNotification']:
+            return
+        dotbot['seqNumNotification'] = frame['seqNumNotification']
+        
         # update DotBot's position
         (newX,newY)  = u.computeCurrentPosition(
             currentX = dotbot['x'],
@@ -360,15 +369,6 @@ class Navigation(object):
             } for dotbot in self.dotbotsview
         ]
         return returnVal
-
-    def receive(self,frame):
-        '''
-        Notification received from a DotBot.
-        '''
-        assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
-
-        # hand received frame to navigation algorithm
-        self.navigation.receiveNotification(frame)
 
     def getExploredCells(self):
         raise SystemError('abstract method')
@@ -540,7 +540,16 @@ class Navigation_Atlas(Navigation):
             else:
                 break
 
-        print('all headings and next timer',pathHeadings, timeTillStop)
+        target = random.choice(avaliableTargetCells)
+        path   = self._path2Target(centreCell,target)
+        
+        # compute heading to that target
+        # FIXME: fails if DotBot is behind corner
+        (tx,ty) = target # shorthand
+        x       = dotbot['x']
+        y       = dotbot['y']
+        heading = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
+        
         # store new movement
         dotbot['target'] = target
         dotbot['heading']         = pathHeadings[0][0]
@@ -750,9 +759,9 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
     '''
-    
+
     COMM_DOWNSTREAM_PERIOD_S   = 1
-    
+
     def __init__(self,numDotBots,initialPosition,navAlgorithm):
 
         # store params
@@ -803,6 +812,9 @@ class Orchestrator(Wireless.WirelessDevice):
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': self.navigation.getMovements(),
         }
+        
+        # log
+        log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
 
         # hand over to wireless
         self.wireless.transmit(
@@ -816,6 +828,9 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
+        # log
+        log.debug('[%10.3f] <-- RX notif %s',self.simEngine.currentTime(),frame)
+        
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
     
