@@ -60,7 +60,10 @@ class DotBot(Wireless.WirelessDevice):
         myMovement = frame['movements'][self.dotBotId]
 
         now      = self.simEngine.currentTime()
-        stopTime = now + myMovement['timer']
+        if myMovement['timer']:
+            stopTime = now + myMovement['timer']
+        else:
+            stopTime = math.inf
 
         # log
         log.debug('[%10.3f]    --> RX command %s',now,myMovement['seqNumMovement'])
@@ -92,7 +95,7 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_y          = bump_y
         self.next_bump_ts         = bump_ts
 
-        if stopTime < self.next_bump_ts:
+        if stopTime <= self.next_bump_ts:
             # schedule timeout event
             self.simEngine.schedule(stopTime, self._timeout)
         else:

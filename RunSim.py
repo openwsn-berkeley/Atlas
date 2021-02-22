@@ -24,12 +24,12 @@ SIMSETTINGS   = [
         'numDotBots'         : 1,
         'floorplanDrawing'   : # 1m per character
  '''
-...............
+.#.............
 ......##.......
 ......##.......
 ..#...........#
 ''',
-        'initialPosition'    :  (1,1),
+        'initialPosition'    :  (1,0),
         'navAlgorithm'       :  'Atlas',
         'pdr'                :  1,
     }

@@ -299,7 +299,7 @@ class Navigation(object):
                 'heading':                  0,
                 'speed':                    0,
                 'seqNumMovement':           0,
-                'seqNumNotification':     None,
+                'seqNumNotification':       None,
                 'target':                   None,
                 'timer':                    None,
                 'previousPath':             None,
@@ -484,46 +484,53 @@ class Navigation_Atlas(Navigation):
         lastHeading            = dotbot['heading']
         avaliableTargetCells   = [] # cells that are closest to DotBot and are unexplored
         distanceRank           = 0  # distance rank between DotBot position and surrounding cell set
-        target                 = None
+        target                 = dotbot['target']
 
-        if ((dotbot['target'] in self.hCellsOpen or dotbot['target'] in self.hCellsObstacle) or
-                centreCellcentre == (self.ix, self.iy) or
-                self.attempt2ReachTargetCounter >= 2):
+        while True:
+            if (target                                                                 and
+               (target not in self.hCellsOpen and target not in self.hCellsObstacle)   and
+                self.attempt2ReachTargetCounter < 2):
 
-            if self.attempt2ReachTargetCounter >= 2:
-                self.hCellsObstacle += [dotbot['target']]
+                # Find shortest path to reach target destination
+                path2target           = self._path2Target(centreCellcentre,target, dotbot['previousPath'])
 
-            self.attempt2ReachTargetCounter = 0
-            # Chose next target cell to move to
-            while True:
-                distanceRank += 1
+                self.attempt2ReachTargetCounter += 1
 
-                avaliableTargetCells += self._rankHopNeighbourhood(centreCellcentre,distanceRank, lastHeading)
+            else:
+                if self.attempt2ReachTargetCounter >= 2:
+                    if self._cellReachable(centreCellcentre,target, lastHeading - 180):
+                        self.hCellsObstacle += [target]
 
-                if avaliableTargetCells:
-                    break
+                self.attempt2ReachTargetCounter = 0
 
-            assert  avaliableTargetCells
-            target = random.choice(avaliableTargetCells)
+                # Chose next target cell to move to
+                while True:
+                    distanceRank += 1
 
-            path2target = self._path2Target(centreCellcentre, target)
+                    avaliableTargetCells += self._rankHopNeighbourhood(centreCellcentre,distanceRank, lastHeading)
 
-        else:
-            self.attempt2ReachTargetCounter += 1
-            target = dotbot['target']
-            # Find shortest path to reach target destination
-            path2target           = self._path2Target(centreCellcentre,target, dotbot['previousPath'])
+                    if avaliableTargetCells:
+                        break
+
+                assert avaliableTargetCells
+                target           = random.choice(avaliableTargetCells)
+                path2target      = self._path2Target(centreCellcentre, target)
+
+            #FIXME
+            if path2target:
+                if len(path2target)>1:
+                    path2target.pop(0)
+                break
+            else:
+                self.hCellsObstacle += [target]
+                continue
 
         print('========= start, target, and path', centreCellcentre, target, path2target)
-
-        #FIXME
-        if len(path2target) > 1:
-            path2target.pop(0)
 
         # Find headings to reach each cell on path2target
         pathHeadings=[]
         for nextCell in path2target:
-            (tx,ty)       = nextCell # shorthand
+            (tx,ty)       = nextCell     # shorthand
             x             = dotbot['x']
             y             = dotbot['y']
             heading       = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
@@ -538,9 +545,11 @@ class Navigation_Atlas(Navigation):
                 timeTillStop += pathHeadings[idx][1]
             else:
                 break
-        
+
+        print('headings anf time to stop', pathHeadings[0][0],timeTillStop)
+
         # store new movement
-        dotbot['target'] = target
+        dotbot['target']          = target
         dotbot['heading']         = pathHeadings[0][0]
         dotbot['timer']           = timeTillStop
         dotbot['previousPath']    = path2target
@@ -578,8 +587,6 @@ class Navigation_Atlas(Navigation):
 
         return True
 
-
-
     def _rankHopNeighbourhood(self, c0, distanceRank, lastHeading):
 
         avaliableTargetCells = []
@@ -604,8 +611,8 @@ class Navigation_Atlas(Navigation):
             if (((scx,scy)  not in self.hCellsOpen) and
                ((scx,scy)  not in self.hCellsObstacle) and
                ((scx, scy) not in self.hCellsUnreachable)):
-                if self._path2Target((c0[0],c0[1]), (scx, scy)):
-                    avaliableTargetCells += [(scx,scy)]
+                avaliableTargetCells += [(scx,scy)]
+
 
         return avaliableTargetCells
 
@@ -663,9 +670,6 @@ class Navigation_Atlas(Navigation):
 
                 openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
                 parentAndChildCells += [(currentCell, child)]
-
-
-
 
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
