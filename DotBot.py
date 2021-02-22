@@ -141,10 +141,9 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
 
-        self.bump = True
         # log
         log.debug('[%10.3f] ================== bump',self.simEngine.currentTime())
-        
+        self.bump = True
         self._stopAndTransmit()
 
     def _timeout(self):
@@ -259,8 +258,11 @@ class DotBot(Wireless.WirelessDevice):
             # update bump coordinates if closer
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
+                print('BUMPTS', bump_ts)
+                print('NOW', self.simEngine.currentTime())
 
         # FIXME: remove this
+        print('bumpts',bump_ts, 'dur',bump_ts - self.tsMovementStart,'cos', math.cos(math.radians(self.currentHeading - 90)), 'heading', self.currentHeading)
         bump_x = self.x + (bump_ts - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_y = self.y + (bump_ts - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_x = round(bump_x, 3)

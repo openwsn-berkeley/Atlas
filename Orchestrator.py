@@ -300,6 +300,7 @@ class Navigation(object):
                 'speed':                    0,
                 'seqNumMovement':           0,
                 'seqNumNotification':       None,
+                # for Atlas
                 'target':                   None,
                 'timer':                    None,
                 'previousPath':             None,
@@ -530,10 +531,13 @@ class Navigation_Atlas(Navigation):
         # Find headings to reach each cell on path2target
         pathHeadings=[]
         for nextCell in path2target:
+            print('next cell in path to target', nextCell)
             (tx,ty)       = nextCell     # shorthand
             x             = dotbot['x']
             y             = dotbot['y']
+            print('where the robot is now', (x,y))
             heading       = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
+            print('heading robot should take', heading)
             timeStep      = u.distance((x,y),(tx,ty))
             pathHeadings += [(heading,timeStep)]
 
