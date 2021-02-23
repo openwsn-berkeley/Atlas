@@ -432,7 +432,7 @@ class DotBot(Wireless.WirelessDevice):
         assert u2 is not None
 
         # decide what to return
-        if (u1 >= 0 and u1 <= u2 and u2 <= 1):
+        if (u1 >= 0 and u1 < u2 and u2 <= 1):
 
             bump_x      = rx + u1 * deltax
             bump_y      = ry + u1 * deltay
