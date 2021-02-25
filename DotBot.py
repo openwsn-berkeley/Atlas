@@ -95,7 +95,7 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_y          = bump_y
         self.next_bump_ts         = bump_ts
 
-        if stopTime <= self.next_bump_ts:
+        if stopTime < self.next_bump_ts:
             # schedule timeout event
             self.simEngine.schedule(stopTime, self._timeout)
         else:

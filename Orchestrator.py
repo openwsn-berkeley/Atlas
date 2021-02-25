@@ -488,8 +488,16 @@ class Navigation_Atlas(Navigation):
         centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbotis in
         lastHeading            = dotbot['heading']
         target                 = dotbot['target']
-
+        counter                = 0
         while True:
+            counter += 1
+
+            if counter > 150:
+                print('DOTBOT STUCK NO MORE VALID TARGETS WITHIN BOUNARIES')
+                #FIXME: adjust logic
+                # remove obstacle cells that arent on lines or have dots in them 
+                self.hCellsUnreachable = []
+                self.hCellsObstacle    = []
 
             # keep going towards same target if target hasnt been explored yet
             if (target                                                                 and
@@ -500,7 +508,7 @@ class Navigation_Atlas(Navigation):
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
 
                 path2target           = self._path2Target(centreCellcentre,target)
-                print('========= start, target, and path', centreCellcentre, target, path2target)
+                print('====1==== start, target, and path', centreCellcentre, target, path2target)
 
                 self.attempt2ReachTargetCounter += 1
 
@@ -527,7 +535,7 @@ class Navigation_Atlas(Navigation):
                 target                 = random.choice(avaliableTargetCells)
                 self.hCellsUnreachable = [] #clear out unreachable cells associated with path to previous target
                 path2target            = self._path2Target(centreCellcentre, target)
-                print('========= start, target, and path', centreCellcentre, target, path2target)
+                print('====2==== start, target, and path', centreCellcentre, target, path2target)
 
             if path2target:
                 if path2target[0] == target and target in self.hCellsUnreachable:
@@ -638,7 +646,6 @@ class Navigation_Atlas(Navigation):
         while openCells:
 
             loopCount += 1
-            print('poipoi', loopCount)
             # find open cell with lowest F cost
             openCells = sorted(openCells, key=lambda item: item['fCost'])
             parent               = openCells[0]
@@ -686,9 +693,8 @@ class Navigation_Atlas(Navigation):
                 parentAndChildCells += [(currentCell, child)]
             if loopCount > 100:
                 self.hCellsUnreachable += [target]
+                print('poipoi end')
                 break
-
-
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
         returnVal = []
