@@ -498,9 +498,9 @@ class Navigation_Atlas(Navigation):
                 self.attempt2ReachTargetCounter += 1
 
             else:
+
                 if self.attempt2ReachTargetCounter >= 2:
-                    if self._cellReachable(centreCellcentre,target, lastHeading - 180):
-                        self.hCellsObstacle += [target]
+                        self.hCellsUnreachable += [target]
 
                 self.attempt2ReachTargetCounter = 0
 
@@ -514,13 +514,11 @@ class Navigation_Atlas(Navigation):
                         break
 
                 assert avaliableTargetCells
+                print('avaliableTargets', avaliableTargetCells)
                 target           = random.choice(avaliableTargetCells)
                 path2target      = self._path2Target(centreCellcentre, target)
 
-            #FIXME
             if path2target:
-                if len(path2target)>1:
-                    path2target.pop(0)
                 break
             else:
                 self.hCellsObstacle += [target]
@@ -531,13 +529,10 @@ class Navigation_Atlas(Navigation):
         # Find headings to reach each cell on path2target
         pathHeadings=[]
         for nextCell in path2target:
-            print('next cell in path to target', nextCell)
             (tx,ty)       = nextCell     # shorthand
             x             = dotbot['x']
             y             = dotbot['y']
-            print('where the robot is now', (x,y))
             heading       = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
-            print('heading robot should take', heading)
             timeStep      = u.distance((x,y),(tx,ty))
             pathHeadings += [(heading,timeStep)]
 
@@ -613,8 +608,8 @@ class Navigation_Atlas(Navigation):
             (scx,scy) = self._xy2hCell(x, y)
 
             if (((scx,scy)  not in self.hCellsOpen) and
-               ((scx,scy)  not in self.hCellsObstacle) and
-               ((scx, scy) not in self.hCellsUnreachable)):
+                ((scx,scy)  not in self.hCellsObstacle) and
+                ((scx,scy)  not in self.hCellsUnreachable)):
                 avaliableTargetCells += [(scx,scy)]
 
 
@@ -630,7 +625,7 @@ class Navigation_Atlas(Navigation):
         parentAndChildCells = [(None,start)]
 
         while openCells:
-
+            print('poipoi start loop')
             # find open cell with lowest F cost
             openCells = sorted(openCells, key=lambda item: item['fCost'])
             parent               = openCells[0]
@@ -648,11 +643,17 @@ class Navigation_Atlas(Navigation):
                                                if (p[1] == currentCell and p[1] != None)][0]
 
                 directPathCells.reverse()
+
+                if directPathCells[0] == start:
+                    directPathCells.pop(0)
+
                 return directPathCells
 
+            print('one hop', self._oneHopNeighborsShuffled(*currentCell))
             for child in self._oneHopNeighborsShuffled(*currentCell):
                 # skip neighbour if obstacle or already evaluated (closed)
-                if (child in self.hCellsObstacle):
+                if (child in self.hCellsObstacle or
+                   (child in self.hCellsUnreachable and child != target )):
                     continue
 
                 gCost  = parent['gCost'] + 1
@@ -674,6 +675,7 @@ class Navigation_Atlas(Navigation):
 
                 openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
                 parentAndChildCells += [(currentCell, child)]
+        print('poipoi end loop')
 
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
