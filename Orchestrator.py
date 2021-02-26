@@ -486,65 +486,67 @@ class Navigation_Atlas(Navigation):
         # shorthand
         dotbot                 = self.dotbotsview[dotBotId]
         centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbotis in
-        lastHeading            = dotbot['heading']
         target                 = dotbot['target']
         counter                = 0
         while True:
-            counter += 1
-
+            counter           += 1
             if counter > 150:
-                print('DOTBOT STUCK NO MORE VALID TARGETS WITHIN BOUNARIES')
-                #FIXME: adjust logic
-                # remove obstacle cells that arent on lines or have dots in them 
-                self.hCellsUnreachable = []
-                self.hCellsObstacle    = []
+                print('stuck cant find new target to allocate...')
 
-            # keep going towards same target if target hasnt been explored yet
+            # keep going towards same target if target hasn't been explored yet
             if (target                                                                 and
-               (target not in self.hCellsOpen and target not in self.hCellsObstacle)   and
-                self.attempt2ReachTargetCounter < 5):
+               (target not in self.hCellsOpen and target not in self.hCellsObstacle)):
 
                 if self.movingDuration == 0:
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
 
                 path2target           = self._path2Target(centreCellcentre,target)
-                print('====1==== start, target, and path', centreCellcentre, target, path2target)
-
-                self.attempt2ReachTargetCounter += 1
 
             # otherwise find a new target
             else:
 
-                if self.attempt2ReachTargetCounter >= 5 and self.movingDuration == 0:
-                    self.hCellsObstacle += [target]
-
                 # Chose next target cell to move to
+                if (centreCellcentre in self.hCellsOpen) or (centreCellcentre == (self.ix, self.iy)):
+                    c0type = 'open'
+                else:
+                    c0type = 'obstacle'
 
                 distanceRank = 0  # distance rank between DotBot position and surrounding cell set
-                avaliableTargetCells = []  # cells that are closest to DotBot and are unexplored
                 while True:
                     distanceRank += 1
 
-                    avaliableTargetCells += self._rankHopNeighbourhood(centreCellcentre,distanceRank, lastHeading)
+                    target = self._rankHopNeighbourhood(centreCellcentre,distanceRank, c0type)
 
-                    if avaliableTargetCells:
+                    if target:
                         break
 
-                assert avaliableTargetCells
+                assert target
                 # FIXME: add more logic to target choice
-                target                 = random.choice(avaliableTargetCells)
                 self.hCellsUnreachable = [] #clear out unreachable cells associated with path to previous target
                 path2target            = self._path2Target(centreCellcentre, target)
-                print('====2==== start, target, and path', centreCellcentre, target, path2target)
 
             if path2target:
-                if path2target[0] == target and target in self.hCellsUnreachable:
+                if dotbot['previousPath'] == path2target:
                     self.hCellsObstacle += [target]
+                    i = 0
+                    for n in self._oneHopNeighborsShuffled(*target):
+                        if n in self.hCellsOpen:
+                            i += 1
+                            if i >= 2:
+                                self.mapBuilder.notifBump(*target)
+                                break
                     continue
                 else:
                     break
             else:
                 self.hCellsObstacle += [target]
+                i = 0
+                for n in self._oneHopNeighborsShuffled(*target):
+                    if n in self.hCellsOpen:
+                        i += 1
+                        if i >= 2:
+                            self.mapBuilder.notifBump(*target)
+                            break
                 continue
 
         # Find headings to reach each cell on path2target
@@ -574,38 +576,8 @@ class Navigation_Atlas(Navigation):
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
-    def _cellReachable(self,currentPosition, targetCellPosition, heading):
 
-        #check if cell is on a mapped line
-        currentMap    = self.mapBuilder.getMap()
-        allLines      = currentMap['lines']
-        blockingLines = []
-
-        for line in allLines:
-            A = line[0],line[1]
-            B = line[2],line[3]
-            C = currentPosition
-            if ((u.distance((A[0],A[1]),(C[0],C[1])) + u.distance((C[0],C[1]),(B[0],B[1]))) ==
-                 u.distance((A[0],A[1]),(B[0],B[1])) ):
-                blockingLines += [line]
-
-        if not blockingLines:
-            return True
-
-        # get slightly reversed position (0.1 secs ago on same previously taken trajectory) of robot
-        # so that robot trajectory doesnt intersect with all surrounding cells, we only want cells beyond boundary
-
-        dotbotReversedPosition = u.computeCurrentPosition(currentPosition[0], currentPosition[1],heading,1, 0.1 )
-        trajectory2Target      = [dotbotReversedPosition[0],dotbotReversedPosition[1],
-                                  targetCellPosition[0], targetCellPosition[1]]
-        # check if trajectory from dotbotReversedPosition to target cell centre intersects with any blocking line
-        for line in blockingLines:
-            if u.lineSegentsIntersect(trajectory2Target,line):
-                return False
-
-        return True
-
-    def _rankHopNeighbourhood(self, c0, distanceRank, lastHeading):
+    def _rankHopNeighbourhood(self, c0, distanceRank, c0Type):
 
         avaliableTargetCells = []
 
@@ -626,12 +598,24 @@ class Navigation_Atlas(Navigation):
 
             (scx,scy) = self._xy2hCell(x, y)
 
-            if (((scx,scy)  not in self.hCellsOpen) and
-                ((scx,scy)  not in self.hCellsObstacle)):
-                avaliableTargetCells += [(scx,scy)]
+            if c0Type == 'open':
+                if (((scx,scy)  not in self.hCellsOpen) and
+                    ((scx,scy)  not in self.hCellsObstacle)):
+                    avaliableTargetCells += [(scx,scy)]
 
+            else:
+                if ((scx,scy)  in self.hCellsOpen):
+                    for n in self._oneHopNeighborsShuffled(scx,scy):
+                        if (n not in self.hCellsObstacle and n not in self.hCellsOpen):
+                            avaliableTargetCells +=  [n]
+                            break
 
-        return avaliableTargetCells
+        if avaliableTargetCells:
+            target = random.choice(avaliableTargetCells)
+        else:
+            target = None
+
+        return target
 
     def _path2Target(self, start, target):
         '''
@@ -673,12 +657,15 @@ class Navigation_Atlas(Navigation):
                 # skip neighbour if obstacle or already evaluated (closed)
 
                 if (child in self.hCellsObstacle or
-                   (child in self.hCellsUnreachable and child != target )):
+                   (child in self.hCellsUnreachable and child != target)):
                     continue
 
                 gCost  = parent['gCost'] + 1
                 hCost  = u.distance(child,target)
                 fCost  = gCost + hCost
+
+                if (child == target and target in self.hCellsUnreachable and  gCost == 1):
+                    fCost = fCost + 0.5  # add penalty to avoid chosing target as first step if it was unreachable last time
 
 
                 if (child in [cell['cellCentre'] for cell in closedCells
@@ -691,10 +678,10 @@ class Navigation_Atlas(Navigation):
 
                 openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
                 parentAndChildCells += [(currentCell, child)]
-            if loopCount > 100:
-                self.hCellsUnreachable += [target]
-                print('poipoi end')
-                break
+            if loopCount > 500:
+                print('cant find path to target')
+                #self.hCellsUnreachable += [target]
+                return None
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
         returnVal = []
