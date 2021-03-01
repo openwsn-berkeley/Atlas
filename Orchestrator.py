@@ -76,7 +76,7 @@ class MapBuilder(object):
 
     def get_explored(self, exploredCells):
         self.exploredCells = exploredCells
-    
+
     def _consolidateMap(self):
 
         # result list of lines
@@ -248,6 +248,7 @@ class MapBuilder(object):
                     loop          += [line]
                     break
 
+
             # abort if no next line to hop to
             if foundCloseLine==False:
 
@@ -308,6 +309,7 @@ class Navigation(object):
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
         self.mapBuilder      = MapBuilder()
+        self.simEngine = SimEngine.SimEngine()
         self.movingDuration  = 0
     
     #======================== public ==========================================
@@ -488,10 +490,9 @@ class Navigation_Atlas(Navigation):
         centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbotis in
         target                 = dotbot['target']
         counter                = 0
+
         while True:
-            counter           += 1
-            if counter > 150:
-                print('stuck cant find new target to allocate...')
+            counter += 1
 
             # keep going towards same target if target hasn't been explored yet
             if (target                                                                 and
@@ -519,6 +520,12 @@ class Navigation_Atlas(Navigation):
 
                     if target:
                         break
+                    elif distanceRank > 100:
+                        self.mapBuilder.discoMap['complete'] = True
+                        print('mapping complete...')
+                        self.simEngine.completeRun()
+                        return
+
 
                 assert target
                 # FIXME: add more logic to target choice
@@ -528,25 +535,11 @@ class Navigation_Atlas(Navigation):
             if path2target:
                 if dotbot['previousPath'] == path2target:
                     self.hCellsObstacle += [target]
-                    i = 0
-                    for n in self._oneHopNeighborsShuffled(*target):
-                        if n in self.hCellsOpen:
-                            i += 1
-                            if i >= 2:
-                                self.mapBuilder.notifBump(*target)
-                                break
                     continue
                 else:
                     break
             else:
                 self.hCellsObstacle += [target]
-                i = 0
-                for n in self._oneHopNeighborsShuffled(*target):
-                    if n in self.hCellsOpen:
-                        i += 1
-                        if i >= 2:
-                            self.mapBuilder.notifBump(*target)
-                            break
                 continue
 
         # Find headings to reach each cell on path2target
@@ -609,11 +602,9 @@ class Navigation_Atlas(Navigation):
                         if (n not in self.hCellsObstacle and n not in self.hCellsOpen):
                             avaliableTargetCells +=  [n]
                             break
-
+        target = None
         if avaliableTargetCells:
             target = random.choice(avaliableTargetCells)
-        else:
-            target = None
 
         return target
 
@@ -621,7 +612,7 @@ class Navigation_Atlas(Navigation):
         '''
         A* Algorithm for finding shortest path to target
         '''
-
+        targetBlocked        = None
         openCells            = [{'cellCentre': start, 'gCost': 0, 'hCost': 0, 'fCost':0}]
         closedCells          = []
         parentAndChildCells = [(None,start)]
@@ -630,13 +621,21 @@ class Navigation_Atlas(Navigation):
         while openCells:
 
             loopCount += 1
+
+            for n in self._oneHopNeighborsShuffled(*target):
+                if ((n not in self.hCellsObstacle) and (n not in self.hCellsUnreachable)):
+                    targetBlocked = False
+                    break
+
+            if targetBlocked != False:
+                return None
+
             # find open cell with lowest F cost
             openCells = sorted(openCells, key=lambda item: item['fCost'])
             parent               = openCells[0]
             currentCell          = parent['cellCentre']
             openCells.pop(0)
             closedCells         += [parent]
-
 
             if currentCell == target: # we have reached target, backtrack direct path
                 directPathCells              = []
@@ -678,9 +677,9 @@ class Navigation_Atlas(Navigation):
 
                 openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
                 parentAndChildCells += [(currentCell, child)]
-            if loopCount > 500:
+
+            if loopCount > 500:          # timeout if a* has been looping for too long trying to find a path
                 print('cant find path to target')
-                #self.hCellsUnreachable += [target]
                 return None
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
