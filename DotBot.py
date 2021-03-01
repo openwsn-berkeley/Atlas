@@ -59,8 +59,11 @@ class DotBot(Wireless.WirelessDevice):
         # parse frame, extract myMovement
         myMovement = frame['movements'][self.dotBotId]
 
-        # shorthand
-        now = self.simEngine.currentTime()
+        now      = self.simEngine.currentTime()
+        if myMovement['timer']:
+            stopTime = now + myMovement['timer']
+        else:
+            stopTime = math.inf
 
         # log
         log.debug('[%10.3f]    --> RX command %s',now,myMovement['seqNumMovement'])
@@ -92,8 +95,12 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_y          = bump_y
         self.next_bump_ts         = bump_ts
 
-        # schedule the bump event
-        self.simEngine.schedule(self.next_bump_ts, self._bump)
+        if stopTime <= self.next_bump_ts:
+            # schedule timeout event
+            self.simEngine.schedule(stopTime, self._timeout)
+        else:
+            # schedule the bump event
+            self.simEngine.schedule(self.next_bump_ts, self._bump)
 
     def computeCurrentPosition(self):
         '''
@@ -133,12 +140,20 @@ class DotBot(Wireless.WirelessDevice):
         '''
         Bump sensor triggered
         '''
-        
+
         # log
         log.debug('[%10.3f] ================== bump',self.simEngine.currentTime())
-        
+        self.bump = True
         self._stopAndTransmit()
-    
+
+    def _timeout(self):
+        '''
+        movement allocated timer ran out
+        '''
+
+        self.bump = False
+        self._stopAndTransmit()
+
     def _stopAndTransmit(self):
         '''
         transmit a packet to the orchestrator to request a new heading and to notify of obstacle
@@ -147,7 +162,9 @@ class DotBot(Wireless.WirelessDevice):
         # update my position
         (self.x,self.y)      = self.computeCurrentPosition()
 
-        assert self.y == self.next_bump_y  # FIXME: only for bump
+        if self.bump == True:
+            assert self.x == self.next_bump_x
+            assert self.y == self.next_bump_y
 
         # stop moving
         self.currentSpeed        = 0
@@ -173,6 +190,7 @@ class DotBot(Wireless.WirelessDevice):
             'seqNumNotification': self.seqNumNotification,
             'tsMovementStart':    self.tsMovementStart,
             'tsMovementStop':     self.tsMovementStop,
+            'bump':               self.bump
         }
 
         # log
@@ -240,8 +258,11 @@ class DotBot(Wireless.WirelessDevice):
             # update bump coordinates if closer
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
+                print('BUMPTS', bump_ts)
+                print('NOW', self.simEngine.currentTime())
 
         # FIXME: remove this
+        print('bumpts',bump_ts, 'dur',bump_ts - self.tsMovementStart,'cos', math.cos(math.radians(self.currentHeading - 90)), 'heading', self.currentHeading)
         bump_x = self.x + (bump_ts - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_y = self.y + (bump_ts - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_x = round(bump_x, 3)
@@ -411,7 +432,7 @@ class DotBot(Wireless.WirelessDevice):
         assert u2 is not None
 
         # decide what to return
-        if (u1 >= 0 and u1 <= u2 and u2 <= 1):
+        if (u1 >= 0 and u1 < u2 and u2 <= 1):
 
             bump_x      = rx + u1 * deltax
             bump_y      = ry + u1 * deltay
