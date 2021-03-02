@@ -520,6 +520,8 @@ class Navigation_Atlas(Navigation):
 
                 # Chose next target cell to move to
                 frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
+                if not frontierCellsAndDistances:
+                    return 
                 closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
                 frontierCells   = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
@@ -616,12 +618,16 @@ class Navigation_Atlas(Navigation):
         while not frontierCellsAndDistances:
 
             distanceRank += 1
+            openCells = []
 
             rankHopNeighbourhood = self._rankHopNeighbourhood(c0, distanceRank)
 
             for n in rankHopNeighbourhood:
                 if n in self.hCellsOpen:
                     openCells += [n]
+
+            if not openCells and c0 != start:
+                return None
 
             for (ocx,ocy) in openCells:
                 for n in self._oneHopNeighborsShuffled(ocx,ocy):
@@ -631,7 +637,6 @@ class Navigation_Atlas(Navigation):
                         break
 
         return frontierCellsAndDistances
-
 
     def _path2Target(self, start, target):
         '''
@@ -709,7 +714,6 @@ class Navigation_Atlas(Navigation):
 
                 openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
                 parentAndChildCells += [(currentCell, child)]
-
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
         returnVal = []
