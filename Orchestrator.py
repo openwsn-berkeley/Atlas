@@ -208,13 +208,24 @@ class MapBuilder(object):
 
         while True: # "loop" only once
 
+            # # map is not complete if mapping hasn't started
+            # if (not self.discoMap['dots']) and (not self.discoMap['lines']):
+            #     returnVal = False
+            #     break
+            #
+            #
+            # # map is never complete if there are dots remaining
+            # if self.discoMap['dots']:
+            #     returnVal = False
+            #     break
+
             # map is not complete if mapping hasn't started
-            if (not self.discoMap['dots']) and (not self.discoMap['lines']):
+            if not self.discoMap['lines']:
                 returnVal = False
                 break
-            
+
             # map is never complete if there are dots remaining
-            if self.discoMap['dots']:
+            if len(self.discoMap['dots'])>1:
                 returnVal = False
                 break
 
@@ -503,6 +514,7 @@ class Navigation_Atlas(Navigation):
 
                 path2target           = self._path2Target(centreCellcentre,target)
 
+
             # otherwise find a new target
             else:
 
@@ -520,12 +532,6 @@ class Navigation_Atlas(Navigation):
 
                     if target:
                         break
-                    elif distanceRank > 100:
-                        self.mapBuilder.discoMap['complete'] = True
-                        print('mapping complete...')
-                        self.simEngine.completeRun()
-                        return
-
 
                 assert target
                 # FIXME: add more logic to target choice
@@ -533,24 +539,25 @@ class Navigation_Atlas(Navigation):
                 path2target            = self._path2Target(centreCellcentre, target)
 
             if path2target:
-                if dotbot['previousPath'] == path2target:
-                    self.hCellsObstacle += [target]
-                    continue
-                else:
-                    break
+                break
             else:
                 self.hCellsObstacle += [target]
                 continue
 
         # Find headings to reach each cell on path2target
         pathHeadings=[]
-        for nextCell in path2target:
-            (tx,ty)       = nextCell     # shorthand
-            x             = dotbot['x']
-            y             = dotbot['y']
+        for (idx,nextCell) in enumerate(path2target):
+            if idx == 0:
+                (x,y)    = (dotbot['x'], dotbot['y'])
+            else:
+                (x,y)    = path2target[idx-1]     # shorthand
+
+            (tx,ty)       = nextCell
+
             heading       = (math.degrees(math.atan2(ty-y,tx-x))+90) % 360
             timeStep      = u.distance((x,y),(tx,ty))
             pathHeadings += [(heading,timeStep)]
+
 
         # Find Timer duration (time till stop) for first heading
         timeTillStop    = 0
@@ -568,7 +575,6 @@ class Navigation_Atlas(Navigation):
         dotbot['previousPath']    = path2target
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
-
 
     def _rankHopNeighbourhood(self, c0, distanceRank, c0Type):
 
@@ -600,10 +606,11 @@ class Navigation_Atlas(Navigation):
                 if ((scx,scy)  in self.hCellsOpen):
                     for n in self._oneHopNeighborsShuffled(scx,scy):
                         if (n not in self.hCellsObstacle and n not in self.hCellsOpen):
-                            avaliableTargetCells +=  [n]
+                            avaliableTargetCells +=  [self._xy2hCell(n[0],n[1])]
                             break
         target = None
         if avaliableTargetCells:
+            random.seed(1)
             target = random.choice(avaliableTargetCells)
 
         return target
@@ -663,8 +670,9 @@ class Navigation_Atlas(Navigation):
                 hCost  = u.distance(child,target)
                 fCost  = gCost + hCost
 
-                if (child == target and target in self.hCellsUnreachable and  gCost == 1):
+                if (child == target and target in self.hCellsUnreachable and  gCost == 1 and self.movingDuration == 0):
                     fCost = fCost + 0.5  # add penalty to avoid chosing target as first step if it was unreachable last time
+                    continue
 
 
                 if (child in [cell['cellCentre'] for cell in closedCells
@@ -677,7 +685,7 @@ class Navigation_Atlas(Navigation):
 
                 openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
                 parentAndChildCells += [(currentCell, child)]
-
+            #FIXME: A* needs to know when a target is outside of boundaries
             if loopCount > 500:          # timeout if a* has been looping for too long trying to find a path
                 print('cant find path to target')
                 return None
