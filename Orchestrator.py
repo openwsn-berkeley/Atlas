@@ -519,24 +519,24 @@ class Navigation_Atlas(Navigation):
             else:
 
                 # Chose next target cell to move to
-                if (centreCellcentre in self.hCellsOpen) or (centreCellcentre == (self.ix, self.iy)):
-                    c0type = 'open'
-                else:
-                    c0type = 'obstacle'
+                frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
+                closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
+                frontierCells   = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
-                distanceRank = 0  # distance rank between DotBot position and surrounding cell set
-                while True:
-                    distanceRank += 1
+                # chose frontier cell
+                random.seed(1)
+                frontierCell  = random.choice(frontierCells)
 
-                    target = self._rankHopNeighbourhood(centreCellcentre,distanceRank, c0type)
-
-                    if target:
+                # chose target
+                for n in self._oneHopNeighborsShuffled(*frontierCell):
+                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
+                        target = n
                         break
 
                 assert target
-                # FIXME: add more logic to target choice
                 self.hCellsUnreachable = [] #clear out unreachable cells associated with path to previous target
                 path2target            = self._path2Target(centreCellcentre, target)
+
 
             if path2target:
                 break
@@ -576,9 +576,9 @@ class Navigation_Atlas(Navigation):
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
-    def _rankHopNeighbourhood(self, c0, distanceRank, c0Type):
+    def _rankHopNeighbourhood(self, c0, distanceRank):
 
-        avaliableTargetCells = []
+        rankHopNeighbours = []
 
         # shorthand
         (c0x,c0y) = c0
@@ -596,24 +596,42 @@ class Navigation_Atlas(Navigation):
                                               0.5*distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
 
             (scx,scy) = self._xy2hCell(x, y)
+            rankHopNeighbours += [(scx,scy)]
 
-            if c0Type == 'open':
-                if (((scx,scy)  not in self.hCellsOpen) and
-                    ((scx,scy)  not in self.hCellsObstacle)):
-                    avaliableTargetCells += [(scx,scy)]
+        return rankHopNeighbours
 
-            else:
-                if ((scx,scy)  in self.hCellsOpen):
-                    for n in self._oneHopNeighborsShuffled(scx,scy):
-                        if (n not in self.hCellsObstacle and n not in self.hCellsOpen):
-                            avaliableTargetCells +=  [self._xy2hCell(n[0],n[1])]
-                            break
-        target = None
-        if avaliableTargetCells:
-            random.seed(1)
-            target = random.choice(avaliableTargetCells)
+    def frontierCellsAndDistances(self, c0):
+        start         = (self.ix,self.iy)  #shorthand
+        distanceRank  = 0  # distance rank between DotBot position and surrounding cell set
+        openCells     = []
+        frontierCellsAndDistances = []
 
-        return target
+        if c0 in self.hCellsOpen:
+            for n in self._oneHopNeighborsShuffled(*c0):
+                if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
+                    f2startDistance = u.distance(c0, start)
+                    frontierCellsAndDistances += [(c0, f2startDistance)]
+                    return frontierCellsAndDistances
+
+        while not frontierCellsAndDistances:
+
+            distanceRank += 1
+
+            rankHopNeighbourhood = self._rankHopNeighbourhood(c0, distanceRank)
+
+            for n in rankHopNeighbourhood:
+                if n in self.hCellsOpen:
+                    openCells += [n]
+
+            for (ocx,ocy) in openCells:
+                for n in self._oneHopNeighborsShuffled(ocx,ocy):
+                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
+                        f2startDistance = u.distance((ocx,ocy), start)
+                        frontierCellsAndDistances += [((ocx,ocy),f2startDistance)]
+                        break
+
+        return frontierCellsAndDistances
+
 
     def _path2Target(self, start, target):
         '''
@@ -629,13 +647,19 @@ class Navigation_Atlas(Navigation):
 
             loopCount += 1
 
+            # for n in self._oneHopNeighborsShuffled(*target):
+            #     if ((n not in self.hCellsObstacle) and (n not in self.hCellsUnreachable)):
+            #         targetBlocked = False
+            #         break
+
             for n in self._oneHopNeighborsShuffled(*target):
-                if ((n not in self.hCellsObstacle) and (n not in self.hCellsUnreachable)):
+                if n in self.hCellsOpen:
                     targetBlocked = False
                     break
 
             if targetBlocked != False:
                 return None
+
 
             # find open cell with lowest F cost
             openCells = sorted(openCells, key=lambda item: item['fCost'])
@@ -685,10 +709,7 @@ class Navigation_Atlas(Navigation):
 
                 openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
                 parentAndChildCells += [(currentCell, child)]
-            #FIXME: A* needs to know when a target is outside of boundaries
-            if loopCount > 500:          # timeout if a* has been looping for too long trying to find a path
-                print('cant find path to target')
-                return None
+
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
         returnVal = []

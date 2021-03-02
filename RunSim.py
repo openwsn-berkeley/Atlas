@@ -21,7 +21,7 @@ UI_ACTIVE     = True
 
 SIMSETTINGS   = [
     {
-        'numDotBots'         : 10,
+        'numDotBots'         : 1,
         'floorplanDrawing'   : # 1m per character
  '''
 ..#............
