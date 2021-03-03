@@ -320,7 +320,6 @@ class Navigation(object):
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
         self.mapBuilder      = MapBuilder()
-        self.simEngine = SimEngine.SimEngine()
         self.movingDuration  = 0
     
     #======================== public ==========================================
@@ -451,13 +450,9 @@ class Navigation_Atlas(Navigation):
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [initialPosition]
 
-        # attempts per target cell
-        self.attempt2ReachTargetCounter = 0
-        
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
-
 
     #======================== public ==========================================
     
@@ -496,34 +491,34 @@ class Navigation_Atlas(Navigation):
         \post modifies the movement directly in dotbotsview
         '''
 
-        # shorthand
-        dotbot                 = self.dotbotsview[dotBotId]
-        centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbotis in
-        target                 = dotbot['target']
-        counter                = 0
+        dotbot                 = self.dotbotsview[dotBotId]               # shorthand
+        centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
+        target                 = dotbot['target']                         # set target as las allocated target until updated
 
         while True:
-            counter += 1
-
             # keep going towards same target if target hasn't been explored yet
-            if (target                                                                 and
+
+            if (target                                                            and
                (target not in self.hCellsOpen and target not in self.hCellsObstacle)):
 
                 if self.movingDuration == 0:
+                    # avoid these cells when finding new path to target
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
 
-                path2target           = self._path2Target(centreCellcentre,target)
+                path2target               = self._path2Target(centreCellcentre,target)
 
-
-            # otherwise find a new target
             else:
+                # if target explored or no paths to target, find a new target
 
-                # Chose next target cell to move to
+                # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
+                # find closest frontier to robot and out of those, closest to the initial position cell
+
                 frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
-                if not frontierCellsAndDistances:
-                    return 
+                if not frontierCellsAndDistances:   # no more available frontier cells
+                    return
+
                 closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
-                frontierCells   = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
+                frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
                 # chose frontier cell
                 random.seed(1)
@@ -536,9 +531,10 @@ class Navigation_Atlas(Navigation):
                         break
 
                 assert target
-                self.hCellsUnreachable = [] #clear out unreachable cells associated with path to previous target
-                path2target            = self._path2Target(centreCellcentre, target)
 
+                self.hCellsUnreachable = []   # clear out unreachable cells associated with path to previous target
+
+                path2target            = self._path2Target(centreCellcentre, target)
 
             if path2target:
                 break
@@ -546,7 +542,7 @@ class Navigation_Atlas(Navigation):
                 self.hCellsObstacle += [target]
                 continue
 
-        # Find headings to reach each cell on path2target
+        # Find headings and time to reach next step, for every step in path2target
         pathHeadings=[]
         for (idx,nextCell) in enumerate(path2target):
             if idx == 0:
@@ -561,7 +557,8 @@ class Navigation_Atlas(Navigation):
             pathHeadings += [(heading,timeStep)]
 
 
-        # Find Timer duration (time till stop) for first heading
+        # Find duration of movement in the same direction
+
         timeTillStop    = 0
 
         for (idx,h) in enumerate(pathHeadings):
@@ -603,11 +600,13 @@ class Navigation_Atlas(Navigation):
         return rankHopNeighbours
 
     def frontierCellsAndDistances(self, c0):
-        start         = (self.ix,self.iy)  #shorthand
-        distanceRank  = 0  # distance rank between DotBot position and surrounding cell set
-        openCells     = []
+
+        start                     = (self.ix,self.iy)  # shorthand
+        distanceRank              = 0                  # distance rank between DotBot position and surrounding cell set
+        openCells                 = []
         frontierCellsAndDistances = []
 
+        # if cell, dotbot is on (c0), is an open cell and has at least 1 unexplored 1 hop neighbour, take c0 as frontier
         if c0 in self.hCellsOpen:
             for n in self._oneHopNeighborsShuffled(*c0):
                 if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
@@ -615,6 +614,8 @@ class Navigation_Atlas(Navigation):
                     frontierCellsAndDistances += [(c0, f2startDistance)]
                     return frontierCellsAndDistances
 
+        # if c0 is an obstacle cell, or c0 is an open cell with no unexplored 1 hop neighbours
+        # find closest open cells at least 1 unexplored 1-hop neighbours and take them as frontiers
         while not frontierCellsAndDistances:
 
             distanceRank += 1
@@ -626,6 +627,7 @@ class Navigation_Atlas(Navigation):
                 if n in self.hCellsOpen:
                     openCells += [n]
 
+            # no more frontiers or valid targets
             if not openCells and c0 != start:
                 return None
 
@@ -642,20 +644,15 @@ class Navigation_Atlas(Navigation):
         '''
         A* Algorithm for finding shortest path to target
         '''
+
         targetBlocked        = None
         openCells            = [{'cellCentre': start, 'gCost': 0, 'hCost': 0, 'fCost':0}]
         closedCells          = []
-        parentAndChildCells = [(None,start)]
+        parentAndChildCells  = [(None,start)]
 
-        loopCount = 0
         while openCells:
 
-            loopCount += 1
-
-            # for n in self._oneHopNeighborsShuffled(*target):
-            #     if ((n not in self.hCellsObstacle) and (n not in self.hCellsUnreachable)):
-            #         targetBlocked = False
-            #         break
+            # if target has no open cells connected to it directly, there is no valid path to target
 
             for n in self._oneHopNeighborsShuffled(*target):
                 if n in self.hCellsOpen:
@@ -665,15 +662,13 @@ class Navigation_Atlas(Navigation):
             if targetBlocked != False:
                 return None
 
-
-            # find open cell with lowest F cost
-            openCells = sorted(openCells, key=lambda item: item['fCost'])
+            openCells            = sorted(openCells, key=lambda item: item['fCost']) # find open cell with lowest F cost
             parent               = openCells[0]
             currentCell          = parent['cellCentre']
             openCells.pop(0)
             closedCells         += [parent]
 
-            if currentCell == target: # we have reached target, backtrack direct path
+            if currentCell == target:              # we have reached target, backtrack direct path
                 directPathCells              = []
 
                 while currentCell is not None:
@@ -683,14 +678,14 @@ class Navigation_Atlas(Navigation):
 
                 directPathCells.reverse()
 
-                if directPathCells[0] == start:
+                if directPathCells[0] == start:     # remove cell robot is in from path
                     directPathCells.pop(0)
 
                 return directPathCells
 
             for child in self._oneHopNeighborsShuffled(*currentCell):
-                # skip neighbour if obstacle or already evaluated (closed)
 
+                # skip neighbour if obstacle or already evaluated (closed)
                 if (child in self.hCellsObstacle or
                    (child in self.hCellsUnreachable and child != target)):
                     continue
@@ -699,15 +694,17 @@ class Navigation_Atlas(Navigation):
                 hCost  = u.distance(child,target)
                 fCost  = gCost + hCost
 
+                # add penalty to avoid choosing target as first step if it was unreachable last time
                 if (child == target and target in self.hCellsUnreachable and  gCost == 1 and self.movingDuration == 0):
-                    fCost = fCost + 0.5  # add penalty to avoid chosing target as first step if it was unreachable last time
+                    fCost = fCost + 0.5
                     continue
 
-
+                # don't consider cell if same cell with lower fcost  is already in closed cells
                 if (child in [cell['cellCentre'] for cell in closedCells
                     if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
                     continue
 
+                # don't consider cell if same cell with lower fcost  is already in open cells
                 if (child in [cell['cellCentre'] for cell in openCells
                     if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
                     continue

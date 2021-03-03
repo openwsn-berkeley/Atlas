@@ -21,7 +21,7 @@ UI_ACTIVE     = True
 
 SIMSETTINGS   = [
     {
-        'numDotBots'         : 1,
+        'numDotBots'         : 5,
         'floorplanDrawing'   : # 1m per character
  '''
 ..#............
@@ -31,7 +31,7 @@ SIMSETTINGS   = [
 ''',
         'initialPosition'    :  (2,0),
         'navAlgorithm'       :  'Atlas',
-        'pdr'                :  0.8,
+        'pdr'                :  0.5,
     }
 ]
 
