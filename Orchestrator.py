@@ -208,24 +208,14 @@ class MapBuilder(object):
 
         while True: # "loop" only once
 
-            # # map is not complete if mapping hasn't started
-            # if (not self.discoMap['dots']) and (not self.discoMap['lines']):
-            #     returnVal = False
-            #     break
-            #
-            #
-            # # map is never complete if there are dots remaining
-            # if self.discoMap['dots']:
-            #     returnVal = False
-            #     break
-
             # map is not complete if mapping hasn't started
-            if not self.discoMap['lines']:
+            if (not self.discoMap['dots']) and (not self.discoMap['lines']):
                 returnVal = False
                 break
 
+
             # map is never complete if there are dots remaining
-            if len(self.discoMap['dots'])>1:
+            if self.discoMap['dots']:
                 returnVal = False
                 break
 
