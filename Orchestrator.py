@@ -511,7 +511,7 @@ class Navigation_Atlas(Navigation):
                 frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
                 # chose frontier cell
-                random.seed(1)
+                random.seed(4)
                 frontierCell  = random.choice(frontierCells)
 
                 # chose target
@@ -597,7 +597,7 @@ class Navigation_Atlas(Navigation):
         frontierCellsAndDistances = []
 
         # if cell, dotbot is on (c0), is an open cell and has at least 1 unexplored 1 hop neighbour, take c0 as frontier
-        if c0 in self.hCellsOpen:
+        if c0 in self.hCellsOpen and self.hCellsOpen:
             for n in self._oneHopNeighborsShuffled(*c0):
                 if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
                     f2startDistance = u.distance(c0, start)
@@ -649,7 +649,7 @@ class Navigation_Atlas(Navigation):
                     targetBlocked = False
                     break
 
-            if targetBlocked != False:
+            if targetBlocked != False and self.hCellsOpen:
                 return None
 
             openCells            = sorted(openCells, key=lambda item: item['fCost']) # find open cell with lowest F cost
