@@ -100,10 +100,14 @@ class MapBuilder(object):
             for ref in refs:
 
                 # select all the dots which are aligned at this ref
+                allDots = self.discoMap['dots']
+                allDots += [(lax,lay) for (lax,lay,lbx,lby) in self.discoMap['lines']]
+                allDots += [(lbx, lby) for (lax, lay, lbx, lby) in self.discoMap['lines']]
+
                 if direction=='horizontal':
-                    thesedots                = [x for (x,y) in self.discoMap['dots'] if y==ref]
+                    thesedots                = [x for (x,y) in allDots if y==ref]
                 else:
-                    thesedots                = [y for (x,y) in self.discoMap['dots'] if x==ref]
+                    thesedots                = [y for (x,y) in allDots if x==ref]
 
                 # select the lines we already know of at this ref
                 if direction=='horizontal':
@@ -512,7 +516,6 @@ class Navigation_Atlas(Navigation):
                 frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
                 # chose frontier cell
-                #random.seed(4)
                 frontierCell  = random.choice(frontierCells)
 
                 # chose target
