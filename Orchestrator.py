@@ -100,10 +100,14 @@ class MapBuilder(object):
             for ref in refs:
 
                 # select all the dots which are aligned at this ref
+                allDots = self.discoMap['dots']
+                allDots += [(lax,lay) for (lax,lay,lbx,lby) in self.discoMap['lines']]
+                allDots += [(lbx, lby) for (lax, lay, lbx, lby) in self.discoMap['lines']]
+
                 if direction=='horizontal':
-                    thesedots                = [x for (x,y) in self.discoMap['dots'] if y==ref]
+                    thesedots                = [x for (x,y) in allDots if y==ref]
                 else:
-                    thesedots                = [y for (x,y) in self.discoMap['dots'] if x==ref]
+                    thesedots                = [y for (x,y) in allDots if x==ref]
 
                 # select the lines we already know of at this ref
                 if direction=='horizontal':
@@ -484,12 +488,13 @@ class Navigation_Atlas(Navigation):
         dotbot                 = self.dotbotsview[dotBotId]               # shorthand
         centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                 = dotbot['target']                         # set target as las allocated target until updated
-
+        self.skip              = False
         while True:
             # keep going towards same target if target hasn't been explored yet
 
-            if (target                                                            and
-               (target not in self.hCellsOpen and target not in self.hCellsObstacle)):
+            if (target                                                               and
+               (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
+                self.skip == False):
 
                 if self.movingDuration == 0:
                     # avoid these cells when finding new path to target
@@ -511,7 +516,6 @@ class Navigation_Atlas(Navigation):
                 frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
                 # chose frontier cell
-                random.seed(1)
                 frontierCell  = random.choice(frontierCells)
 
                 # chose target
@@ -529,7 +533,8 @@ class Navigation_Atlas(Navigation):
             if path2target:
                 break
             else:
-                self.hCellsObstacle += [target]
+                if self.skip == False:
+                    self.hCellsObstacle += [target]
                 continue
 
         # Find headings and time to reach next step, for every step in path2target
@@ -597,7 +602,7 @@ class Navigation_Atlas(Navigation):
         frontierCellsAndDistances = []
 
         # if cell, dotbot is on (c0), is an open cell and has at least 1 unexplored 1 hop neighbour, take c0 as frontier
-        if c0 in self.hCellsOpen:
+        if c0 in self.hCellsOpen and self.hCellsOpen:
             for n in self._oneHopNeighborsShuffled(*c0):
                 if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
                     f2startDistance = u.distance(c0, start)
@@ -649,7 +654,8 @@ class Navigation_Atlas(Navigation):
                     targetBlocked = False
                     break
 
-            if targetBlocked != False:
+            if targetBlocked != False and self.hCellsOpen:
+                self.skip = True
                 return None
 
             openCells            = sorted(openCells, key=lambda item: item['fCost']) # find open cell with lowest F cost
