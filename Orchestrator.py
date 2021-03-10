@@ -467,22 +467,31 @@ class Navigation_Atlas(Navigation):
 
         heatmap = sorted(self.heatmap, key=lambda item: item[0][1])
         heatmapValues = [[]]
-        y = heatmap[0][1]
+        y = heatmap[0][0][1]
+        maxy = heatmap[-1][0][1]
+        maxx = heatmap[-1][0][0]
         i = 0
         while True:
 
-            for h in heatmap:
-                if h[0][1] == y:
-                    heatmapValues[i] += [h]
-                else:
-                    break
-
-            if len(heatmapValues) == len(heatmap):
+            if y > maxy:
                 break
 
-            y = h[0][1]
-            heatmapValues += [[]]
-            i += 1
+            for h in heatmap:
+
+                if h[0][1] < y:
+                    continue
+
+                if h[0][1] == y:
+                    heatmapValues[i] += [h]
+                    if y == maxy and h[0][0] == maxx:
+                        y += self.mapBuilder.MINFEATURESIZE_M / 2
+
+                else:
+                    i += 1
+                    y += self.mapBuilder.MINFEATURESIZE_M / 2
+                    heatmapValues += [[]]
+                    break
+
 
 
         for (i,r) in enumerate(heatmapValues):
@@ -507,7 +516,7 @@ class Navigation_Atlas(Navigation):
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
             self.hCellsObstacle += [(x,y)]
-            traversedCells += [(x,y)]
+
         self._buildHeatmap(traversedCells)
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
