@@ -315,6 +315,7 @@ class Navigation(object):
         ]
         self.mapBuilder      = MapBuilder()
         self.movingDuration  = 0
+        self.heatmap = [(self.initialPosition, 0)]
     
     #======================== public ==========================================
     
@@ -384,6 +385,9 @@ class Navigation(object):
     def getExploredCells(self):
         raise SystemError('abstract method')
 
+    def getHeatmap(self):
+        raise SystemError('abstract method')
+
     #======================== private =========================================
     
     def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
@@ -444,6 +448,8 @@ class Navigation_Atlas(Navigation):
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [initialPosition]
 
+
+
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
@@ -456,19 +462,53 @@ class Navigation_Atlas(Navigation):
             'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
         }
         return returnVal
-    
+
+    def getHeatmap(self):
+
+        heatmap = sorted(self.heatmap, key=lambda item: item[0][1])
+        heatmapValues = [[]]
+        y = heatmap[0][1]
+        i = 0
+        while True:
+
+            for h in heatmap:
+                if h[0][1] == y:
+                    heatmapValues[i] += [h]
+                else:
+                    break
+
+            if len(heatmapValues) == len(heatmap):
+                break
+
+            y = h[0][1]
+            heatmapValues += [[]]
+            i += 1
+
+
+        for (i,r) in enumerate(heatmapValues):
+                heatmapValues[i] = sorted(r, key=lambda item:item[0][0])
+                for (idx,c) in enumerate(heatmapValues[i]):
+                    heatmapValues[i][idx] = c[1]
+
+        for (i, r) in enumerate(heatmapValues):
+            if heatmapValues[i] == []:
+                heatmapValues.pop(i)
+
+        return heatmapValues
+
     #======================== private =========================================
     
     def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
         
         # intermediate cells are open
         self.hCellsOpen += self._cellsTraversed(startX,startY,stopX,stopY)
-
+        traversedCells   = self._cellsTraversed(startX,startY,stopX,stopY)
         if self.bump == True:
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
             self.hCellsObstacle += [(x,y)]
-        
+            traversedCells += [(x,y)]
+        self._buildHeatmap(traversedCells)
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
             try:
@@ -479,7 +519,21 @@ class Navigation_Atlas(Navigation):
         # filter duplicates in either list
         self.hCellsOpen      = list(set(self.hCellsOpen))
         self.hCellsObstacle  = list(set(self.hCellsObstacle))
-    
+
+    def _buildHeatmap(self, cells):
+        for cell in cells:
+            if cell in [h[0] for h in self.heatmap] :
+                maxTimesCellTraversed = [h[1] for h in self.heatmap
+                 if (h[0] == cell)]
+                index = self.heatmap.index((cell, maxTimesCellTraversed[0]))
+                self.heatmap[index] = (cell, self.heatmap[index][1]+1)
+            else:
+                self.heatmap += [((cell[0], cell[1]), 0)]
+                maxTimesCellTraversed = [h[1] for h in self.heatmap
+                 if (h[0] == cell)]
+                index = self.heatmap.index((cell, maxTimesCellTraversed[0]))
+                self.heatmap[index] = (cell, self.heatmap[index][1]+1)
+
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
