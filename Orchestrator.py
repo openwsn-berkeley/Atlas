@@ -313,9 +313,10 @@ class Navigation(object):
 
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
-        self.mapBuilder      = MapBuilder()
-        self.movingDuration  = 0
-        self.heatmap = [(self.initialPosition, 0)]
+        self.mapBuilder       = MapBuilder()
+        self.movingDuration   = 0
+        self.heatmap          = [(self.initialPosition, 0)]
+        self.profile          = []
     
     #======================== public ==========================================
     
@@ -388,6 +389,9 @@ class Navigation(object):
     def getHeatmap(self):
         raise SystemError('abstract method')
 
+    def getProfile(self):
+        raise SystemError('abstract method')
+
     #======================== private =========================================
     
     def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
@@ -448,8 +452,6 @@ class Navigation_Atlas(Navigation):
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [initialPosition]
 
-
-
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
@@ -492,8 +494,6 @@ class Navigation_Atlas(Navigation):
                     heatmapValues += [[]]
                     break
 
-
-
         for (i,r) in enumerate(heatmapValues):
                 heatmapValues[i] = sorted(r, key=lambda item:item[0][0])
                 for (idx,c) in enumerate(heatmapValues[i]):
@@ -505,19 +505,24 @@ class Navigation_Atlas(Navigation):
 
         return heatmapValues
 
+    def getProfile(self):
+        return self.profile
     #======================== private =========================================
     
     def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
         
         # intermediate cells are open
-        self.hCellsOpen += self._cellsTraversed(startX,startY,stopX,stopY)
+
         traversedCells   = self._cellsTraversed(startX,startY,stopX,stopY)
+        self.hCellsOpen += traversedCells
+
         if self.bump == True:
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
-            self.hCellsObstacle += [(x,y)]
+            self.hCellsObstacle += [(x, y)]
 
         self._buildHeatmap(traversedCells)
+
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
             try:
@@ -892,7 +897,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-    
+        self.navigation.profile += [len(self.navigation.hCellsOpen + self.navigation.hCellsObstacle)]
     def _sendDownstreamCommands(self):
         '''
         Send the next heading and speed commands to the robots

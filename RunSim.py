@@ -133,7 +133,7 @@ for (idx,floorplan) in enumerate(FLOORPLANS):
 
         SIMSETTINGS   += [
             {
-                'numDotBots'         : 100,
+                'numDotBots'         : 50,
                 'floorplanType'       : idx ,
                 'floorplanDrawing'   : floorplan,
                 'initialPosition'    :  (2,2),
@@ -199,7 +199,7 @@ def oneSim(simSetting,simUI):
     return {'numDotBots': simSetting['numDotBots'],'navAlgorithm': simSetting['navAlgorithm'],
             'pdr': simSetting['pdr'], 'timeToFullMapping': timeToFullMapping,
             'floorplanType': simSetting['floorplanType'], 'floorplanDrawing': simSetting['floorplanDrawing'],
-            'heatmap': orchestrator.navigation.getHeatmap()}
+            'heatmap': orchestrator.navigation.getHeatmap(), 'profile': orchestrator.navigation.getProfile()}
 
 #============================ main ============================================
 
