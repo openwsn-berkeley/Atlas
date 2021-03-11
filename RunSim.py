@@ -112,7 +112,7 @@ FLOORPLANS   = [
 ##################
 ''',
 
-''' 
+'''
 ##################
 #................#
 #...##.....##....#
@@ -170,6 +170,7 @@ def oneSim(simSetting,simUI):
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
+        floorplan,
     )
     
     # create the wireless communication medium
@@ -195,11 +196,11 @@ def oneSim(simSetting,simUI):
     # destroy singletons
     simEngine.destroy()
     wireless.destroy()
-    
+
     return {'numDotBots': simSetting['numDotBots'],'navAlgorithm': simSetting['navAlgorithm'],
             'pdr': simSetting['pdr'], 'timeToFullMapping': timeToFullMapping,
-            'floorplanType': simSetting['floorplanType'], 'floorplanDrawing': simSetting['floorplanDrawing'],
-            'heatmap': orchestrator.navigation.getHeatmap(), 'profile': orchestrator.navigation.getProfile()}
+            'floorplanType': simSetting['floorplanType'], 'floorplanDrawing': orchestrator.navigation.getHeatmap()[1],
+            'heatmap': orchestrator.navigation.getHeatmap()[0], 'profile': orchestrator.navigation.getProfile()}
 
 #============================ main ============================================
 

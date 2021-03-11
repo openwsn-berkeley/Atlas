@@ -271,16 +271,16 @@ class MapBuilder(object):
         returnVal = False
 
         while True: # "loop" only once
-            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<self.MINFEATURESIZE_M:
+            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
-            if  u.distance((l1ax,l1ay),(l2bx,l2by))<self.MINFEATURESIZE_M:
+            if  u.distance((l1ax,l1ay),(l2bx,l2by))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2ax,l2ay))<self.MINFEATURESIZE_M:
+            if  u.distance((l1bx,l1by),(l2ax,l2ay))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2bx,l2by))<self.MINFEATURESIZE_M:
+            if  u.distance((l1bx,l1by),(l2bx,l2by))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
             break
@@ -317,6 +317,7 @@ class Navigation(object):
         self.movingDuration   = 0
         self.heatmap          = [(self.initialPosition, 0)]
         self.profile          = []
+
     
     #======================== public ==========================================
     
@@ -402,7 +403,7 @@ class Navigation(object):
 
 class Navigation_Ballistic(Navigation):
 
-    def __init__(self, numDotBots, initialPosition):
+    def __init__(self, numDotBots, initialPosition,floorplan):
     
         # initialize parent
         super().__init__(numDotBots, initialPosition)
@@ -436,7 +437,7 @@ class Navigation_Ballistic(Navigation):
 
 class Navigation_Atlas(Navigation):
 
-    def __init__(self, numDotBots, initialPosition):
+    def __init__(self, numDotBots, initialPosition, floorplan):
     
         # initialize parent
         super().__init__(numDotBots, initialPosition)
@@ -449,8 +450,12 @@ class Navigation_Atlas(Navigation):
         self.hCellsOpen        = []
         self.hCellsObstacle    = []
         self.hCellsUnreachable = []
+        self.hCellsBlocked     = []
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [initialPosition]
+        self.floorplan = floorplan
+
+
 
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -493,17 +498,26 @@ class Navigation_Atlas(Navigation):
                     y += self.mapBuilder.MINFEATURESIZE_M / 2
                     heatmapValues += [[]]
                     break
-
+        overlayGrid  = []
         for (i,r) in enumerate(heatmapValues):
+                overlayGrid += ''.join('\n')
                 heatmapValues[i] = sorted(r, key=lambda item:item[0][0])
                 for (idx,c) in enumerate(heatmapValues[i]):
                     heatmapValues[i][idx] = c[1]
+                    if c[0] in self.hCellsOpen:
+                        overlayGrid += ''.join('.')
+                    elif c[0] in self.hCellsObstacle:
+                        overlayGrid += ''.join('#')
+                    elif c[0] in self.hCellsBlocked and c[0] not in self.hCellsOpen:
+                        overlayGrid += ''.join('#')
 
+
+        overlayGrid = ''.join(i for i in overlayGrid)
         for (i, r) in enumerate(heatmapValues):
             if heatmapValues[i] == []:
                 heatmapValues.pop(i)
 
-        return heatmapValues
+        return (heatmapValues,overlayGrid)
 
     def getProfile(self):
         return self.profile
@@ -520,6 +534,7 @@ class Navigation_Atlas(Navigation):
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
             self.hCellsObstacle += [(x, y)]
+            traversedCells += [(x,y)]
 
         self._buildHeatmap(traversedCells)
 
@@ -536,11 +551,14 @@ class Navigation_Atlas(Navigation):
 
     def _buildHeatmap(self, cells):
         for cell in cells:
+
             if cell in [h[0] for h in self.heatmap] :
+
                 maxTimesCellTraversed = [h[1] for h in self.heatmap
                  if (h[0] == cell)]
                 index = self.heatmap.index((cell, maxTimesCellTraversed[0]))
                 self.heatmap[index] = (cell, self.heatmap[index][1]+1)
+
             else:
                 self.heatmap += [((cell[0], cell[1]), 0)]
                 maxTimesCellTraversed = [h[1] for h in self.heatmap
@@ -568,6 +586,7 @@ class Navigation_Atlas(Navigation):
                     # avoid these cells when finding new path to target
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
 
+
                 path2target               = self._path2Target(centreCellcentre,target)
 
             else:
@@ -578,6 +597,7 @@ class Navigation_Atlas(Navigation):
 
                 frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
                 if not frontierCellsAndDistances:   # no more available frontier cells
+                    self._buildHeatmap(self.hCellsBlocked)
                     return
 
                 closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
@@ -689,6 +709,9 @@ class Navigation_Atlas(Navigation):
             for n in rankHopNeighbourhood:
                 if n in self.hCellsOpen:
                     openCells += [n]
+                elif n not in self.hCellsObstacle:
+                    if (n[0] > 0 and n[0] < self.floorplan.width) and (n[1]>0 and n[1] < self.floorplan.height):
+                        self.hCellsBlocked += [n]     # for heatmap only, doesnt affect navigation
 
             # no more frontiers or valid targets
             if not openCells and c0 != start:
@@ -858,17 +881,18 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
 
-    def __init__(self,numDotBots,initialPosition,navAlgorithm):
+    def __init__(self,numDotBots,initialPosition,navAlgorithm,floorplan):
 
         # store params
         self.numDotBots        = numDotBots
         self.initialPosition   = initialPosition
+        self.floorplan         = floorplan
 
         # local variables
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
         navigationclass        = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
-        self.navigation        = navigationclass(self.numDotBots, self.initialPosition)
+        self.navigation        = navigationclass(self.numDotBots, self.initialPosition, self.floorplan)
     
     #======================== public ==========================================
 
