@@ -170,7 +170,6 @@ def oneSim(simSetting,simUI):
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
-        floorplan,
     )
     
     # create the wireless communication medium

@@ -403,7 +403,7 @@ class Navigation(object):
 
 class Navigation_Ballistic(Navigation):
 
-    def __init__(self, numDotBots, initialPosition,floorplan):
+    def __init__(self, numDotBots, initialPosition):
     
         # initialize parent
         super().__init__(numDotBots, initialPosition)
@@ -437,7 +437,7 @@ class Navigation_Ballistic(Navigation):
 
 class Navigation_Atlas(Navigation):
 
-    def __init__(self, numDotBots, initialPosition, floorplan):
+    def __init__(self, numDotBots, initialPosition):
     
         # initialize parent
         super().__init__(numDotBots, initialPosition)
@@ -450,12 +450,8 @@ class Navigation_Atlas(Navigation):
         self.hCellsOpen        = []
         self.hCellsObstacle    = []
         self.hCellsUnreachable = []
-        self.hCellsBlocked     = []
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [initialPosition]
-        self.floorplan = floorplan
-
-
 
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -508,9 +504,6 @@ class Navigation_Atlas(Navigation):
                         overlayGrid += ''.join('.')
                     elif c[0] in self.hCellsObstacle:
                         overlayGrid += ''.join('#')
-                    elif c[0] in self.hCellsBlocked and c[0] not in self.hCellsOpen:
-                        overlayGrid += ''.join('#')
-
 
         overlayGrid = ''.join(i for i in overlayGrid)
         for (i, r) in enumerate(heatmapValues):
@@ -597,7 +590,6 @@ class Navigation_Atlas(Navigation):
 
                 frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
                 if not frontierCellsAndDistances:   # no more available frontier cells
-                    self._buildHeatmap(self.hCellsBlocked)
                     return
 
                 closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
@@ -709,9 +701,6 @@ class Navigation_Atlas(Navigation):
             for n in rankHopNeighbourhood:
                 if n in self.hCellsOpen:
                     openCells += [n]
-                elif n not in self.hCellsObstacle:
-                    if (n[0] > 0 and n[0] < self.floorplan.width) and (n[1]>0 and n[1] < self.floorplan.height):
-                        self.hCellsBlocked += [n]     # for heatmap only, doesnt affect navigation
 
             # no more frontiers or valid targets
             if not openCells and c0 != start:
@@ -881,18 +870,17 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
 
-    def __init__(self,numDotBots,initialPosition,navAlgorithm,floorplan):
+    def __init__(self,numDotBots,initialPosition,navAlgorithm):
 
         # store params
         self.numDotBots        = numDotBots
         self.initialPosition   = initialPosition
-        self.floorplan         = floorplan
 
         # local variables
         self.simEngine         = SimEngine.SimEngine()
         self.wireless          = Wireless.Wireless()
         navigationclass        = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
-        self.navigation        = navigationclass(self.numDotBots, self.initialPosition, self.floorplan)
+        self.navigation        = navigationclass(self.numDotBots, self.initialPosition)
     
     #======================== public ==========================================
 
