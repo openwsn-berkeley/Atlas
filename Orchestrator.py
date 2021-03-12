@@ -467,50 +467,44 @@ class Navigation_Atlas(Navigation):
         return returnVal
 
     def getHeatmap(self):
+        heatMapXMax   = sorted(self.heatmap, key=lambda item: item[0][0])[-1][0][0] + 1
+        heatMapYMax   = sorted(self.heatmap, key=lambda item: item[0][1])[-1][0][1] + 1
+        heatMapXMin   = sorted(self.heatmap, key=lambda item: item[0][0])[0][0][0]
+        heatMapYMin   = sorted(self.heatmap, key=lambda item: item[0][1])[0][0][1]
 
-        heatmap = sorted(self.heatmap, key=lambda item: item[0][1])
-        heatmapValues = [[]]
-        y = heatmap[0][0][1]
-        maxy = heatmap[-1][0][1]
-        maxx = heatmap[-1][0][0]
-        i = 0
-        while True:
+        heatmapValues = []
+        overlayGrid    = []
 
-            if y > maxy:
-                break
+        for r in range(int(heatMapYMax)*2):
+            heatmapValues += [[]]
+            overlayGrid    += [[]]
+            for c in range(int(heatMapXMax)*2):
+                heatmapValues[r] += [0]
+                overlayGrid[r]    += '-'
 
-            for h in heatmap:
+        for h in self.heatmap:
+            x     = h[0][0]
+            y     = h[0][1]
+            value = h[1]
 
-                if h[0][1] < y:
-                    continue
+            if x >= heatMapXMax or y >= heatMapYMax:
+                continue
 
-                if h[0][1] == y:
-                    heatmapValues[i] += [h]
-                    if y == maxy and h[0][0] == maxx:
-                        y += self.mapBuilder.MINFEATURESIZE_M / 2
+            heatmapValues[int(y*2)][int(x*2)] = value
+            if (x,y) in self.hCellsObstacle:
+                overlayGrid[int(y * 2)][int(x * 2)] = '#'
+            if (x,y) in self.hCellsOpen:
+                overlayGrid[int(y * 2)][int(x * 2)] = '.'
 
-                else:
-                    i += 1
-                    y += self.mapBuilder.MINFEATURESIZE_M / 2
-                    heatmapValues += [[]]
-                    break
-        overlayGrid  = []
-        for (i,r) in enumerate(heatmapValues):
-                overlayGrid += ''.join('\n')
-                heatmapValues[i] = sorted(r, key=lambda item:item[0][0])
-                for (idx,c) in enumerate(heatmapValues[i]):
-                    heatmapValues[i][idx] = c[1]
-                    if c[0] in self.hCellsOpen:
-                        overlayGrid += ''.join('.')
-                    elif c[0] in self.hCellsObstacle:
-                        overlayGrid += ''.join('#')
 
-        overlayGrid = ''.join(i for i in overlayGrid)
-        for (i, r) in enumerate(heatmapValues):
-            if heatmapValues[i] == []:
-                heatmapValues.pop(i)
+        overlayGridJoint = []
 
-        return (heatmapValues,overlayGrid)
+        for (i,r) in enumerate(overlayGrid):
+            overlayGridJoint += ''.join('\n')
+            overlayGridJoint += ''.join(r)
+
+        overlayGridJoint = ''.join(i for i in overlayGridJoint)
+        return (heatmapValues,overlayGridJoint)
 
     def getProfile(self):
         return self.profile
