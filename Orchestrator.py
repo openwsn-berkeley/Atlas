@@ -495,7 +495,8 @@ class Navigation_Atlas(Navigation):
                 overlayGrid[int(y * 2)][int(x * 2)] = '#'
             if (x,y) in self.hCellsOpen:
                 overlayGrid[int(y * 2)][int(x * 2)] = '.'
-
+            if (x,y) == self.initialPosition:
+                overlayGrid[int(y * 2)][int(x * 2)] = 'S'
 
         overlayGridJoint = []
 
