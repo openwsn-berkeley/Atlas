@@ -271,16 +271,16 @@ class MapBuilder(object):
         returnVal = False
 
         while True: # "loop" only once
-            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<self.MINFEATURESIZE_M:
+            if  u.distance((l1ax,l1ay),(l2ax,l2ay))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
-            if  u.distance((l1ax,l1ay),(l2bx,l2by))<self.MINFEATURESIZE_M:
+            if  u.distance((l1ax,l1ay),(l2bx,l2by))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2ax,l2ay))<self.MINFEATURESIZE_M:
+            if  u.distance((l1bx,l1by),(l2ax,l2ay))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
-            if  u.distance((l1bx,l1by),(l2bx,l2by))<self.MINFEATURESIZE_M:
+            if  u.distance((l1bx,l1by),(l2bx,l2by))<self.MINFEATURESIZE_M/2:
                 returnVal = True
                 break
             break
@@ -313,8 +313,11 @@ class Navigation(object):
 
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
-        self.mapBuilder      = MapBuilder()
-        self.movingDuration  = 0
+        self.mapBuilder       = MapBuilder()
+        self.movingDuration   = 0
+        self.heatmap          = [(self.initialPosition, 0)]
+        self.profile          = []
+
     
     #======================== public ==========================================
     
@@ -382,6 +385,12 @@ class Navigation(object):
         return returnVal
 
     def getExploredCells(self):
+        raise SystemError('abstract method')
+
+    def getHeatmap(self):
+        raise SystemError('abstract method')
+
+    def getProfile(self):
         raise SystemError('abstract method')
 
     #======================== private =========================================
@@ -456,19 +465,67 @@ class Navigation_Atlas(Navigation):
             'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
         }
         return returnVal
-    
+
+    def getHeatmap(self):
+        heatMapXMax   = sorted(self.heatmap, key=lambda item: item[0][0])[-1][0][0] + 1
+        heatMapYMax   = sorted(self.heatmap, key=lambda item: item[0][1])[-1][0][1] + 1
+        heatMapXMin   = sorted(self.heatmap, key=lambda item: item[0][0])[0][0][0]
+        heatMapYMin   = sorted(self.heatmap, key=lambda item: item[0][1])[0][0][1]
+
+        heatmapValues = []
+        overlayGrid    = []
+
+        for r in range(int(heatMapYMax)*2):
+            heatmapValues += [[]]
+            overlayGrid    += [[]]
+            for c in range(int(heatMapXMax)*2):
+                heatmapValues[r] += [0]
+                overlayGrid[r]    += '-'
+
+        for h in self.heatmap:
+            x     = h[0][0]
+            y     = h[0][1]
+            value = h[1]
+
+            if x >= heatMapXMax or y >= heatMapYMax:
+                continue
+
+            heatmapValues[int(y*2)][int(x*2)] = value
+            if (x,y) in self.hCellsObstacle:
+                overlayGrid[int(y * 2)][int(x * 2)] = '#'
+            if (x,y) in self.hCellsOpen:
+                overlayGrid[int(y * 2)][int(x * 2)] = '.'
+            if (x,y) == self.initialPosition:
+                overlayGrid[int(y * 2)][int(x * 2)] = 'S'
+
+        overlayGridJoint = []
+
+        for (i,r) in enumerate(overlayGrid):
+            overlayGridJoint += ''.join('\n')
+            overlayGridJoint += ''.join(r)
+
+        overlayGridJoint = ''.join(i for i in overlayGridJoint)
+        return (heatmapValues,overlayGridJoint)
+
+    def getProfile(self):
+        return self.profile
     #======================== private =========================================
     
     def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
         
         # intermediate cells are open
-        self.hCellsOpen += self._cellsTraversed(startX,startY,stopX,stopY)
+
+        traversedCells   = self._cellsTraversed(startX,startY,stopX,stopY)
+        self.hCellsOpen += traversedCells
 
         if self.bump == True:
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
-            self.hCellsObstacle += [(x,y)]
-        
+            self.hCellsObstacle += [(x, y)]
+            traversedCells += [(x,y)]
+
+        self._buildHeatmap(traversedCells)
+
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
             try:
@@ -479,7 +536,24 @@ class Navigation_Atlas(Navigation):
         # filter duplicates in either list
         self.hCellsOpen      = list(set(self.hCellsOpen))
         self.hCellsObstacle  = list(set(self.hCellsObstacle))
-    
+
+    def _buildHeatmap(self, cells):
+        for cell in cells:
+
+            if cell in [h[0] for h in self.heatmap] :
+
+                maxTimesCellTraversed = [h[1] for h in self.heatmap
+                 if (h[0] == cell)]
+                index = self.heatmap.index((cell, maxTimesCellTraversed[0]))
+                self.heatmap[index] = (cell, self.heatmap[index][1]+1)
+
+            else:
+                self.heatmap += [((cell[0], cell[1]), 0)]
+                maxTimesCellTraversed = [h[1] for h in self.heatmap
+                 if (h[0] == cell)]
+                index = self.heatmap.index((cell, maxTimesCellTraversed[0]))
+                self.heatmap[index] = (cell, self.heatmap[index][1]+1)
+
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
@@ -499,6 +573,7 @@ class Navigation_Atlas(Navigation):
                 if self.movingDuration == 0:
                     # avoid these cells when finding new path to target
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
+
 
                 path2target               = self._path2Target(centreCellcentre,target)
 
@@ -829,7 +904,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-    
+        self.navigation.profile += [len(self.navigation.hCellsOpen + self.navigation.hCellsObstacle)]
     def _sendDownstreamCommands(self):
         '''
         Send the next heading and speed commands to the robots
