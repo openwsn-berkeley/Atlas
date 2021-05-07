@@ -452,7 +452,7 @@ class Navigation_Atlas(Navigation):
         self.hCellsUnreachable = []
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [initialPosition]
-
+        self.relayBots         = []
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
@@ -538,6 +538,13 @@ class Navigation_Atlas(Navigation):
         self.hCellsObstacle  = list(set(self.hCellsObstacle))
 
     def _buildHeatmap(self, cells):
+        '''
+        builds array with tuples representing (cell position, number of times traversed)
+        '''
+
+        # if traversed cell is already in heatmap array just increase number of times cell has been traversed
+        # otherwise, add cell to heatmap array then increase number of times cell has been traversed.
+
         for cell in cells:
 
             if cell in [h[0] for h in self.heatmap] :
@@ -563,54 +570,63 @@ class Navigation_Atlas(Navigation):
         centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                 = dotbot['target']                         # set target as las allocated target until updated
         self.skip              = False
-        while True:
-            # keep going towards same target if target hasn't been explored yet
-
-            if (target                                                               and
-               (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
-                self.skip == False):
-
-                if self.movingDuration == 0:
-                    # avoid these cells when finding new path to target
-                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
+        relayBot               = False
+        if dotbot in self._getRelayBots(self.dotbotsview):
+            relayBot = True
 
 
-                path2target               = self._path2Target(centreCellcentre,target)
+        if relayBot is False:
+            while True:
+                # keep going towards same target if target hasn't been explored yet
 
-            else:
-                # if target explored or no paths to target, find a new target
+                if (target                                                               and
+                   (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
+                    self.skip == False):
 
-                # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
-                # find closest frontier to robot and out of those, closest to the initial position cell
+                    if self.movingDuration == 0:
+                        # avoid these cells when finding new path to target
+                        self.hCellsUnreachable += [dotbot['previousPath'][0]]
 
-                frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
-                if not frontierCellsAndDistances:   # no more available frontier cells
-                    return
 
-                closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
-                frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
+                    path2target               = self._path2Target(centreCellcentre,target)
 
-                # chose frontier cell
-                frontierCell  = random.choice(frontierCells)
+                else:
+                    # if target explored or no paths to target, find a new target
 
-                # chose target
-                for n in self._oneHopNeighborsShuffled(*frontierCell):
-                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                        target = n
-                        break
+                    # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
+                    # find closest frontier to robot and out of those, closest to the initial position cell
 
-                assert target
+                    frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
+                    if not frontierCellsAndDistances:   # no more available frontier cells
+                        return
 
-                self.hCellsUnreachable = []   # clear out unreachable cells associated with path to previous target
+                    closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
+                    frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
-                path2target            = self._path2Target(centreCellcentre, target)
+                    # chose frontier cell
+                    frontierCell  = random.choice(frontierCells)
 
-            if path2target:
-                break
-            else:
-                if self.skip == False:
-                    self.hCellsObstacle += [target]
-                continue
+                    # chose target
+                    for n in self._oneHopNeighborsShuffled(*frontierCell):
+                        if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
+                            target = n
+                            break
+
+                    assert target
+
+                    self.hCellsUnreachable = []   # clear out unreachable cells associated with path to previous target
+
+                    path2target            = self._path2Target(centreCellcentre, target)
+
+                if path2target:
+                    break
+                else:
+                    if self.skip == False:
+                        self.hCellsObstacle += [target]
+                    continue
+        else:
+            target      = self._getRelayPosition(dotbot)
+            path2target = self._path2Target(centreCellcentre, target)
 
         # Find headings and time to reach next step, for every step in path2target
         pathHeadings=[]
@@ -626,7 +642,6 @@ class Navigation_Atlas(Navigation):
             timeStep      = u.distance((x,y),(tx,ty))
             pathHeadings += [(heading,timeStep)]
 
-
         # Find duration of movement in the same direction
 
         timeTillStop    = 0
@@ -636,14 +651,23 @@ class Navigation_Atlas(Navigation):
                 timeTillStop += pathHeadings[idx][1]
             else:
                 break
+        if relayBot is False:
+            # store new movement
+            dotbot['target']          = target
+            dotbot['heading']         = pathHeadings[0][0]
+            dotbot['timer']           = timeTillStop
+            dotbot['previousPath']    = path2target
+            dotbot['speed']           = 1
+            dotbot['seqNumMovement'] += 1
+        else:
+            # store new movement
+            dotbot['target']          = None
+            dotbot['heading']         = None
+            dotbot['timer']           = 0
+            dotbot['previousPath']    = None
+            dotbot['speed']           = -1
+            dotbot['seqNumMovement'] += 1
 
-        # store new movement
-        dotbot['target']          = target
-        dotbot['heading']         = pathHeadings[0][0]
-        dotbot['timer']           = timeTillStop
-        dotbot['previousPath']    = path2target
-        dotbot['speed']           = 1
-        dotbot['seqNumMovement'] += 1
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
 
@@ -858,6 +882,17 @@ class Navigation_Atlas(Navigation):
         random.shuffle(returnVal)
         return returnVal
 
+    def _getRelayBots(self, allDotBots):
+        overlayGridSize = len(self.hCellsOpen)+len(self.hCellsObstacle)
+        if ((overlayGridSize % 50 == 0)                    and
+            (len(self.relayBots) < (overlayGridSize/50))     ):
+            self.relayBots += [random.choice(allDotBots)]
+        return self.relayBots
+
+    def _getRelayPosition(self, relayBot):
+        x = relayBot['x']
+        y = relayBot['y']
+        return (x,y)
 class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.

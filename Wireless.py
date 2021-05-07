@@ -45,6 +45,7 @@ class Wireless(object):
         # store params
         self.devices         =  []
         self.constantPDR     =  self.DFLT_PDR
+        self.pdrMatrix       = []
 
         # local variables
 
@@ -52,6 +53,13 @@ class Wireless(object):
     
     def indicateDevices(self,devices):
         self.devices                 = devices
+        self.createPDRmatrix(devices)
+
+    def createPDRmatrix(self,devices):
+        self.pdrMatrix = []
+
+    def updatePDRmatrix(self):
+        return
 
     def overridePDR(self,pdr):
         self.constantPDR             = pdr
@@ -62,6 +70,7 @@ class Wireless(object):
 
     def transmit(self, frame, sender):
         assert self.devices # make sure there are devices
+        self.updatePDRmatrix()
         for receiver in self.devices:
             if receiver==sender:
                 continue # ensures transmitter doesn't receive
@@ -75,7 +84,8 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _computePDR(self,sender,receiver):
-        return  self._getPisterHackPDR(sender,receiver) # FIXME: PisterHack
+
+        return  self._getPisterHackPDR(sender,receiver)
     
     def _getPisterHackPDR(self,sender,receiver):
         '''
@@ -92,29 +102,27 @@ class Wireless(object):
 
 
         distance = int(u.distance(pos1,pos2))
-        distanceToPDR = [1.0000,0.999,0.999,0.999,0.999,
-                         0.9854,0.9851,0.9848,0.9847,0.9846,
-                         0.9745,0.9739,0.9737,0.9736,0.9735,
-                         0.9735,0.9731,0.9730,0.9728,0.9725,
-                         0.9611,0.9609,0.9605,0.9600,0.9570,
-                         0.9562,0.9558,0.9555,0.9550,0.9500,
-                         0.9427,0.9405,0.9400,0.9380,0.9330,
-                         0.9324,0.8900,0.8800,0.8795,0.8705,
-                         0.8702,0.8690,0.8680,0.8670,0.8620,
-                         0.8603,0.8590,0.8580,0.8550,0.8510,
-                         0.7476,0.7400,0.7300,0.7200,0.7100,
-                         0.6866,0.6860,0.6700,0.6600,0.6400,
-                         0.6359,0.6100,0.5200,0.5100,0.4500,
-                         0.4071,0.3500,0.3200,0.2900,0.2500,
-                         0.2340,0.2200,0.2100,0.1900,0.1800,
-                         0.1494,0.1400,0.1300,0.1200,0.1100,
-                         0.1010,0.1009,0.10003,0.1002,0.1001,
-                         0.1000, 0.1000, 0.1000, 0.1000, 0.1000,
-                         0.1000, 0.1000, 0.1000, 0.1000, 0.1000,
-                         0.1000, 0.1000, 0.1000, 0.1000, 0.1000,
+        distanceToPDR = [1.0000,0.999,0.999,
+                         0.9854,0.9851,0.9848,
+                         0.9745,0.9739,0.9737,
+                         0.9735,0.9731,0.9730,
+                         0.9611,0.9609,0.9605,
+                         0.9562,0.9558,0.9555,
+                         0.9427,0.9405,0.9400,
+                         0.9324,0.8900,0.8800,
+                         0.8702,0.8690,0.8680,
+                         0.8603,0.8590,0.8580,
+                         0.7476,0.7400,0.7300,
+                         0.6866,0.6860,0.6700,
+                         0.6359,0.6100,0.5200,
+                         0.4071,0.3500,0.3200,
+                         0.2340,0.2200,0.2100,
+                         0.1494,0.1400,0.1300,
+                         0.1010,0.1009,0.10003,
+
                         ]
-        if distance < 80:
+        if distance < 20:
             pdr = distanceToPDR[distance]
         else:
-            pdr = 0.1
+            pdr = 0
         return pdr

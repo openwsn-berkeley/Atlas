@@ -71,6 +71,9 @@ class DotBot(Wireless.WirelessDevice):
         # filter out duplicates
         if myMovement['seqNumMovement'] == self.seqNumMovement:
             return
+
+        if myMovement['speed'] == -1:
+            return
         
         self.seqNumMovement       = myMovement['seqNumMovement']
 
