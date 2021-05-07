@@ -56,10 +56,15 @@ class Wireless(object):
         self.createPDRmatrix(devices)
 
     def createPDRmatrix(self,devices):
-        self.pdrMatrix = []
+        for device1 in devices:
+            for device2 in devices:
+                if device1 != device2:
+                    self.pdrMatrix += [(device1,device2, self.constantPDR)]
 
     def updatePDRmatrix(self):
-        return
+        for (idx,value) in enumerate(self.pdrMatrix):
+            newPdr              = self._computePDR(value[0], value[1])
+            self.pdrMatrix[idx] = (value[0], value[1],newPdr)
 
     def overridePDR(self,pdr):
         self.constantPDR             = pdr
@@ -84,8 +89,25 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _computePDR(self,sender,receiver):
+        for element in [value for (idx,value) in enumerate(self.pdrMatrix)
+                        if value[0] == receiver or value[1] == receiver]:
+            relay = None
+            if element[0] == receiver and element[1] != sender:
+                relay = element[1]
+            elif element[1] == receiver and element[0] != sender:
+                relay = element[0]
+            if not relay:
+                pdr = self._getPisterHackPDR(sender,receiver)
+            else:
+                pdrSenderRelay   = self._getPisterHackPDR(sender,relay)
+                pdrRelayReceiver = self._getPisterHackPDR(relay,receiver)
+                pdr = pdrSenderRelay * pdrRelayReceiver
 
-        return  self._getPisterHackPDR(sender,receiver)
+            rand = random.uniform(0, 1)
+            if rand < pdr:
+                return pdr
+
+        return  pdr
     
     def _getPisterHackPDR(self,sender,receiver):
         '''
@@ -97,6 +119,9 @@ class Wireless(object):
         elif receiver == self.devices[-1]:
             pos2 = receiver.initialPosition
             pos1 = sender.computeCurrentPosition()
+        elif (sender != self.devices[-1] and receiver != self.devices[-1]):
+            pos1 = sender.computeCurrentPosition()
+            pos2 = receiver.computeCurrentPosition()
         else:
             return 1
 
