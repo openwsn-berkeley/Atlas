@@ -24,7 +24,7 @@ class Wireless(object):
     The wireless medium through which DotBot and orchestrator communicate.
     '''
 
-    DFLT_PDR = 1.0 # FIXME: PisterHack
+    DFLT_PDR = 1.0
     
     # singleton pattern
     _instance = None
@@ -89,25 +89,23 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _computePDR(self,sender,receiver):
-        for element in [value for (idx,value) in enumerate(self.pdrMatrix)
-                        if value[0] == receiver or value[1] == receiver]:
-            relay = None
-            if element[0] == receiver and element[1] != sender:
-                relay = element[1]
-            elif element[1] == receiver and element[0] != sender:
+
+        pdr = self._getPisterHackPDR(sender, receiver)
+        rand = random.uniform(0, 1)
+        if rand < pdr:
+            return pdr
+        else:
+            for element in [value for (idx,value) in enumerate(self.pdrMatrix)
+                            if value[1] == receiver and value[0] != sender]:
                 relay = element[0]
-            if not relay:
-                pdr = self._getPisterHackPDR(sender,receiver)
-            else:
                 pdrSenderRelay   = self._getPisterHackPDR(sender,relay)
                 pdrRelayReceiver = self._getPisterHackPDR(relay,receiver)
                 pdr = pdrSenderRelay * pdrRelayReceiver
+                rand = random.uniform(0, 1)
+                if rand < pdr:
+                    return pdr
 
-            rand = random.uniform(0, 1)
-            if rand < pdr:
-                return pdr
-
-        return  pdr
+        return pdr
     
     def _getPisterHackPDR(self,sender,receiver):
         '''

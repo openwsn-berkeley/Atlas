@@ -893,6 +893,7 @@ class Navigation_Atlas(Navigation):
         x = relayBot['x']
         y = relayBot['y']
         return (x,y)
+    
 class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
