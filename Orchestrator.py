@@ -310,6 +310,8 @@ class Navigation(object):
                 'target':                   None,
                 'timer':                    None,
                 'previousPath':             [],
+                'heartbeat':                0,
+
 
             } for (x,y) in [self.initialPosition]*self.numDotBots
         ]
@@ -317,6 +319,7 @@ class Navigation(object):
         self.movingDuration   = 0
         self.heatmap          = [(self.initialPosition, 0)]
         self.profile          = []
+        self.heartbeat        = 0
 
     
     #======================== public ==========================================
@@ -334,7 +337,8 @@ class Navigation(object):
         if frame['seqNumNotification'] == dotbot['seqNumNotification']:
             return
         dotbot['seqNumNotification'] = frame['seqNumNotification']
-        
+        self.heartbeat               = frame['heartbeat']
+
         # update DotBot's position
         (newX,newY)  = u.computeCurrentPosition(
             currentX = dotbot['x'],
@@ -377,9 +381,10 @@ class Navigation(object):
                 'heading':                   dotbot['heading'],
                 'speed':                     dotbot['speed'],
                 'seqNumMovement':            dotbot['seqNumMovement'],
-                'target':                    dotbot['target'],
+                #'target':                    dotbot['target'],
                 'timer':                     dotbot['timer'],
-                'previousPath':              dotbot['previousPath']
+                #'previousPath':              dotbot['previousPath'],
+                #'heartbeat':                 dotbot['heartbeat']
             } for dotbot in self.dotbotsview
         ]
         return returnVal
@@ -571,6 +576,7 @@ class Navigation_Atlas(Navigation):
         target                 = dotbot['target']                         # set target as las allocated target until updated
         self.skip              = False
         relayBot               = False
+
         if dotbot in self._getRelayBots(self.dotbotsview):
             relayBot = True
 
@@ -659,6 +665,7 @@ class Navigation_Atlas(Navigation):
             dotbot['previousPath']    = path2target
             dotbot['speed']           = 1
             dotbot['seqNumMovement'] += 1
+            dotbot['heartbeat']       = self.heartbeat
         else:
             # store new movement
             dotbot['target']          = None
@@ -667,6 +674,7 @@ class Navigation_Atlas(Navigation):
             dotbot['previousPath']    = None
             dotbot['speed']           = -1
             dotbot['seqNumMovement'] += 1
+            dotbot['heartbeat']       = self.heartbeat
 
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
@@ -883,10 +891,16 @@ class Navigation_Atlas(Navigation):
         return returnVal
 
     def _getRelayBots(self, allDotBots):
+
         overlayGridSize = len(self.hCellsOpen)+len(self.hCellsObstacle)
         if ((overlayGridSize % 50 == 0)                    and
             (len(self.relayBots) < (overlayGridSize/50))     ):
-            self.relayBots += [random.choice(allDotBots)]
+            availableDotBots = []
+            for db in allDotBots:
+                if db not in self.relayBots:
+                    availableDotBots += [db]
+            bestConnectedDotBot = sorted(availableDotBots, key=lambda item: item['heartbeat'])[-1]
+            self.relayBots += [bestConnectedDotBot]
         return self.relayBots
 
     def _getRelayPosition(self, relayBot):
@@ -908,10 +922,11 @@ class Orchestrator(Wireless.WirelessDevice):
         self.initialPosition   = initialPosition
 
         # local variables
-        self.simEngine         = SimEngine.SimEngine()
-        self.wireless          = Wireless.Wireless()
-        navigationclass        = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
-        self.navigation        = navigationclass(self.numDotBots, self.initialPosition)
+        self.simEngine          = SimEngine.SimEngine()
+        self.wireless           = Wireless.Wireless()
+        navigationclass         = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
+        self.navigation         = navigationclass(self.numDotBots, self.initialPosition)
+        self.communicationQueue = []
     
     #======================== public ==========================================
 
@@ -945,6 +960,8 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         Send the next heading and speed commands to the robots
         '''
+
+        #self.communicationQueue += [self.navigation.getMovements()]
 
         # format frame to transmit
         frameToTx = {

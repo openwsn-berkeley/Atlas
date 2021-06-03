@@ -43,6 +43,11 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
+        self.bump                 = False
+        self.packetsRxRatio       = 0
+        self.packetsRX            = 0
+        self.hbLength             = 10
+
 
     # ======================== public ==========================================
 
@@ -60,6 +65,7 @@ class DotBot(Wireless.WirelessDevice):
         myMovement = frame['movements'][self.dotBotId]
 
         now      = self.simEngine.currentTime()
+
         if myMovement['timer']:
             stopTime = now + myMovement['timer']
         else:
@@ -74,13 +80,20 @@ class DotBot(Wireless.WirelessDevice):
 
         if myMovement['speed'] == -1:
             return
-        
+
         self.seqNumMovement       = myMovement['seqNumMovement']
 
         # if I get here I have received a NEW movement
 
         # cancel notification retransmission
         self.simEngine.cancelEvent(tag = "retransmission_DotBot_{}".format(self.dotBotId))
+
+        self.packetsRX += 1
+
+        if now % self.hbLength == 0:
+            self._updateHeartbeat()
+            #print(self.packetsRX, self.packetsRxRatio)
+            self.packetsRX = 0
 
         # apply heading and speed from packet
         self._setHeading(myMovement['heading'])
@@ -157,15 +170,25 @@ class DotBot(Wireless.WirelessDevice):
         self.bump = False
         self._stopAndTransmit()
 
+    def _updateHeartbeat(self):
+        '''
+        send heartbeat with percentage of packets recieved since last heartbeat
+        '''
+        self.bump = False
+        self.packetsRxRatio = self.packetsRX/self.hbLength
+
+
+
     def _stopAndTransmit(self):
         '''
         transmit a packet to the orchestrator to request a new heading and to notify of obstacle
         '''
 
         # update my position
-        (self.x,self.y)      = self.computeCurrentPosition()
+        (self.x, self.y) = self.computeCurrentPosition()
 
         if self.bump == True:
+
             assert self.x == self.next_bump_x
             assert self.y == self.next_bump_y
 
@@ -193,7 +216,8 @@ class DotBot(Wireless.WirelessDevice):
             'seqNumNotification': self.seqNumNotification,
             'tsMovementStart':    self.tsMovementStart,
             'tsMovementStop':     self.tsMovementStop,
-            'bump':               self.bump
+            'bump':               self.bump,
+            'heartbeat':          self.packetsRxRatio
         }
 
         # log
