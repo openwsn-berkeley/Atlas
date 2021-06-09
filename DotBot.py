@@ -46,8 +46,8 @@ class DotBot(Wireless.WirelessDevice):
         self.bump                 = False
         self.packetsRxRatio       = 0
         self.packetsRX            = 0
-        self.hbLength             = 10
-
+        self.hbLength             = 100
+        self.simEngine.schedule(self.simEngine.currentTime()+self.hbLength, self._updateHeartbeat)
 
     # ======================== public ==========================================
 
@@ -62,7 +62,14 @@ class DotBot(Wireless.WirelessDevice):
             return
         
         # parse frame, extract myMovement
-        myMovement = frame['movements'][self.dotBotId]
+        #myMovement = frame['movements'][self.dotBotId]
+
+        myMovement = [movement for movement in frame['movements'] if movement['ID'] == self.dotBotId]
+
+        if not myMovement:
+            return
+        else:
+            myMovement = myMovement[0]
 
         now      = self.simEngine.currentTime()
 
@@ -90,10 +97,10 @@ class DotBot(Wireless.WirelessDevice):
 
         self.packetsRX += 1
 
-        if now % self.hbLength == 0:
-            self._updateHeartbeat()
-            #print(self.packetsRX, self.packetsRxRatio)
-            self.packetsRX = 0
+        # if now % self.hbLength == 0:
+        #     self._updateHeartbeat()
+        #     #print(self.packetsRX, self.packetsRxRatio)
+        #     self.packetsRX = 0
 
         # apply heading and speed from packet
         self._setHeading(myMovement['heading'])
@@ -174,9 +181,14 @@ class DotBot(Wireless.WirelessDevice):
         '''
         send heartbeat with percentage of packets recieved since last heartbeat
         '''
+
+        now = self.simEngine.currentTime()
+
         self.bump = False
         self.packetsRxRatio = self.packetsRX/self.hbLength
-
+        self._transmit()
+        self.packetsRX = 0
+        self.simEngine.schedule(now + self.hbLength, self._updateHeartbeat)
 
 
     def _stopAndTransmit(self):

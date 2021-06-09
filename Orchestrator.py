@@ -290,7 +290,7 @@ class MapBuilder(object):
 class Navigation(object):
 
     def __init__(self, numDotBots, initialPosition):
-    
+
         # store params
         self.numDotBots      = numDotBots
         self.initialPosition = initialPosition
@@ -298,6 +298,7 @@ class Navigation(object):
         # local variables
         self.dotbotsview     = [
             {
+                'ID':                       id,
                 # evaluated position of the DotBot when it last stopped
                 'x':                        x,
                 'y':                        y,
@@ -313,13 +314,14 @@ class Navigation(object):
                 'heartbeat':                0,
 
 
-            } for (x,y) in [self.initialPosition]*self.numDotBots
+            } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots)
         ]
         self.mapBuilder       = MapBuilder()
         self.movingDuration   = 0
         self.heatmap          = [(self.initialPosition, 0)]
         self.profile          = []
         self.heartbeat        = 0
+
 
     
     #======================== public ==========================================
@@ -333,11 +335,12 @@ class Navigation(object):
         dotbot      = self.dotbotsview[frame['dotBotId']]
         self.bump   = frame['bump']
 
+        self.heartbeat = frame['heartbeat']
         # filter out duplicates
         if frame['seqNumNotification'] == dotbot['seqNumNotification']:
             return
         dotbot['seqNumNotification'] = frame['seqNumNotification']
-        self.heartbeat               = frame['heartbeat']
+
 
         # update DotBot's position
         (newX,newY)  = u.computeCurrentPosition(
@@ -378,13 +381,13 @@ class Navigation(object):
         '''
         returnVal = [
             {
+                'ID':                        dotbot['ID'],
                 'heading':                   dotbot['heading'],
                 'speed':                     dotbot['speed'],
                 'seqNumMovement':            dotbot['seqNumMovement'],
-                #'target':                    dotbot['target'],
                 'timer':                     dotbot['timer'],
-                #'previousPath':              dotbot['previousPath'],
-                #'heartbeat':                 dotbot['heartbeat']
+
+
             } for dotbot in self.dotbotsview
         ]
         return returnVal
@@ -659,6 +662,7 @@ class Navigation_Atlas(Navigation):
                 break
         if relayBot is False:
             # store new movement
+            dotbot['ID']              = dotBotId
             dotbot['target']          = target
             dotbot['heading']         = pathHeadings[0][0]
             dotbot['timer']           = timeTillStop
@@ -668,6 +672,7 @@ class Navigation_Atlas(Navigation):
             dotbot['heartbeat']       = self.heartbeat
         else:
             # store new movement
+            dotbot['ID']              = dotBotId
             dotbot['target']          = None
             dotbot['heading']         = None
             dotbot['timer']           = 0
@@ -893,14 +898,17 @@ class Navigation_Atlas(Navigation):
     def _getRelayBots(self, allDotBots):
 
         overlayGridSize = len(self.hCellsOpen)+len(self.hCellsObstacle)
-        if ((overlayGridSize % 50 == 0)                    and
+        if ((overlayGridSize % 50 == 0)                     and
             (len(self.relayBots) < (overlayGridSize/50))     ):
-            availableDotBots = []
-            for db in allDotBots:
-                if db not in self.relayBots:
-                    availableDotBots += [db]
-            bestConnectedDotBot = sorted(availableDotBots, key=lambda item: item['heartbeat'])[-1]
-            self.relayBots += [bestConnectedDotBot]
+
+            if self.heartbeat < 0.7  :
+                    availableDotBots = []
+                    for db in allDotBots:
+                        if db not in self.relayBots:
+                            availableDotBots += [db]
+                    bestConnectedDotBot = sorted(availableDotBots, key=lambda item: item['heartbeat'])[-1]
+                    self.relayBots += [bestConnectedDotBot]
+
         return self.relayBots
 
     def _getRelayPosition(self, relayBot):
@@ -961,14 +969,17 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
-        #self.communicationQueue += [self.navigation.getMovements()]
+        self.communicationQueue += self.navigation.getMovements()
+
 
         # format frame to transmit
         frameToTx = {
             'frameType': self.FRAMETYPE_COMMAND,
-            'movements': self.navigation.getMovements(),
+            'movements': self.communicationQueue[:self.COMMANDSIZE],
         }
-        
+
+        del self.communicationQueue[:self.COMMANDSIZE]
+
         # log
         log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
 

@@ -142,7 +142,7 @@ for (idx,floorplan) in enumerate(FLOORPLANS):
 
         SIMSETTINGS   += [
             {
-                'numDotBots'         : 20,
+                'numDotBots'         : 30,
                 'floorplanType'       : idx ,
                 'floorplanDrawing'   : floorplan,
                 'initialPosition'    :  (1,1),

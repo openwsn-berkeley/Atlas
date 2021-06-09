@@ -8,7 +8,7 @@ class WirelessDevice(object):
     '''
     Abstract class for any device communicating over the wireless medium.
     '''
-    
+    COMMANDSIZE            = 30
     FRAMETYPE_COMMAND      = 'command'
     FRAMETYPE_NOTIFICATION = 'notification'
     FRAMETYPE_ALL          = [
