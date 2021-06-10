@@ -5,11 +5,13 @@ import copy
 import sys
 import math
 import logging
+
 # third-party
 # local
 import SimEngine
 import Wireless
 import Utils as u
+
 
 # logging
 log = logging.getLogger('Orchestrator')
@@ -969,25 +971,34 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
-        self.communicationQueue += self.navigation.getMovements()
+        allMovements = self.navigation.getMovements()
+        #latestSequenceNumber = sorted(allMovements, key=lambda item: item['seqNumMovement'])[-1]['seqNumMovement']
+        #newMovements = [db for db in allMovements if db['seqNumMovement'] == latestSequenceNumber]
+        self.communicationQueue += allMovements
+
+        for i in range(0,int(len(allMovements)/self.COMMANDSIZE)+1):
+
+            command = self.communicationQueue[:self.COMMANDSIZE]
+            numOfRemainingElements = (len(self.communicationQueue)-self.COMMANDSIZE)
+            self.communicationQueue = self.communicationQueue[-numOfRemainingElements:]
+
+            # format frame to transmit
+            frameToTx = {
+                'frameType': self.FRAMETYPE_COMMAND,
+                'movements': command
+            }
 
 
-        # format frame to transmit
-        frameToTx = {
-            'frameType': self.FRAMETYPE_COMMAND,
-            'movements': self.communicationQueue[:self.COMMANDSIZE],
-        }
+            # log
+            log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
 
-        del self.communicationQueue[:self.COMMANDSIZE]
+            # hand over to wireless
+            self.wireless.transmit(
+                frame  = frameToTx,
+                sender = self,
+            )
 
-        # log
-        log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
 
-        # hand over to wireless
-        self.wireless.transmit(
-            frame  = frameToTx,
-            sender = self,
-        )
     
     def receive(self,frame):
         '''
