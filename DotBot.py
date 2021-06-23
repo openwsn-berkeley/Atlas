@@ -46,7 +46,9 @@ class DotBot(Wireless.WirelessDevice):
         self.bump                 = False
         self.packetsRxRatio       = 0
         self.packetsRX            = 0
-        self.hbLength             = 100
+        self.hbLength             = 10
+        self.NewPacket            = 0
+        self.PDRarray             = []
         self.simEngine.schedule(self.simEngine.currentTime()+self.hbLength, self._updateHeartbeat)
 
     # ======================== public ==========================================
@@ -96,11 +98,7 @@ class DotBot(Wireless.WirelessDevice):
         self.simEngine.cancelEvent(tag = "retransmission_DotBot_{}".format(self.dotBotId))
 
         self.packetsRX += 1
-
-        # if now % self.hbLength == 0:
-        #     self._updateHeartbeat()
-        #     #print(self.packetsRX, self.packetsRxRatio)
-        #     self.packetsRX = 0
+        self.NewPacket  = 1
 
         # apply heading and speed from packet
         self._setHeading(myMovement['heading'])
@@ -157,6 +155,27 @@ class DotBot(Wireless.WirelessDevice):
 
     # ======================== private =========================================
 
+    def _get_pdrSymbol(self):
+
+        pdrLeftCount  = 0
+        pdrRightCount = 0
+        pdrSymbol     = None
+        for i in range(len(self.PDRarray)):
+            if i < (len(self.PDRarray)/ 2) and self.PDRarray[i] == 1:
+                pdrLeftCount += 1
+            if i > (len(self.PDRarray)/ 2) and self.PDRarray[i] == 1:
+                pdrRightCount += 1
+        if abs(pdrLeftCount-pdrRightCount) <= 2:
+            pdrSymbol = '00'    # constant PDR rate
+        elif pdrLeftCount > pdrRightCount:
+            pdrSymbol = '01'    # deteriorating PDR
+        else:
+            pdrSymbol = '10'    # improving PDR
+
+        return pdrSymbol
+
+
+
     #=== bump sensor interrupt handler
     
     def _bump(self):
@@ -188,7 +207,11 @@ class DotBot(Wireless.WirelessDevice):
         self.packetsRxRatio = self.packetsRX/self.hbLength
         self._transmit()
         self.packetsRX = 0
+        self.PDRarray = []
+
+
         self.simEngine.schedule(now + self.hbLength, self._updateHeartbeat)
+
 
 
     def _stopAndTransmit(self):
@@ -229,8 +252,10 @@ class DotBot(Wireless.WirelessDevice):
             'tsMovementStart':    self.tsMovementStart,
             'tsMovementStop':     self.tsMovementStop,
             'bump':               self.bump,
-            'heartbeat':          self.packetsRxRatio
+            'heartbeat':          self.packetsRxRatio,
+            'pdrStatus':          self._get_pdrSymbol()
         }
+
 
         # log
         log.debug('[%10.3f]    <-- TX notif %s',self.simEngine.currentTime(),self.seqNumNotification)
@@ -247,6 +272,9 @@ class DotBot(Wireless.WirelessDevice):
             cb  = self._transmit,
             tag = "retransmission_DotBot_{}".format(self.dotBotId),
         )
+
+        self.PDRarray += [self.NewPacket]
+        self.NewPacket = 0
 
     #=== motor control
     

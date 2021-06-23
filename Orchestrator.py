@@ -313,7 +313,9 @@ class Navigation(object):
                 'target':                   None,
                 'timer':                    None,
                 'previousPath':             [],
-                'heartbeat':                0,
+                'heartbeat':                1,
+                'pdrHistory':               [],
+                'pdrStatus':                None,
 
 
             } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots)
@@ -322,7 +324,8 @@ class Navigation(object):
         self.movingDuration   = 0
         self.heatmap          = [(self.initialPosition, 0)]
         self.profile          = []
-        self.heartbeat        = 0
+        self.heartbeat        = 1
+        self.pdrStatus        = None
 
 
     
@@ -338,6 +341,7 @@ class Navigation(object):
         self.bump   = frame['bump']
 
         self.heartbeat = frame['heartbeat']
+        self.pdrStatus = frame['pdrStatus']
         # filter out duplicates
         if frame['seqNumNotification'] == dotbot['seqNumNotification']:
             return
@@ -576,6 +580,7 @@ class Navigation_Atlas(Navigation):
         \post modifies the movement directly in dotbotsview
         '''
 
+
         dotbot                 = self.dotbotsview[dotBotId]               # shorthand
         centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                 = dotbot['target']                         # set target as las allocated target until updated
@@ -682,6 +687,7 @@ class Navigation_Atlas(Navigation):
             dotbot['speed']           = -1
             dotbot['seqNumMovement'] += 1
             dotbot['heartbeat']       = self.heartbeat
+
 
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
@@ -898,18 +904,9 @@ class Navigation_Atlas(Navigation):
         return returnVal
 
     def _getRelayBots(self, allDotBots):
-
-        overlayGridSize = len(self.hCellsOpen)+len(self.hCellsObstacle)
-        if ((overlayGridSize % 50 == 0)                     and
-            (len(self.relayBots) < (overlayGridSize/50))     ):
-
-            if self.heartbeat < 0.7  :
-                    availableDotBots = []
-                    for db in allDotBots:
-                        if db not in self.relayBots:
-                            availableDotBots += [db]
-                    bestConnectedDotBot = sorted(availableDotBots, key=lambda item: item['heartbeat'])[-1]
-                    self.relayBots += [bestConnectedDotBot]
+        for db in allDotBots:
+            if db['heartbeat'] <= 0.6 and db['heartbeat'] > 0 :
+                self.relayBots += [db]
 
         return self.relayBots
 
@@ -917,6 +914,13 @@ class Navigation_Atlas(Navigation):
         x = relayBot['x']
         y = relayBot['y']
         return (x,y)
+
+        # for ph in reversed(relayBot['pdrHistory']):
+        #     if ph[0] == 1:
+        #         (x,y) = ph[1]
+        #         return (x,y)
+
+
     
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -972,31 +976,30 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
 
         allMovements = self.navigation.getMovements()
-        #latestSequenceNumber = sorted(allMovements, key=lambda item: item['seqNumMovement'])[-1]['seqNumMovement']
-        #newMovements = [db for db in allMovements if db['seqNumMovement'] == latestSequenceNumber]
+
         self.communicationQueue += allMovements
 
         for i in range(0,int(len(allMovements)/self.COMMANDSIZE)+1):
 
-            command = self.communicationQueue[:self.COMMANDSIZE]
-            numOfRemainingElements = (len(self.communicationQueue)-self.COMMANDSIZE)
-            self.communicationQueue = self.communicationQueue[-numOfRemainingElements:]
+                command = self.communicationQueue[:self.COMMANDSIZE]
+                numOfRemainingElements = (len(self.communicationQueue)-self.COMMANDSIZE)
+                self.communicationQueue = self.communicationQueue[-numOfRemainingElements:]
 
-            # format frame to transmit
-            frameToTx = {
-                'frameType': self.FRAMETYPE_COMMAND,
-                'movements': command
-            }
+                # format frame to transmit
+                frameToTx = {
+                    'frameType': self.FRAMETYPE_COMMAND,
+                    'movements': command
+                }
 
 
-            # log
-            log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
+                # log
+                log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
 
-            # hand over to wireless
-            self.wireless.transmit(
-                frame  = frameToTx,
-                sender = self,
-            )
+                # hand over to wireless
+                self.wireless.transmit(
+                    frame  = frameToTx,
+                    sender = self,
+                )
 
 
     
