@@ -583,32 +583,45 @@ class Navigation_Atlas(Navigation):
         '''
 
 
-        dotbot                 = self.dotbotsview[dotBotId]               # shorthand
-        centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
-        target                 = dotbot['target']                         # set target as las allocated target until updated
-        self.skip              = False
-        relayBot               = False
-
-        if dotbot in self._getRelayBots(self.dotbotsview):
-            relayBot = True
+        dotbot                  = self.dotbotsview[dotBotId]               # shorthand
+        centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
+        target                  = dotbot['target']                         # set target as las allocated target until updated
+        self.skip               = False
 
 
-        if relayBot is False:
-            while True:
-                # keep going towards same target if target hasn't been explored yet
+        while True:
+            # keep going towards same target if target hasn't been explored yet
 
-                if (target                                                               and
-                   (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
-                    self.skip == False):
+            if (target                                                               and
+               (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
+                self.skip == False          ):
 
-                    if self.movingDuration == 0:
-                        # avoid these cells when finding new path to target
-                        self.hCellsUnreachable += [dotbot['previousPath'][0]]
+                if self.movingDuration == 0:
+                    # avoid these cells when finding new path to target
+                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
 
+                path2target               = self._path2Target(centreCellcentre,target)
 
-                    path2target               = self._path2Target(centreCellcentre,target)
+            else:
 
+                if dotbot in self._getRelayBots(self.dotbotsview):
+                    if centreCellcentre == target:
+                        # store new movement
+                        dotbot['ID'] = dotBotId
+                        dotbot['target'] = None
+                        dotbot['heading'] = None
+                        dotbot['timer'] = 0
+                        dotbot['previousPath'] = None
+                        dotbot['speed'] = -1
+                        dotbot['seqNumMovement'] += 1
+                        dotbot['heartbeat'] = self.heartbeat
+                        dotbot['pdrHistory'] += [(self.heartbeat, (dotbot['x'], dotbot['y']))]
+                        return
+                    else:
+                        target = self._getRelayPosition(dotbot)
+                        path2target = self._path2Target(centreCellcentre, target)
                 else:
+
                     # if target explored or no paths to target, find a new target
 
                     # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
@@ -636,15 +649,13 @@ class Navigation_Atlas(Navigation):
 
                     path2target            = self._path2Target(centreCellcentre, target)
 
-                if path2target:
-                    break
-                else:
-                    if self.skip == False:
-                        self.hCellsObstacle += [target]
-                    continue
-        else:
-            target      = self._getRelayPosition(dotbot)
-            path2target = self._path2Target(centreCellcentre, target)
+            if path2target:
+                break
+            else:
+                if self.skip == False:
+                    self.hCellsObstacle += [target]
+                continue
+
 
         # Find headings and time to reach next step, for every step in path2target
         pathHeadings=[]
@@ -669,28 +680,19 @@ class Navigation_Atlas(Navigation):
                 timeTillStop += pathHeadings[idx][1]
             else:
                 break
-        if relayBot is False:
-            # store new movement
-            dotbot['ID']              = dotBotId
-            dotbot['target']          = target
-            dotbot['heading']         = pathHeadings[0][0]
-            dotbot['timer']           = timeTillStop
-            dotbot['previousPath']    = path2target
-            dotbot['speed']           = 1
-            dotbot['seqNumMovement'] += 1
-            dotbot['heartbeat']       = self.heartbeat
-            dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
-        else:
-            # store new movement
-            dotbot['ID']              = dotBotId
-            dotbot['target']          = None
-            dotbot['heading']         = None
-            dotbot['timer']           = 0
-            dotbot['previousPath']    = None
-            dotbot['speed']           = -1
-            dotbot['seqNumMovement'] += 1
-            dotbot['heartbeat']       = self.heartbeat
-            dotbot['pdrHistory'] += [(self.heartbeat, (dotbot['x'], dotbot['y']))]
+
+        # store new movement
+        dotbot['ID']              = dotBotId
+        dotbot['target']          = target
+        dotbot['heading']         = pathHeadings[0][0]
+        dotbot['timer']           = timeTillStop
+        dotbot['previousPath']    = path2target
+        dotbot['speed']           = 1
+        dotbot['seqNumMovement'] += 1
+        dotbot['heartbeat']       = self.heartbeat
+        dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
+
+
 
 
 
@@ -917,13 +919,13 @@ class Navigation_Atlas(Navigation):
         return self.relayBots
 
     def _getRelayPosition(self, relayBot):
-        #print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]),)
+        print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]),)
         pdrHistory = relayBot['pdrHistory']
         bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
         print(relayBot['pdrHistory'])
         print(bestPDRposition)
-        x = relayBot['x']
-        y = relayBot['y']
+        x = bestPDRposition[0]
+        y = bestPDRposition[1]
         return (x,y)
 
         # def _getRelayPosition(self, relayBot):
