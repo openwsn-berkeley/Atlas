@@ -340,8 +340,10 @@ class Navigation(object):
         dotbot      = self.dotbotsview[frame['dotBotId']]
         self.bump   = frame['bump']
 
-        self.heartbeat = frame['heartbeat']
-        self.pdrStatus = frame['pdrStatus']
+        if frame['heartbeat']:
+            self.heartbeat = frame['heartbeat']
+            self.pdrStatus = frame['pdrStatus']
+            return
         # filter out duplicates
         if frame['seqNumNotification'] == dotbot['seqNumNotification']:
             return
@@ -368,7 +370,7 @@ class Navigation(object):
 
         # compute new DotBot movement
         self._updateMovement(frame['dotBotId'])
-    
+
     def getEvaluatedPositions(self):
         '''
         Retrieve the evaluated positions of each DotBot.
@@ -380,7 +382,7 @@ class Navigation(object):
             } for dotbot in self.dotbotsview
         ]
         return returnVal
-    
+
     def getMovements(self):
         '''
         Retrieve the movement of all DotBots.
@@ -408,34 +410,34 @@ class Navigation(object):
         raise SystemError('abstract method')
 
     #======================== private =========================================
-    
+
     def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
         raise SystemError('abstract method')
-    
+
     def _updateMovement(self,dotBotId):
         raise SystemError('abstract method')
 
 class Navigation_Ballistic(Navigation):
 
     def __init__(self, numDotBots, initialPosition):
-    
+
         # initialize parent
         super().__init__(numDotBots, initialPosition)
-        
+
         # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
     #======================== public ==========================================
-    
+
     def getExploredCells(self):
         return {} # Ballistic doesn't keep track of explored areas
-    
+
     #======================== private =========================================
-    
+
     def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
         pass # Ballistic doesn't act on DotBot movement
-    
+
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
@@ -443,7 +445,7 @@ class Navigation_Ballistic(Navigation):
 
         # shorthand
         dotbot = self.dotbotsview[dotBotId]
-        
+
         # pick new movement
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
@@ -452,10 +454,10 @@ class Navigation_Ballistic(Navigation):
 class Navigation_Atlas(Navigation):
 
     def __init__(self, numDotBots, initialPosition):
-    
+
         # initialize parent
         super().__init__(numDotBots, initialPosition)
-        
+
         # (additional) local variables
         # shorthands for initial x,y position
         self.ix                = initialPosition[0]
@@ -472,7 +474,7 @@ class Navigation_Atlas(Navigation):
             self._updateMovement(dotBotId)
 
     #======================== public ==========================================
-    
+
     def getExploredCells(self):
         returnVal = {
             'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
@@ -524,9 +526,9 @@ class Navigation_Atlas(Navigation):
     def getProfile(self):
         return self.profile
     #======================== private =========================================
-    
+
     def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
-        
+
         # intermediate cells are open
 
         traversedCells   = self._cellsTraversed(startX,startY,stopX,stopY)
@@ -546,7 +548,7 @@ class Navigation_Atlas(Navigation):
                 self.hCellsOpen.remove(c)
             except ValueError:
                 pass
-        
+
         # filter duplicates in either list
         self.hCellsOpen      = list(set(self.hCellsOpen))
         self.hCellsObstacle  = list(set(self.hCellsObstacle))
@@ -830,11 +832,11 @@ class Navigation_Atlas(Navigation):
 
     def _cellsTraversed(self,startX,startY,stopX,stopY):
         returnVal = []
-        
+
         # scan horizontally
         x         = startX
         while True:
-            
+
             if startX<stopX:
                 # going right
                 x += MapBuilder.MINFEATURESIZE_M/2
@@ -845,16 +847,16 @@ class Navigation_Atlas(Navigation):
                 x -= MapBuilder.MINFEATURESIZE_M/2
                 if x<stopX:
                     break
-            
+
             y  = startY+(((stopY-startY)*(x-startX))/(stopX-startX))
-            
+
             (cx,cy) = self._xy2hCell(x,y)
             returnVal += [(cx,cy)]
-        
+
         # scan vertically
         y         = startY
         while True:
-            
+
             if startY<stopY:
                 # going down
                 y += MapBuilder.MINFEATURESIZE_M/2
@@ -864,26 +866,26 @@ class Navigation_Atlas(Navigation):
                 y -= MapBuilder.MINFEATURESIZE_M/2
                 if y<stopY:
                     break
-            
+
             x  = startX+(((stopX-startX)*(y-startY))/(stopY-startY))
-            
+
             (cx,cy) = self._xy2hCell(x,y)
             returnVal += [(cx,cy)]
-        
+
         # filter duplicates
         returnVal = list(set(returnVal))
-        
+
         return returnVal
-    
+
     def _xy2hCell(self,x,y):
-        
+
         xsteps = int(round((x-self.ix)/ (MapBuilder.MINFEATURESIZE_M/2),0))
         cx     = self.ix+xsteps*(MapBuilder.MINFEATURESIZE_M/2)
         ysteps = int(round((y-self.iy)/ (MapBuilder.MINFEATURESIZE_M/2),0))
         cy     = self.iy+ysteps*(MapBuilder.MINFEATURESIZE_M/2)
-        
+
         return (cx,cy)
-    
+
     def _hCell2SvgRect(self,cx,cy):
         returnVal = {
             'x':        cx-MapBuilder.MINFEATURESIZE_M/4,
@@ -892,7 +894,7 @@ class Navigation_Atlas(Navigation):
             'height':   MapBuilder.MINFEATURESIZE_M/2,
         }
         return returnVal
-    
+
     def _oneHopNeighborsShuffled(self,cx,cy):
         s = MapBuilder.MINFEATURESIZE_M/2 # shorthand
         returnVal = [
@@ -903,22 +905,62 @@ class Navigation_Atlas(Navigation):
         random.shuffle(returnVal)
         return returnVal
 
+    #def _getRelayBots(self, allDotBots):
+        #print('pdrs orch', [db['heartbeat'] for db in allDotBots])
+        #return[]
+        # for db in allDotBots:
+        #     if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
+        #         newRelay = sorted(allDotBots, key=lambda item: item['heartbeat'])[-1]
+        #         self.relayBots += [newRelay]
+        #
+        #         break
+        possibleRelays     = []
+        relaysAndDistances = []
+        rootConnectionPos     = (1,1) #orchestrator location #TODO: modify to be generic
+        # for db in allDotBots:
+        #     if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
+        #         if db in self.relayBots:
+        #             return self.relayBots
+        #         self.relayBots += [db]
+                # bestPdr = sorted(allDotBots, key=lambda item: item['heartbeat'])[-1]['heartbeat']
+                # for db in allDotBots:
+                #     if db['heartbeat'] == bestPdr:
+                #         possibleRelays += [db]
+                # if self.relayBots != []:
+                #     rootConnection = self.relayBots[-1]
+                #     x =  rootConnection['x']
+                #     y =  rootConnection['y']
+                #     rootConnectionPos = (x,y)
+                # for relay in possibleRelays:
+                #     relayPos = (relay['x'],relay['y'])
+                #     distance = u.distance(rootConnectionPos,relayPos)
+                #     relaysAndDistances += [(relay,distance)]
+                # newRelay = sorted(relaysAndDistances, key=lambda item: item[1])[0][0]
+                # print('+++++++++++++++', newRelay)
+                #self.relayBots += [newRelay]
+                #break
+
+        #return self.relayBots
+
     def _getRelayBots(self, allDotBots):
         for db in allDotBots:
-            if db['heartbeat'] <= 0.6 and db['heartbeat'] > 0 :
+            if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
                 self.relayBots += [db]
+                break
 
         return self.relayBots
 
     def _getRelayPosition(self, relayBot):
+        #print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]),)
         x = relayBot['x']
         y = relayBot['y']
         return (x,y)
 
-        # for ph in reversed(relayBot['pdrHistory']):
-        #     if ph[0] == 1:
-        #         (x,y) = ph[1]
-        #         return (x,y)
+        # def _getRelayPosition(self, relayBot):
+        #     pdrHistory = relayBot['pdrHistory']
+        #     bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
+        #     print(bestPDRposition)
+        #     return bestPDRposition
 
 
     

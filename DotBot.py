@@ -45,7 +45,7 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_ts         = None  # time at which DotBot will bump
         self.bump                 = False
         self.packetsRxRatio       = 0
-        self.packetsRX            = 0
+        self.packetsRX            = 1
         self.hbLength             = 10
         self.NewPacket            = 0
         self.PDRarray             = []
@@ -82,10 +82,14 @@ class DotBot(Wireless.WirelessDevice):
 
         # log
         log.debug('[%10.3f]    --> RX command %s',now,myMovement['seqNumMovement'])
-        
+
+
+
         # filter out duplicates
         if myMovement['seqNumMovement'] == self.seqNumMovement:
             return
+
+        self.packetsRX += 1
 
         if myMovement['speed'] == -1:
             return
@@ -97,7 +101,7 @@ class DotBot(Wireless.WirelessDevice):
         # cancel notification retransmission
         self.simEngine.cancelEvent(tag = "retransmission_DotBot_{}".format(self.dotBotId))
 
-        self.packetsRX += 1
+
         self.NewPacket  = 1
 
         # apply heading and speed from packet
@@ -205,8 +209,10 @@ class DotBot(Wireless.WirelessDevice):
 
         self.bump = False
         self.packetsRxRatio = self.packetsRX/self.hbLength
+        #print('->', self.dotBotId,'->',self.packetsRxRatio,'->',self.x,self.y)
         self._transmit()
-        self.packetsRX = 0
+        if now > 0:
+            self.packetsRX = 0
         self.PDRarray = []
 
 
@@ -218,7 +224,7 @@ class DotBot(Wireless.WirelessDevice):
         '''
         transmit a packet to the orchestrator to request a new heading and to notify of obstacle
         '''
-
+        self.packetsRxRatio = None
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
 
