@@ -679,6 +679,7 @@ class Navigation_Atlas(Navigation):
             dotbot['speed']           = 1
             dotbot['seqNumMovement'] += 1
             dotbot['heartbeat']       = self.heartbeat
+            dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
         else:
             # store new movement
             dotbot['ID']              = dotBotId
@@ -689,6 +690,7 @@ class Navigation_Atlas(Navigation):
             dotbot['speed']           = -1
             dotbot['seqNumMovement'] += 1
             dotbot['heartbeat']       = self.heartbeat
+            dotbot['pdrHistory'] += [(self.heartbeat, (dotbot['x'], dotbot['y']))]
 
 
 
@@ -905,42 +907,6 @@ class Navigation_Atlas(Navigation):
         random.shuffle(returnVal)
         return returnVal
 
-    #def _getRelayBots(self, allDotBots):
-        #print('pdrs orch', [db['heartbeat'] for db in allDotBots])
-        #return[]
-        # for db in allDotBots:
-        #     if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
-        #         newRelay = sorted(allDotBots, key=lambda item: item['heartbeat'])[-1]
-        #         self.relayBots += [newRelay]
-        #
-        #         break
-        possibleRelays     = []
-        relaysAndDistances = []
-        rootConnectionPos     = (1,1) #orchestrator location #TODO: modify to be generic
-        # for db in allDotBots:
-        #     if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
-        #         if db in self.relayBots:
-        #             return self.relayBots
-        #         self.relayBots += [db]
-                # bestPdr = sorted(allDotBots, key=lambda item: item['heartbeat'])[-1]['heartbeat']
-                # for db in allDotBots:
-                #     if db['heartbeat'] == bestPdr:
-                #         possibleRelays += [db]
-                # if self.relayBots != []:
-                #     rootConnection = self.relayBots[-1]
-                #     x =  rootConnection['x']
-                #     y =  rootConnection['y']
-                #     rootConnectionPos = (x,y)
-                # for relay in possibleRelays:
-                #     relayPos = (relay['x'],relay['y'])
-                #     distance = u.distance(rootConnectionPos,relayPos)
-                #     relaysAndDistances += [(relay,distance)]
-                # newRelay = sorted(relaysAndDistances, key=lambda item: item[1])[0][0]
-                # print('+++++++++++++++', newRelay)
-                #self.relayBots += [newRelay]
-                #break
-
-        #return self.relayBots
 
     def _getRelayBots(self, allDotBots):
         for db in allDotBots:
@@ -952,6 +918,10 @@ class Navigation_Atlas(Navigation):
 
     def _getRelayPosition(self, relayBot):
         #print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]),)
+        pdrHistory = relayBot['pdrHistory']
+        bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
+        print(relayBot['pdrHistory'])
+        print(bestPDRposition)
         x = relayBot['x']
         y = relayBot['y']
         return (x,y)
