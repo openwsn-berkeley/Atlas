@@ -53,18 +53,21 @@ class Wireless(object):
     
     def indicateDevices(self,devices):
         self.devices                 = devices
-        self.createPDRmatrix(devices)
+#        self.createPDRmatrix(devices)
+        self.orch                    = self.devices[-1]
 
-    def createPDRmatrix(self,devices):
-        for device1 in devices:
-            for device2 in devices:
-                if device1 != device2:
-                    self.pdrMatrix += [(device1,device2, self.constantPDR)]
-
-    def updatePDRmatrix(self):
-        for (idx,value) in enumerate(self.pdrMatrix):
-            newPdr              = self._computePDR(value[0], value[1])
-            self.pdrMatrix[idx] = (value[0], value[1],newPdr)
+    # def createPDRmatrix(self,devices):
+    #     for device1 in devices:
+    #         for device2 in devices:
+    #             if device1 != device2:
+    #                 self.pdrMatrix += [(device1,device2, self.constantPDR)]
+    #
+    # def updatePDRmatrix(self):
+    #     for (idx,value) in enumerate(self.pdrMatrix):
+    #         if value[0] not in self.orch.navigation.relayBots and value[0] not in self.orch.navigation.relayBots:
+    #             continue
+    #         newPdr              = self._computePDR(value[0], value[1])
+    #         self.pdrMatrix[idx] = (value[0], value[1],newPdr)
 
     def overridePDR(self,pdr):
         self.constantPDR             = pdr
@@ -75,7 +78,7 @@ class Wireless(object):
 
     def transmit(self, frame, sender):
         assert self.devices # make sure there are devices
-        self.updatePDRmatrix()
+        #self.updatePDRmatrix()
         for receiver in self.devices:
             if receiver==sender:
                 continue # ensures transmitter doesn't receive
@@ -92,18 +95,49 @@ class Wireless(object):
 
         pdr = self._getPisterHackPDR(sender, receiver)
         rand = random.uniform(0, 1)
-        if rand < pdr:
+        if rand <= pdr:
             return pdr
+
         else:
-            for element in [value for (idx,value) in enumerate(self.pdrMatrix)
-                            if value[1] == receiver and value[0] != sender]:
-                relay = element[0]
-                pdrSenderRelay   = self._getPisterHackPDR(sender,relay)
-                pdrRelayReceiver = self._getPisterHackPDR(relay,receiver)
-                pdr = pdrSenderRelay * pdrRelayReceiver
-                rand = random.uniform(0, 1)
-                if rand < pdr:
-                    return pdr
+            for relay in self.orch.navigation.relayBots:
+                allDevices = self.devices.copy()
+                allDevices.pop()
+                relayBot = [device for device in allDevices if device.dotBotId == relay['ID']]
+                if relayBot:
+                    pdrSenderRelay   = self._getPisterHackPDR(sender,relayBot[0])
+                    pdrRelayReceiver = self._getPisterHackPDR(relayBot[0],receiver)
+                    pdr = pdrSenderRelay * pdrRelayReceiver
+                    rand = random.uniform(0, 1)
+                    if rand <= pdr:
+                        return pdr
+                    else:
+                        remainingRelays = self.orch.navigation.relayBots.copy()
+                        remainingRelays.pop(0)
+                        for relay2 in remainingRelays:
+                            allDevices = self.devices.copy()
+                            allDevices.pop()
+                            relayBot2 = [device for device in allDevices if device.dotBotId == relay2['ID']]
+                            if relayBot2:
+                                pdrSenderRelay = self._getPisterHackPDR(sender, relayBot2[0])
+                                pdrRelayRelay = self._getPisterHackPDR(relayBot[0], relayBot2[0])
+                                pdrRelayReceiver = self._getPisterHackPDR(relayBot2[0], receiver)
+                                pdr = pdrSenderRelay * pdrRelayRelay * pdrRelayReceiver
+                                rand = random.uniform(0, 1)
+                                if rand <= pdr:
+                                    return pdr
+
+            # for device in self.devices:
+            #     for relay in self.orch.navigation.relayBots:
+            #         if device != sender and device != receiver and device != self.orch:
+            #             if device.dotBotId == relay['ID'] :
+            #                 relay = device
+            #
+            #                 pdrSenderRelay   = self._getPisterHackPDR(sender,relay)
+            #                 pdrRelayReceiver = self._getPisterHackPDR(relay,receiver)
+            #                 pdr = pdrSenderRelay * pdrRelayReceiver
+            #                 rand = random.uniform(0, 1)
+            #                 if rand <= pdr:
+            #                     return pdr
 
         return pdr
     
@@ -111,13 +145,14 @@ class Wireless(object):
         '''
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
-        if sender == self.devices[-1]:
-            pos1 = sender.initialPosition
+
+        if sender == self.orch and receiver != self.orch:
+            pos1 = self.orch.initialPosition
             pos2 = receiver.computeCurrentPosition()
-        elif receiver == self.devices[-1]:
+        elif receiver == self.orch and sender != self.orch:
             pos2 = receiver.initialPosition
             pos1 = sender.computeCurrentPosition()
-        elif (sender != self.devices[-1] and receiver != self.devices[-1]):
+        elif (sender != self.orch and receiver != self.orch):
             pos1 = sender.computeCurrentPosition()
             pos2 = receiver.computeCurrentPosition()
         else:
@@ -160,7 +195,7 @@ class Wireless(object):
 
                         ]
 
-        if distance < 25:
+        if distance < 20:
             pdr = distanceToPDR[distance]
         else:
             pdr = 0

@@ -469,6 +469,8 @@ class Navigation_Atlas(Navigation):
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [initialPosition]
         self.relayBots         = []
+        self.positionedRelays  = []
+
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
@@ -587,14 +589,14 @@ class Navigation_Atlas(Navigation):
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                  = dotbot['target']                         # set target as las allocated target until updated
         self.skip               = False
-
-
+        #
+        self._getRelayBots(self.dotbotsview)
         while True:
             # keep going towards same target if target hasn't been explored yet
 
             if (target                                                               and
                (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
-                self.skip == False          ):
+                self.skip == False          ) :
 
                 if self.movingDuration == 0:
                     # avoid these cells when finding new path to target
@@ -603,8 +605,10 @@ class Navigation_Atlas(Navigation):
                 path2target               = self._path2Target(centreCellcentre,target)
 
             else:
+                # print('+++++relayBots+++++', [r['ID'] for r in self.relayBots])
+                # print('=positioned relays=', [r['ID'] for r in self.positionedRelays])
 
-                if dotbot in self._getRelayBots(self.dotbotsview):
+                if dotbot in self.relayBots and dotbot not in self.positionedRelays:
                     if centreCellcentre == target:
                         # store new movement
                         dotbot['ID'] = dotBotId
@@ -616,10 +620,14 @@ class Navigation_Atlas(Navigation):
                         dotbot['seqNumMovement'] += 1
                         dotbot['heartbeat'] = self.heartbeat
                         dotbot['pdrHistory'] += [(self.heartbeat, (dotbot['x'], dotbot['y']))]
+                        self.positionedRelays += [dotbot]
+                        self.relayBots = [relay for relay in self.relayBots if relay not in self.positionedRelays]
                         return
                     else:
                         target = self._getRelayPosition(dotbot)
                         path2target = self._path2Target(centreCellcentre, target)
+
+
                 else:
 
                     # if target explored or no paths to target, find a new target
@@ -691,10 +699,6 @@ class Navigation_Atlas(Navigation):
         dotbot['seqNumMovement'] += 1
         dotbot['heartbeat']       = self.heartbeat
         dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
-
-
-
-
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
 
@@ -909,24 +913,32 @@ class Navigation_Atlas(Navigation):
         random.shuffle(returnVal)
         return returnVal
 
-
     def _getRelayBots(self, allDotBots):
+        #print('++++relayBots+++++', [r['ID'] for r in self.relayBots])
         for db in allDotBots:
             if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
-                self.relayBots += [db]
-                break
+                if db not in self.relayBots:
+                    self.relayBots += [db]
+                    return
 
-        return self.relayBots
+        return
 
     def _getRelayPosition(self, relayBot):
-        print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]),)
+        #print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]))
         pdrHistory = relayBot['pdrHistory']
-        bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
-        print(relayBot['pdrHistory'])
-        print(bestPDRposition)
-        x = bestPDRposition[0]
-        y = bestPDRposition[1]
-        return (x,y)
+        pdrHistoryReversed = pdrHistory[::-1]
+        for value in pdrHistoryReversed:
+            if  value[0] >= 0.9 :
+                bestPDRposition = value[1]
+                x = bestPDRposition[0]
+                y = bestPDRposition[1]
+                print(relayBot,x,y)
+                return (x, y)
+        return
+        # bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
+        # x = bestPDRposition[0]
+        # y = bestPDRposition[1]
+
 
         # def _getRelayPosition(self, relayBot):
         #     pdrHistory = relayBot['pdrHistory']
