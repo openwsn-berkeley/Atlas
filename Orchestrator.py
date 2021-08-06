@@ -470,6 +470,7 @@ class Navigation_Atlas(Navigation):
         self.hCellsOpen       += [initialPosition]
         self.relayBots         = []
         self.positionedRelays  = []
+        self.relayPositions    = []
 
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -608,6 +609,9 @@ class Navigation_Atlas(Navigation):
 
                 if dotbot in self.relayBots :
                     target = self._getRelayPosition(dotbot)
+                    if not target:
+                        self.relayBots.remove(dotbot)
+                        return
                     if centreCellcentre == target:
                         # store new movement
                         dotbot['speed'] = -1
@@ -918,15 +922,16 @@ class Navigation_Atlas(Navigation):
         pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1])
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
-            if  value[0] >= 0.9 :
+            if  value[0] >= 0.9 and value[0] < 1:
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]
                 #return (10, 1)
                 print(x,y)
-                if (x,y) in self.hCellsObstacle:
+                if (x,y) in self.hCellsObstacle or (x,y) in self.relayPositions:
                     continue
                 else:
+                    self.relayPositions += [(x,y)]
                     return (x, y)
         return
         # bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
