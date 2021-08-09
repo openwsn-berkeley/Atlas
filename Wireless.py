@@ -96,7 +96,7 @@ class Wireless(object):
         pdr = self._getPisterHackPDR(sender, receiver)
         rand = random.uniform(0, 1)
         if rand <= pdr:
-            #print('real PDR = ', pdr)
+            print('real PDR = ', pdr)
             return pdr
 
         else:
@@ -110,7 +110,7 @@ class Wireless(object):
                     pdr = pdrSenderRelay * pdrRelayReceiver
                     rand = random.uniform(0, 1)
                     if rand <= pdr:
-                        #print('real PDR = ', pdr)
+                        print('real PDR = ', pdr)
                         return pdr
                     else:
                         remainingRelays = self.orch.navigation.relayBots.copy()
@@ -126,7 +126,7 @@ class Wireless(object):
                                 pdr = pdrSenderRelay * pdrRelayRelay * pdrRelayReceiver
                                 rand = random.uniform(0, 1)
                                 if rand <= pdr:
-                                    #print('real PDR = ', pdr)
+                                    print('real PDR = ', pdr)
                                     return pdr
 
             # for device in self.devices:
