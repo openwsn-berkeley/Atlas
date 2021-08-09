@@ -96,6 +96,7 @@ class Wireless(object):
         pdr = self._getPisterHackPDR(sender, receiver)
         rand = random.uniform(0, 1)
         if rand <= pdr:
+            #print('real PDR = ', pdr)
             return pdr
 
         else:
@@ -109,22 +110,24 @@ class Wireless(object):
                     pdr = pdrSenderRelay * pdrRelayReceiver
                     rand = random.uniform(0, 1)
                     if rand <= pdr:
+                        #print('real PDR = ', pdr)
                         return pdr
-                    # else:
-                    #     remainingRelays = self.orch.navigation.relayBots.copy()
-                    #     remainingRelays.pop(0)
-                    #     for relay2 in remainingRelays:
-                    #         allDevices = self.devices.copy()
-                    #         allDevices.pop()
-                    #         relayBot2 = [device for device in allDevices if device.dotBotId == relay2['ID']]
-                    #         if relayBot2:
-                    #             pdrSenderRelay = self._getPisterHackPDR(sender, relayBot2[0])
-                    #             pdrRelayRelay = self._getPisterHackPDR(relayBot[0], relayBot2[0])
-                    #             pdrRelayReceiver = self._getPisterHackPDR(relayBot2[0], receiver)
-                    #             pdr = pdrSenderRelay * pdrRelayRelay * pdrRelayReceiver
-                    #             rand = random.uniform(0, 1)
-                    #             if rand <= pdr:
-                    #                 return pdr
+                    else:
+                        remainingRelays = self.orch.navigation.relayBots.copy()
+                        remainingRelays.pop(0)
+                        for relay2 in remainingRelays:
+                            allDevices = self.devices.copy()
+                            allDevices.pop()
+                            relayBot2 = [device for device in allDevices if device.dotBotId == relay2['ID']]
+                            if relayBot2:
+                                pdrSenderRelay = self._getPisterHackPDR(sender, relayBot2[0])
+                                pdrRelayRelay = self._getPisterHackPDR(relayBot[0], relayBot2[0])
+                                pdrRelayReceiver = self._getPisterHackPDR(relayBot2[0], receiver)
+                                pdr = pdrSenderRelay * pdrRelayRelay * pdrRelayReceiver
+                                rand = random.uniform(0, 1)
+                                if rand <= pdr:
+                                    #print('real PDR = ', pdr)
+                                    return pdr
 
             # for device in self.devices:
             #     for relay in self.orch.navigation.relayBots:

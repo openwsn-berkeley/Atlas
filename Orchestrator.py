@@ -590,7 +590,7 @@ class Navigation_Atlas(Navigation):
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                  = dotbot['target']                         # set target as las allocated target until updated
         self.skip               = False
-        #
+
         self._getRelayBots(self.dotbotsview)
         while True:
             # keep going towards same target if target hasn't been explored yet
@@ -605,49 +605,48 @@ class Navigation_Atlas(Navigation):
 
                 path2target               = self._path2Target(centreCellcentre,target)
 
+            elif dotbot in self.relayBots :
+
+                target = self._getRelayPosition(dotbot)
+                if not target:
+                    self.relayBots.remove(dotbot)
+                    return
+                if centreCellcentre == target:
+                    # store new movement
+                    dotbot['speed'] = -1
+                    return
+                else:
+                    path2target = self._path2Target(centreCellcentre, target)
+
+
             else:
 
-                if dotbot in self.relayBots :
-                    target = self._getRelayPosition(dotbot)
-                    if not target:
-                        self.relayBots.remove(dotbot)
-                        return
-                    if centreCellcentre == target:
-                        # store new movement
-                        dotbot['speed'] = -1
-                        return
-                    else:
-                        path2target = self._path2Target(centreCellcentre, target)
+                # if target explored or no paths to target, find a new target
 
+                # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
+                # find closest frontier to robot and out of those, closest to the initial position cell
 
-                else:
+                frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
+                if not frontierCellsAndDistances:   # no more available frontier cells
+                    return
 
-                    # if target explored or no paths to target, find a new target
+                closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
+                frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
 
-                    # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
-                    # find closest frontier to robot and out of those, closest to the initial position cell
+                # chose frontier cell
+                frontierCell  = random.choice(frontierCells)
 
-                    frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
-                    if not frontierCellsAndDistances:   # no more available frontier cells
-                        return
+                # chose target
+                for n in self._oneHopNeighborsShuffled(*frontierCell):
+                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
+                        target = n
+                        break
 
-                    closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
-                    frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
+                assert target
 
-                    # chose frontier cell
-                    frontierCell  = random.choice(frontierCells)
+                self.hCellsUnreachable = []   # clear out unreachable cells associated with path to previous target
 
-                    # chose target
-                    for n in self._oneHopNeighborsShuffled(*frontierCell):
-                        if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                            target = n
-                            break
-
-                    assert target
-
-                    self.hCellsUnreachable = []   # clear out unreachable cells associated with path to previous target
-
-                    path2target            = self._path2Target(centreCellcentre, target)
+                path2target            = self._path2Target(centreCellcentre, target)
 
             if path2target:
                 break
@@ -916,8 +915,12 @@ class Navigation_Atlas(Navigation):
         return
 
     def _getRelayPosition(self, relayBot):
-        #print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]))
-
+        x = None
+        y = None
+        print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]))
+        print('--positioned relays--', self.positionedRelays)
+        print('==relay positions==', self.relayPositions)
+        print(self.dotbotsview)
 
         pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1])
         pdrHistoryReversed = pdrHistory[::-1]
@@ -926,24 +929,22 @@ class Navigation_Atlas(Navigation):
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]
-                #return (10, 1)
-                print(x,y)
-                if (x,y) in self.hCellsObstacle or (x,y) in self.relayPositions:
-                    continue
-                else:
-                    self.relayPositions += [(x,y)]
-                    return (x, y)
+                break
+
+        if not x and not y:
+            return
+
+        for p in self.relayPositions:
+            if (x>= (p[0] - 5) and x<= (p[0] + 5)) and (y >= (p[1] - 5) and y<= (p[1] + 5)):
+                return
+        if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions:
+            self.relayPositions += [(x,y)]
+            self.positionedRelays += [relayBot['ID']]
+            return (x, y)
+
         return
-        # bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
-        # x = bestPDRposition[0]
-        # y = bestPDRposition[1]
 
 
-        # def _getRelayPosition(self, relayBot):
-        #     pdrHistory = relayBot['pdrHistory']
-        #     bestPDRposition = sorted(pdrHistory, key=lambda item: item[0])[-1][1]
-        #     print(bestPDRposition)
-        #     return bestPDRposition
 
 
     
