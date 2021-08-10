@@ -471,6 +471,7 @@ class Navigation_Atlas(Navigation):
         self.relayBots         = []
         self.positionedRelays  = []
         self.relayPositions    = []
+        self.readyRelays       = []
 
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -598,7 +599,7 @@ class Navigation_Atlas(Navigation):
             if (target                                                               and
                (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
                (self.skip == False)                                                  or
-               (dotbot['ID'] in self.positionedRelays and dotbot['speed'] != -1)) :
+               (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
 
                 if self.movingDuration == 0:
                     # avoid these cells when finding new path to target
@@ -607,11 +608,13 @@ class Navigation_Atlas(Navigation):
                 if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
                     # store new movement
                     dotbot['speed'] = -1
+                    self.readyRelays += [dotbot]
                     return
 
                 path2target               = self._path2Target(centreCellcentre,target)
 
-            elif (dotbot in self.relayBots) and (dotbot['ID'] not in self.positionedRelays):
+
+            elif (dotbot in self.relayBots):
 
                 target = self._getRelayPosition(dotbot)
 
@@ -913,8 +916,9 @@ class Navigation_Atlas(Navigation):
         for db in allDotBots:
             if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
                 #if db not in self.relayBots and (len(self.relayBots) < (len(allDotBots)/2)):
-                self.relayBots += [db]
-                return
+                if db not in self.relayBots:
+                    self.relayBots += [db]
+                    return
 
         return
 
@@ -929,7 +933,7 @@ class Navigation_Atlas(Navigation):
         pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1])
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
-            if  value[0] >= 0.9 :
+            if  value[0] >= 1-(len(self.positionedRelays)/10) :
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]

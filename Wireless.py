@@ -100,7 +100,7 @@ class Wireless(object):
             return pdr
 
         else:
-            for relay in self.orch.navigation.relayBots:
+            for relay in self.orch.navigation.readyRelays:
                 allDevices = self.devices.copy()
                 allDevices.pop()
                 relayBot = [device for device in allDevices if device.dotBotId == relay['ID']]
