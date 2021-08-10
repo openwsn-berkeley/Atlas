@@ -608,7 +608,7 @@ class Navigation_Atlas(Navigation):
                 if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
                     # store new movement
                     dotbot['speed'] = -1
-                    self.readyRelays += [dotbot]
+                    self.readyRelays += [dotbot['ID']]
                     return
 
                 path2target               = self._path2Target(centreCellcentre,target)

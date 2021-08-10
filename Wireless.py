@@ -92,43 +92,57 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _computePDR(self,sender,receiver):
+        pdrSenderRelayH1   = None
+        pdrRelayH1RelayH2  = None
+        pdrRelayH2RelayH3  = None
+        relayH1            = None
+        relayH2            = None
+        relayH3            = None
 
+        allDotBots = self.devices.copy()
+        allDotBots.pop()
+        allRelays = [d for d in allDotBots if d.dotBotId in self.orch.navigation.readyRelays.copy()]
         pdr = self._getPisterHackPDR(sender, receiver)
         rand = random.uniform(0, 1)
         if rand <= pdr:
-            #print('real PDR = ', pdr)
+            print('real PDR = ', pdr)
             return pdr
 
-        else:
-            for relay in self.orch.navigation.readyRelays:
-                allDevices = self.devices.copy()
-                allDevices.pop()
-                relayBot = [device for device in allDevices if device.dotBotId == relay['ID']]
-                if relayBot:
-                    pdrSenderRelay   = self._getPisterHackPDR(sender,relayBot[0])
-                    pdrRelayReceiver = self._getPisterHackPDR(relayBot[0],receiver)
-                    pdr = pdrSenderRelay * pdrRelayReceiver
-                    rand = random.uniform(0, 1)
-                    if rand <= pdr:
-                        #print('real PDR = ', pdr)
-                        return pdr
-                    else:
-                        remainingRelays = self.orch.navigation.relayBots.copy()
-                        remainingRelays.pop(0)
-                        for relay2 in remainingRelays:
-                            allDevices = self.devices.copy()
-                            allDevices.pop()
-                            relayBot2 = [device for device in allDevices if device.dotBotId == relay2['ID']]
-                            if relayBot2:
-                                pdrSenderRelay = self._getPisterHackPDR(sender, relayBot[0])
-                                pdrRelayRelay = self._getPisterHackPDR(relayBot[0], relayBot2[0])
-                                pdrRelayReceiver = self._getPisterHackPDR(relayBot2[0], receiver)
-                                pdr = pdrSenderRelay * pdrRelayRelay * pdrRelayReceiver
-                                rand = random.uniform(0, 1)
-                                if rand <= pdr:
-                                    #print('real PDR = ', pdr)
-                                    return pdr
+        elif allRelays:
 
+            for relayH1 in allRelays:
+                pdrSenderRelayH1 = self._getPisterHackPDR(sender, relayH1)
+                rand = random.uniform(0, 1)
+                if rand <= pdrSenderRelayH1:
+                    break
+
+            if allRelays:
+                allRelays.pop(0)
+
+            if allRelays and pdrSenderRelayH1:
+                for relayH2 in allRelays:
+                    pdrRelayH1RelayH2 = self._getPisterHackPDR(relayH1, relayH2)
+                    rand = random.uniform(0, 1)
+                    if rand <= pdrRelayH1RelayH2:
+                        break
+            else:
+                pdr = pdrSenderRelayH1 * self._getPisterHackPDR(relayH1, receiver)
+
+
+            if allRelays:
+                allRelays.pop(0)
+
+            if allRelays and pdrSenderRelayH1 and pdrRelayH1RelayH2:
+                for relayH3 in allRelays:
+                    pdrRelayH2RelayH3 = self._getPisterHackPDR(relayH3, receiver)
+                    rand = random.uniform(0, 1)
+                    if rand <= pdrRelayH2RelayH3:
+                        break
+                pdr = pdrSenderRelayH1 * pdrRelayH1RelayH2 * pdrRelayH2RelayH3
+
+            if rand <= pdr:
+                print('real PDR = ', pdr)
+                return pdr
 
 
         return pdr
