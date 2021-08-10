@@ -926,8 +926,8 @@ class Navigation_Atlas(Navigation):
         x = None
         y = None
         #print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]))
-        print('--positioned relays--', self.positionedRelays)
-        print('==relay positions==', self.relayPositions)
+        #print('--positioned relays--', self.positionedRelays)
+        #print('==relay positions==', self.relayPositions)
 
 
         pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1])
@@ -943,7 +943,7 @@ class Navigation_Atlas(Navigation):
             return
 
         for p in self.relayPositions:
-            if (x>= (p[0] - 5) and x<= (p[0] + 5)) and (y >= (p[1] - 5) and y<= (p[1] + 5)):
+            if (x>= (p[0] - 10) and x<= (p[0] + 10)) and (y >= (p[1] - 10) and y<= (p[1] + 10)):
                 return
         if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions:
             self.relayPositions += [(x,y)]

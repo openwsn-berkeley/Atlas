@@ -96,7 +96,7 @@ class Wireless(object):
         pdr = self._getPisterHackPDR(sender, receiver)
         rand = random.uniform(0, 1)
         if rand <= pdr:
-            print('real PDR = ', pdr)
+            #print('real PDR = ', pdr)
             return pdr
 
         else:
@@ -110,7 +110,7 @@ class Wireless(object):
                     pdr = pdrSenderRelay * pdrRelayReceiver
                     rand = random.uniform(0, 1)
                     if rand <= pdr:
-                        print('real PDR = ', pdr)
+                        #print('real PDR = ', pdr)
                         return pdr
                     else:
                         remainingRelays = self.orch.navigation.relayBots.copy()
@@ -120,27 +120,16 @@ class Wireless(object):
                             allDevices.pop()
                             relayBot2 = [device for device in allDevices if device.dotBotId == relay2['ID']]
                             if relayBot2:
-                                pdrSenderRelay = self._getPisterHackPDR(sender, relayBot2[0])
+                                pdrSenderRelay = self._getPisterHackPDR(sender, relayBot[0])
                                 pdrRelayRelay = self._getPisterHackPDR(relayBot[0], relayBot2[0])
                                 pdrRelayReceiver = self._getPisterHackPDR(relayBot2[0], receiver)
                                 pdr = pdrSenderRelay * pdrRelayRelay * pdrRelayReceiver
                                 rand = random.uniform(0, 1)
                                 if rand <= pdr:
-                                    print('real PDR = ', pdr)
+                                    #print('real PDR = ', pdr)
                                     return pdr
 
-            # for device in self.devices:
-            #     for relay in self.orch.navigation.relayBots:
-            #         if device != sender and device != receiver and device != self.orch:
-            #             if device.dotBotId == relay['ID'] :
-            #                 relay = device
-            #
-            #                 pdrSenderRelay   = self._getPisterHackPDR(sender,relay)
-            #                 pdrRelayReceiver = self._getPisterHackPDR(relay,receiver)
-            #                 pdr = pdrSenderRelay * pdrRelayReceiver
-            #                 rand = random.uniform(0, 1)
-            #                 if rand <= pdr:
-            #                     return pdr
+
 
         return pdr
     
@@ -163,42 +152,42 @@ class Wireless(object):
 
 
         distance = int(u.distance(pos1,pos2))
-        # distanceToPDR = [1.0000,0.999,0.999,
-        #                  0.9854,0.9851,0.9848,
-        #                  0.9745,0.9739,0.9737,
-        #                  0.9735,0.9731,0.9730,
-        #                  0.9611,0.9609,0.9605,
-        #                  0.9562,0.9558,0.9555,
-        #                  0.9427,0.9405,0.9400,
-        #                  0.9324,0.8900,0.8800,
-        #                  0.8702,0.8690,0.8680,
-        #                  0.8603,0.8590,0.8580,
-        #                  0.7476,0.7400,0.7300,
-        #                  0.6866,0.6860,0.6700,
-        #                  0.6359,0.6100,0.5200,
-        #                  0.4071,0.3500,0.3200,
-        #                  0.2340,0.2200,0.2100,
-        #                  0.1494,0.1400,0.1300,
-        #                  0.1010,0.1009,0.10003,
-        #
-        #                 ]
-        distanceToPDR = [1.0000,0.999,
-                         0.9854,0.9851,
-                         0.9745,0.9739,
-                         0.9735,0.9731,
-                         0.9611,0.9609,
-                         0.8702,0.8690,
-                         0.8603,0.8590,
-                         0.7476,0.7400,
-                         0.6866,0.6860,
-                         0.4071,0.3500,
-                         0.2340,0.2200,
-                         0.1494,0.1400,
-                         0.1010,0.1009,
+        distanceToPDR = [1.0000,0.999,0.999,
+                         0.9854,0.9851,0.9848,
+                         0.9745,0.9739,0.9737,
+                         0.9735,0.9731,0.9730,
+                         0.9611,0.9609,0.9605,
+                         0.9562,0.9558,0.9555,
+                         0.9427,0.9405,0.9400,
+                         0.9324,0.8900,0.8800,
+                         0.8702,0.8690,0.8680,
+                         0.8603,0.8590,0.8580,
+                         0.7476,0.7400,0.7300,
+                         0.6866,0.6860,0.6700,
+                         0.6359,0.6100,0.5200,
+                         0.4071,0.3500,0.3200,
+                         0.2340,0.2200,0.2100,
+                         0.1494,0.1400,0.1300,
+                         0.1010,0.1009,0.10003,
 
                         ]
+        # distanceToPDR = [1.0000,0.999,
+        #                  0.9854,0.9851,
+        #                  0.9745,0.9739,
+        #                  0.9735,0.9731,
+        #                  0.9611,0.9609,
+        #                  0.8702,0.8690,
+        #                  0.8603,0.8590,
+        #                  0.7476,0.7400,
+        #                  0.6866,0.6860,
+        #                  0.4071,0.3500,
+        #                  0.2340,0.2200,
+        #                  0.1494,0.1400,
+        #                  0.1010,0.1009,
+        #
+        #                 ]
 
-        if distance < 20:
+        if distance < 50:
             pdr = distanceToPDR[distance]
         else:
             pdr = 0
