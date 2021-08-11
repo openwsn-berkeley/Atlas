@@ -211,7 +211,7 @@ for (idx,floorplan) in enumerate(FLOORPLANS):
                 'numDotBots'         : 50,
                 'floorplanType'       : idx ,
                 'floorplanDrawing'   : floorplan,
-                'initialPosition'    :  (1,1),
+                'initialPosition'    :  (77,11),
                 'navAlgorithm'       :  'Atlas',
                 #'pdr'                :  pdr,
             },

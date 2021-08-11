@@ -930,7 +930,8 @@ class Navigation_Atlas(Navigation):
         #print('==relay positions==', self.relayPositions)
 
 
-        pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1])
+        pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1][1])
+        #pdrHistory = relayBot['pdrHistory']
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
             if  value[0] >= 1-(len(self.positionedRelays)/10) :
@@ -943,7 +944,7 @@ class Navigation_Atlas(Navigation):
             return
 
         for p in self.relayPositions:
-            if (x>= (p[0] - 10) and x<= (p[0] + 10)) and (y >= (p[1] - 10) and y<= (p[1] + 10)):
+            if (x>= (p[0] - 10) and x<= (p[0] + 10)) and ((y >= (p[1] - 10) and y<= (p[1] + 10))):
                 return
         if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions:
             self.relayPositions += [(x,y)]
@@ -952,10 +953,6 @@ class Navigation_Atlas(Navigation):
 
         return
 
-
-
-
-    
 class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.

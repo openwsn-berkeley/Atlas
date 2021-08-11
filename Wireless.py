@@ -105,7 +105,7 @@ class Wireless(object):
         pdr = self._getPisterHackPDR(sender, receiver)
         rand = random.uniform(0, 1)
         if rand <= pdr:
-            print('real PDR = ', pdr)
+            #print('real PDR = ', pdr)
             return pdr
 
         elif allRelays:
@@ -141,7 +141,7 @@ class Wireless(object):
                 pdr = pdrSenderRelayH1 * pdrRelayH1RelayH2 * pdrRelayH2RelayH3
 
             if rand <= pdr:
-                print('real PDR = ', pdr)
+                #print('real PDR = ', pdr)
                 return pdr
 
 
