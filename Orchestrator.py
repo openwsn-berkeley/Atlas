@@ -291,7 +291,7 @@ class MapBuilder(object):
 
 class Navigation(object):
 
-    def __init__(self, numDotBots, initialPosition):
+    def __init__(self, numDotBots, initialPosition, relayAlg):
 
         # store params
         self.numDotBots      = numDotBots
@@ -419,10 +419,10 @@ class Navigation(object):
 
 class Navigation_Ballistic(Navigation):
 
-    def __init__(self, numDotBots, initialPosition):
+    def __init__(self, numDotBots, initialPosition, relayAlg):
 
         # initialize parent
-        super().__init__(numDotBots, initialPosition)
+        super().__init__(numDotBots, initialPosition, relayAlg)
 
         # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -453,10 +453,10 @@ class Navigation_Ballistic(Navigation):
 
 class Navigation_Atlas(Navigation):
 
-    def __init__(self, numDotBots, initialPosition):
+    def __init__(self, numDotBots, initialPosition, relayAlg):
 
         # initialize parent
-        super().__init__(numDotBots, initialPosition)
+        super().__init__(numDotBots, initialPosition, relayAlg)
 
         # (additional) local variables
         # shorthands for initial x,y position
@@ -472,6 +472,7 @@ class Navigation_Atlas(Navigation):
         self.positionedRelays  = []
         self.relayPositions    = []
         self.readyRelays       = []
+        self.algorithm         = relayAlg
 
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -591,8 +592,8 @@ class Navigation_Atlas(Navigation):
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                  = dotbot['target']                         # set target as las allocated target until updated
         self.skip               = False
-
-        self._getRelayBots(self.dotbotsview)
+        algorithm               = self.algorithm
+        self._getRelayBots(self.dotbotsview, algorithm)
         while True:
             # keep going towards same target if target hasn't been explored yet
 
@@ -616,7 +617,7 @@ class Navigation_Atlas(Navigation):
 
             elif (dotbot in self.relayBots):
 
-                target = self._getRelayPosition(dotbot)
+                target = self._getRelayPosition(dotbot, algorithm)
 
                 if not target :
                     self.relayBots.remove(dotbot)
@@ -911,24 +912,38 @@ class Navigation_Atlas(Navigation):
         random.shuffle(returnVal)
         return returnVal
 
-    def _getRelayBots(self, allDotBots):
+    #################################### Relay Placement Algorithms ###################################################
+
+    def _getRelayBots(self, allDotBots, algorithm):
+        if algorithm == 'recovery':
+            self._recovery_getRelayBots(allDotBots)
+            return
+        if algorithm == 'naive':
+            self._naive_getRelayBots(allDotBots)
+            return
+
+    def _getRelayPosition(self, relayBot, algorithm):
+        if algorithm == 'recovery':
+            return self._recovery_getRelayPosition(relayBot)
+        if algorithm == 'naive':
+            return self._naive_getRelayPosition(relayBot)
+
+
+    ######## Recovery Algorithm
+
+    def _recovery_getRelayBots(self, allDotBots):
 
         for db in allDotBots:
             if db['heartbeat'] < 0.7 and db['heartbeat'] > 0 :
-                #if db not in self.relayBots and (len(self.relayBots) < (len(allDotBots)/2)):
                 if db not in self.relayBots:
                     self.relayBots += [db]
                     return
 
         return
 
-    def _getRelayPosition(self, relayBot):
+    def _recovery_getRelayPosition(self, relayBot):
         x = None
         y = None
-        #print('++++relayBots+++++', set([r['ID'] for r in self.relayBots]))
-        #print('--positioned relays--', self.positionedRelays)
-        #print('==relay positions==', self.relayPositions)
-
 
         pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1][1])
         #pdrHistory = relayBot['pdrHistory']
@@ -946,12 +961,30 @@ class Navigation_Atlas(Navigation):
         for p in self.relayPositions:
             if (x>= (p[0] - 10) and x<= (p[0] + 10)) and ((y >= (p[1] - 10) and y<= (p[1] + 10))):
                 return
+
         if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions:
             self.relayPositions += [(x,y)]
             self.positionedRelays += [relayBot['ID']]
             return (x, y)
 
         return
+
+    ######## Naïve Algorithm
+
+    def _naive_getRelayBots(self, allDotBots):
+        overlayGridSize = len(self.hCellsOpen)+len(self.hCellsObstacle)
+        if ((overlayGridSize % 200 == 0)                    and
+            (len(self.relayBots) < (overlayGridSize/200))     ):
+            self.relayBots += [random.choice(allDotBots)]
+        return
+
+    def _naive_getRelayPosition(self, relayBot):
+        x = relayBot['x']
+        y = relayBot['y']
+        self.relayPositions += [(x, y)]
+        self.positionedRelays += [relayBot['ID']]
+        return (x,y)
+
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -960,17 +993,18 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
 
-    def __init__(self,numDotBots,initialPosition,navAlgorithm):
+    def __init__(self,numDotBots,initialPosition,navAlgorithm, relayAlg):
 
         # store params
         self.numDotBots        = numDotBots
         self.initialPosition   = initialPosition
+        self.relayAlg          = relayAlg
 
         # local variables
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         navigationclass         = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
-        self.navigation         = navigationclass(self.numDotBots, self.initialPosition)
+        self.navigation         = navigationclass(self.numDotBots, self.initialPosition, self.relayAlg)
         self.communicationQueue = []
     
     #======================== public ==========================================

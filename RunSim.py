@@ -190,14 +190,7 @@ FLOORPLANS    = [
 # ''',
 ]
 
-# FLOORPLANS   = [
-#
 
-#
-
-#
-#
-# ]
 
 #PDRS          = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
 
@@ -213,6 +206,7 @@ for (idx,floorplan) in enumerate(FLOORPLANS):
                 'floorplanDrawing'   : floorplan,
                 'initialPosition'    :  (77,11),
                 'navAlgorithm'       :  'Atlas',
+                'relayAlg'           :  'naive'
                 #'pdr'                :  pdr,
             },
         ]
@@ -245,6 +239,7 @@ def oneSim(simSetting,simUI):
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
+        simSetting['relayAlg'],
     )
     
     # create the wireless communication medium
