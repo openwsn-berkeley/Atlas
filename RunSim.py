@@ -206,7 +206,7 @@ for (idx,floorplan) in enumerate(FLOORPLANS):
                 'floorplanDrawing'   : floorplan,
                 'initialPosition'    :  (77,11),
                 'navAlgorithm'       :  'Atlas',
-                'relayAlg'           :  'naive'
+                'relayAlg'           :  'selfHealing'
                 #'pdr'                :  pdr,
             },
         ]

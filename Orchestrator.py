@@ -473,6 +473,7 @@ class Navigation_Atlas(Navigation):
         self.relayPositions    = []
         self.readyRelays       = []
         self.algorithm         = relayAlg
+        self.targetBotsAndData = []
 
         # initial movements
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -593,6 +594,7 @@ class Navigation_Atlas(Navigation):
         target                  = dotbot['target']                         # set target as las allocated target until updated
         self.skip               = False
         algorithm               = self.algorithm
+
         self._getRelayBots(self.dotbotsview, algorithm)
         while True:
             # keep going towards same target if target hasn't been explored yet
@@ -921,12 +923,17 @@ class Navigation_Atlas(Navigation):
         if algorithm == 'naive':
             self._naive_getRelayBots(allDotBots)
             return
+        if algorithm == 'selfHealing':
+            self._selfHealing_getRelayBots(allDotBots)
+            return
 
     def _getRelayPosition(self, relayBot, algorithm):
         if algorithm == 'recovery':
             return self._recovery_getRelayPosition(relayBot)
         if algorithm == 'naive':
             return self._naive_getRelayPosition(relayBot)
+        if algorithm == 'selfHealing':
+            return self._selfHealing_getRelayPosition(relayBot)
 
 
     ######## Recovery Algorithm
@@ -985,6 +992,61 @@ class Navigation_Atlas(Navigation):
         self.positionedRelays += [relayBot['ID']]
         return (x,y)
 
+    ######## Self-Healing Algorithm
+    def _selfHealing_getRelayBots(self, allDotBots):
+        distances = []
+
+        needRelay = False
+        for d in allDotBots:
+            distanceOrchToRobot = u.distance((d['x'],d['y']),(self.ix,self.iy))
+            if distanceOrchToRobot >= 30:
+                needRelay = True
+            else:
+                continue
+
+            if self.relayPositions:
+                distances += [u.distance((d['x'],d['y']),rp) for rp in self.relayPositions]
+                for distance in distances:
+                    if distance <= 30:
+                        needRelay = False
+                        break
+
+            if needRelay == True:
+                if self.targetBotsAndData and d in [t['targetBot'] for t in self.targetBotsAndData]:
+                    tb = [tb for tb in self.targetBotsAndData if tb['targetBot'] == d][0]
+                    x = ((d['x'] + tb['relayPositions'][-1][0])/2)
+                    y = ((d['y'] + tb['relayPositions'][-1][1])/2)
+
+                    relayPosition = (x ,y)
+                    tb['relayPositions'] += [relayPosition]
+                    print('---', self.targetBotsAndData)
+                else:
+                    x = ((d['x'] + self.ix)/2)
+                    y = ((d['y'] + self.iy)/2)
+                    self.targetBotsAndData += [ {'targetBot':d, 'relayPositions' : [(x , y)]} ]
+                    print('+++', self.targetBotsAndData)
+
+
+                self.relayBots += [random.choice([db for db in allDotBots if (db != d)])]
+                #print(self.relayBots)
+                #break
+
+        return
+
+    def _selfHealing_getRelayPosition(self, relayBot):
+        print(self.targetBotsAndData)
+        print('.....')
+        targetChosen = random.choice(self.targetBotsAndData)
+
+        (xp,yp) = targetChosen['relayPositions'][-1]
+        (x,y)   = self._xy2hCell(xp,yp)
+        if (x,y) not in self.relayPositions and (x,y) not in self.hCellsObstacle:
+            print(x,y)
+            self.relayPositions += [targetChosen['relayPositions'][-1]]
+            self.positionedRelays += [relayBot['ID']]
+            return (x,y)
+        else:
+            return
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
