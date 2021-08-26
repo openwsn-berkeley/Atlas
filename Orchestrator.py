@@ -45,6 +45,8 @@ class MapBuilder(object):
         # schedule first housekeeping activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
         self.exploredCells = []
+        self.numRelayBots  = 0
+        self.numDotBots    = 0
 
     #======================== public ==========================================
 
@@ -212,6 +214,10 @@ class MapBuilder(object):
 
     def _isMapComplete(self):
 
+        #print(self.numDotBots, self.numRelayBots)
+        if (self.numRelayBots >= self.numDotBots) and self.numRelayBots > 0:
+            return True
+
         while True: # "loop" only once
 
             # map is not complete if mapping hasn't started
@@ -324,6 +330,9 @@ class Navigation(object):
         self.movingDuration   = 0
         self.heatmap          = [(self.initialPosition, 0)]
         self.profile          = []
+        self.relayProfile     = []
+        self.pdrProfile       = []
+        self.timeLine         = []
         self.heartbeat        = 1
         self.pdrStatus        = None
 
@@ -407,6 +416,12 @@ class Navigation(object):
         raise SystemError('abstract method')
 
     def getProfile(self):
+        raise SystemError('abstract method')
+
+    def getRelayProfile(self):
+        raise SystemError('abstract method')
+
+    def getPDRprofile(self):
         raise SystemError('abstract method')
 
     #======================== private =========================================
@@ -531,6 +546,12 @@ class Navigation_Atlas(Navigation):
 
     def getProfile(self):
         return self.profile
+
+    def getRelayProfile(self):
+        return self.relayProfile
+
+    def getPDRprofile(self):
+        return self.pdrProfile
     #======================== private =========================================
 
     def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
@@ -596,6 +617,9 @@ class Navigation_Atlas(Navigation):
         algorithm               = self.algorithm
 
         self._getRelayBots(self.dotbotsview, algorithm)
+        self.mapBuilder.numDotBots   = self.numDotBots
+        self.mapBuilder.numRelayBots = len(self.positionedRelays)
+
         while True:
             # keep going towards same target if target hasn't been explored yet
 
@@ -952,8 +976,8 @@ class Navigation_Atlas(Navigation):
         x = None
         y = None
 
-        pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1][1])
-        #pdrHistory = relayBot['pdrHistory']
+        #pdrHistory = sorted(relayBot['pdrHistory'], key=lambda item: item[1][1])
+        pdrHistory = relayBot['pdrHistory']
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
             if  value[0] >= 1-(len(self.positionedRelays)/10) :
@@ -969,7 +993,7 @@ class Navigation_Atlas(Navigation):
             if (x>= (p[0] - 10) and x<= (p[0] + 10)) and ((y >= (p[1] - 10) and y<= (p[1] + 10))):
                 return
 
-        if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions:
+        if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions and (x,y) not in self.hCellsUnreachable:
             self.relayPositions += [(x,y)]
             self.positionedRelays += [relayBot['ID']]
             return (x, y)
@@ -1019,12 +1043,12 @@ class Navigation_Atlas(Navigation):
 
                     relayPosition = (x ,y)
                     tb['relayPositions'] += [relayPosition]
-                    print('---', self.targetBotsAndData)
+                    #print('---', self.targetBotsAndData)
                 else:
                     x = ((d['x'] + self.ix)/2)
                     y = ((d['y'] + self.iy)/2)
                     self.targetBotsAndData += [ {'targetBot':d, 'relayPositions' : [(x , y)]} ]
-                    print('+++', self.targetBotsAndData)
+                    #print('+++', self.targetBotsAndData)
 
 
                 self.relayBots += [random.choice([db for db in allDotBots if (db != d)])]
@@ -1034,14 +1058,13 @@ class Navigation_Atlas(Navigation):
         return
 
     def _selfHealing_getRelayPosition(self, relayBot):
-        print(self.targetBotsAndData)
-        print('.....')
+        #print(self.targetBotsAndData)
+        #print('.....')
         targetChosen = random.choice(self.targetBotsAndData)
 
         (xp,yp) = targetChosen['relayPositions'][-1]
         (x,y)   = self._xy2hCell(xp,yp)
-        if (x,y) not in self.relayPositions and (x,y) not in self.hCellsObstacle:
-            print(x,y)
+        if (x,y) not in self.relayPositions and (x,y) not in self.hCellsObstacle and (x,y) not in self.hCellsUnreachable:
             self.relayPositions += [targetChosen['relayPositions'][-1]]
             self.positionedRelays += [relayBot['ID']]
             return (x,y)
@@ -1097,6 +1120,13 @@ class Orchestrator(Wireless.WirelessDevice):
             self._downstreamTimeoutCb,
         )
         self.navigation.profile += [len(self.navigation.hCellsOpen + self.navigation.hCellsObstacle)]
+        #if self.simEngine.currentTime() % 10 == 0:
+
+        self.navigation.relayProfile += [len(self.navigation.readyRelays)]
+        self.navigation.pdrProfile += [self.wireless.pdrMode()]
+        self.navigation.timeLine   += [self.simEngine.currentTime()]
+        #print(self.navigation.pdrProfile)
+
     def _sendDownstreamCommands(self):
         '''
         Send the next heading and speed commands to the robots

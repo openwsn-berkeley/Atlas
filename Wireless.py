@@ -3,6 +3,8 @@ import random
 # third-party
 # local
 import Utils as u
+from statistics import mode
+from statistics import mean
 
 class WirelessDevice(object):
     '''
@@ -46,6 +48,7 @@ class Wireless(object):
         self.devices         =  []
         self.constantPDR     =  self.DFLT_PDR
         self.pdrMatrix       = []
+        self.pdrs            = []
 
         # local variables
 
@@ -76,13 +79,22 @@ class Wireless(object):
         self._instance       = None
         self._init           = False
 
+    def pdrMode(self):
+        Mode = min(set(self.pdrs), key=self.pdrs.count)
+        #Mode = mode(self.pdrs)
+        #arg = mean(self.pdrs)
+        self.pdrs = []
+        return Mode
+
     def transmit(self, frame, sender):
+
         assert self.devices # make sure there are devices
         #self.updatePDRmatrix()
         for receiver in self.devices:
             if receiver==sender:
                 continue # ensures transmitter doesn't receive
             pdr  = self._computePDR(sender,receiver)
+            self.pdrs += [pdr]
             rand = random.uniform(0,1)
             if rand<pdr:
                 receiver.receive(frame)
@@ -90,6 +102,7 @@ class Wireless(object):
                 pass
 
     # ======================== private =========================================
+
 
     def _computePDR(self,sender,receiver):
         pdrSenderRelayH1   = None
@@ -106,6 +119,7 @@ class Wireless(object):
         rand = random.uniform(0, 1)
         if rand <= pdr:
             #print('real PDR = ', pdr)
+            self.pdr = pdr
             return pdr
 
         elif allRelays:
@@ -142,9 +156,10 @@ class Wireless(object):
 
             if rand <= pdr:
                 #print('real PDR = ', pdr)
+                self.pdr = pdr
                 return pdr
 
-
+        self.pdr = pdr
         return pdr
     
     def _getPisterHackPDR(self,sender,receiver):
