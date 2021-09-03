@@ -3,6 +3,8 @@ import random
 # third-party
 # local
 import Utils as u
+import computeSuccess
+
 from statistics import mode
 from statistics import mean
 
@@ -49,6 +51,8 @@ class Wireless(object):
         self.constantPDR     =  self.DFLT_PDR
         self.pdrMatrix       = []
         self.pdrs            = []
+        self.lastLinks       = None
+        self.lastLinkPDRs    = None
 
         # local variables
 
@@ -89,7 +93,7 @@ class Wireless(object):
     def transmit(self, frame, sender):
 
         assert self.devices # make sure there are devices
-        #self.updatePDRmatrix()
+
         for receiver in self.devices:
             if receiver==sender:
                 continue # ensures transmitter doesn't receive
@@ -103,64 +107,53 @@ class Wireless(object):
 
     # ======================== private =========================================
 
+    def _computePDR(self, sender, receiver):
 
-    def _computePDR(self,sender,receiver):
-        pdrSenderRelayH1   = None
-        pdrRelayH1RelayH2  = None
-        pdrRelayH2RelayH3  = None
-        relayH1            = None
-        relayH2            = None
-        relayH3            = None
+        if sender == self.orch:
+            movingNode = receiver
+        else:
+            movingNode = sender
+
+        links  =  {}
 
         allDotBots = self.devices.copy()
         allDotBots.pop()
         allRelays = [d for d in allDotBots if d.dotBotId in self.orch.navigation.readyRelays.copy()]
-        pdr = self._getPisterHackPDR(sender, receiver)
-        rand = random.uniform(0, 1)
-        if rand <= pdr:
-            #print('real PDR = ', pdr)
-            self.pdr = pdr
+
+        allNodes  = [self.orch] + allRelays + [movingNode]
+
+        if not allRelays:
+            pdr = self._getPisterHackPDR(sender,receiver)
             return pdr
 
-        elif allRelays:
+        for node1 in allNodes:
+            for node2 in allNodes:
+                if node2 == node1:
+                    continue
 
-            for relayH1 in allRelays:
-                pdrSenderRelayH1 = self._getPisterHackPDR(sender, relayH1)
-                rand = random.uniform(0, 1)
-                if rand <= pdrSenderRelayH1:
-                    break
+                linkPDR = self._getPisterHackPDR(node1,node2)
 
-            if allRelays:
-                allRelays.pop(0)
+                if linkPDR == 0:
+                    continue
 
-            if allRelays and pdrSenderRelayH1:
-                for relayH2 in allRelays:
-                    pdrRelayH1RelayH2 = self._getPisterHackPDR(relayH1, relayH2)
-                    rand = random.uniform(0, 1)
-                    if rand <= pdrRelayH1RelayH2:
-                        break
-            else:
-                pdr = pdrSenderRelayH1 * self._getPisterHackPDR(relayH1, receiver)
+                links[(node1, node2)] = linkPDR
 
 
-            if allRelays:
-                allRelays.pop(0)
+        if self.lastLinks ==  links:
+            allPDRs = self.lastLinkPDRs
+        else:
+            allPDRs = computeSuccess.computeSuccess(links, receiver)
 
-            if allRelays and pdrSenderRelayH1 and pdrRelayH1RelayH2:
-                for relayH3 in allRelays:
-                    pdrRelayH2RelayH3 = self._getPisterHackPDR(relayH3, receiver)
-                    rand = random.uniform(0, 1)
-                    if rand <= pdrRelayH2RelayH3:
-                        break
-                pdr = pdrSenderRelayH1 * pdrRelayH1RelayH2 * pdrRelayH2RelayH3
+        self.lastLinks    = links
+        self.lastLinkPDRs = allPDRs
 
-            if rand <= pdr:
-                #print('real PDR = ', pdr)
-                self.pdr = pdr
-                return pdr
+        pdr     = [sp[1] for sp in allPDRs.items() if sp[0]==movingNode]
 
-        self.pdr = pdr
-        return pdr
+        if pdr:
+            print(pdr)
+            return pdr[0]
+        else:
+            return 1
     
     def _getPisterHackPDR(self,sender,receiver):
         '''

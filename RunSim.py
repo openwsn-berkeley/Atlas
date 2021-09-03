@@ -19,7 +19,7 @@ import json
 
 #============================ defines =========================================
 
-UI_ACTIVE     = False
+UI_ACTIVE     = True
 
 FLOORPLANS    = [
 '''
@@ -194,13 +194,13 @@ FLOORPLANS    = [
 
 #PDRS          = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
 RELAYPLACEMENTALGS = ['recovery', 'selfHealing', 'naive']
-NUMROBOTS          = [35,50]
+NUMROBOTS          = [35]
 
 SIMSETTINGS   = []
 
 for (idx,floorplan) in enumerate(FLOORPLANS):
-    for relayAlg in RELAYPLACEMENTALGS:
-        for numrobot in NUMROBOTS:
+    for numrobot in NUMROBOTS:
+        for relayAlg in RELAYPLACEMENTALGS:
 
             SIMSETTINGS   += [
                 {
