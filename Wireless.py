@@ -53,6 +53,9 @@ class Wireless(object):
         self.pdrs            = []
         self.lastLinks       = None
         self.lastLinkPDRs    = None
+        self.lastTree        = None
+        self.currentPDR      = None
+
 
         # local variables
 
@@ -84,11 +87,11 @@ class Wireless(object):
         self._init           = False
 
     def pdrMode(self):
-        Mode = min(set(self.pdrs), key=self.pdrs.count)
+        #Mode = min(set(self.pdrs), key=self.pdrs.count)
         #Mode = mode(self.pdrs)
-        #arg = mean(self.pdrs)
+        arg = mean(self.pdrs)
         self.pdrs = []
-        return Mode
+        return arg
 
     def transmit(self, frame, sender):
 
@@ -109,12 +112,13 @@ class Wireless(object):
 
     def _computePDR(self, sender, receiver):
 
+        links  =  {}
+        treeInput = None
+
         if sender == self.orch:
             movingNode = receiver
         else:
             movingNode = sender
-
-        links  =  {}
 
         allDotBots = self.devices.copy()
         allDotBots.pop()
@@ -124,6 +128,7 @@ class Wireless(object):
 
         if not allRelays:
             pdr = self._getPisterHackPDR(sender,receiver)
+            self.currentPDR = pdr
             return pdr
 
         for node1 in allNodes:
@@ -138,11 +143,19 @@ class Wireless(object):
 
                 links[(node1, node2)] = linkPDR
 
+        if self.lastLinks:
+            if (self.lastLinks.keys() == links.keys()) and (self.lastLinks.values() != links.values()):
+                treeInput = self.lastTree
+            else:
+                treeInput = None
+
 
         if self.lastLinks ==  links:
             allPDRs = self.lastLinkPDRs
         else:
-            allPDRs = computeSuccess.computeSuccess(links, receiver)
+            CToutput      = computeSuccess.computeSuccess(links, receiver, treeInput)
+            allPDRs       = CToutput[0]
+            self.lastTree = CToutput[1]
 
         self.lastLinks    = links
         self.lastLinkPDRs = allPDRs
@@ -150,8 +163,9 @@ class Wireless(object):
         pdr     = [sp[1] for sp in allPDRs.items() if sp[0]==movingNode]
 
         if pdr:
-            print(pdr)
+            self.currentPDR = pdr[0]
             return pdr[0]
+
         else:
             return 1
     

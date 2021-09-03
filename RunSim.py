@@ -194,7 +194,7 @@ FLOORPLANS    = [
 
 #PDRS          = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
 RELAYPLACEMENTALGS = ['recovery', 'selfHealing', 'naive']
-NUMROBOTS          = [35]
+NUMROBOTS          = [50]
 
 SIMSETTINGS   = []
 
@@ -277,6 +277,8 @@ def oneSim(simSetting,simUI):
             'relayProfile': orchestrator.navigation.getRelayProfile(), 'pdrProfile': orchestrator.navigation.getPDRprofile(),
             'timeline': orchestrator.navigation.timeLine}
 
+
+
 #============================ main ============================================
 
 # logging
@@ -294,7 +296,7 @@ def main():
         simUI          = None
 
     startTime = time.time()
-    with open('Atlas_relayPlacementT5_kpi_Log_{0}.json'.format(time.strftime("%y%m%d%H%M%S", time.localtime(startTime))).format(), 'a') as f:
+    with open('Atlas_relayPlacementT7_kpi_Log_{0}.json'.format(time.strftime("%y%m%d%H%M%S", time.localtime(startTime))).format(), 'a') as f:
         # run a number of simulations
         for (runNum,simSetting) in enumerate(SIMSETTINGS):
             # log
