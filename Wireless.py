@@ -54,6 +54,7 @@ class Wireless(object):
         self.lastLinks       = None
         self.lastLinkPDRs    = None
         self.lastTree        = None
+        self.lastNodes       = None
         self.currentPDR      = None
 
 
@@ -65,19 +66,6 @@ class Wireless(object):
         self.devices                 = devices
 #        self.createPDRmatrix(devices)
         self.orch                    = self.devices[-1]
-
-    # def createPDRmatrix(self,devices):
-    #     for device1 in devices:
-    #         for device2 in devices:
-    #             if device1 != device2:
-    #                 self.pdrMatrix += [(device1,device2, self.constantPDR)]
-    #
-    # def updatePDRmatrix(self):
-    #     for (idx,value) in enumerate(self.pdrMatrix):
-    #         if value[0] not in self.orch.navigation.relayBots and value[0] not in self.orch.navigation.relayBots:
-    #             continue
-    #         newPdr              = self._computePDR(value[0], value[1])
-    #         self.pdrMatrix[idx] = (value[0], value[1],newPdr)
 
     def overridePDR(self,pdr):
         self.constantPDR             = pdr
@@ -101,6 +89,7 @@ class Wireless(object):
             if receiver==sender:
                 continue # ensures transmitter doesn't receive
             pdr  = self._computePDR(sender,receiver)
+
             self.pdrs += [pdr]
             rand = random.uniform(0,1)
             if rand<pdr:
@@ -112,7 +101,8 @@ class Wireless(object):
 
     def _computePDR(self, sender, receiver):
 
-        links  =  {}
+        links     = {}
+        newLinks  = {}
         treeInput = None
 
         if sender == self.orch:
@@ -131,6 +121,7 @@ class Wireless(object):
             self.currentPDR = pdr
             return pdr
 
+
         for node1 in allNodes:
             for node2 in allNodes:
                 if node2 == node1:
@@ -138,27 +129,39 @@ class Wireless(object):
 
                 linkPDR = self._getPisterHackPDR(node1,node2)
 
-                if linkPDR == 0:
-                    continue
+                # if linkPDR == 0:
+                #     continue
 
                 links[(node1, node2)] = linkPDR
 
-        if self.lastLinks:
-            if (self.lastLinks.keys() == links.keys()) and (self.lastLinks.values() != links.values()):
-                treeInput = self.lastTree
-            else:
-                treeInput = None
+        # if self.lastLinks:
+        #     if (self.lastLinks.keys() == links.keys()) and (self.lastLinks.values() != links.values()):
+        #         treeInput = self.lastTree
+        #     else:
+        #         treeInput = None
 
+        if self.lastTree:
+            treeInput = self.lastTree
+
+
+        if not self.lastTree:
+            newLinks = None
+        else:
+            for link in links.items():
+                if link[0][0] in self.lastNodes:
+                    newLinks[link[0]] = link[1]
 
         if self.lastLinks ==  links:
             allPDRs = self.lastLinkPDRs
         else:
-            CToutput      = computeSuccess.computeSuccess(links, receiver, treeInput)
+            CToutput      = computeSuccess.computeSuccess(links,  treeInput, newLinks)
             allPDRs       = CToutput[0]
             self.lastTree = CToutput[1]
 
         self.lastLinks    = links
         self.lastLinkPDRs = allPDRs
+        self.lastNodes    = allNodes
+
 
         pdr     = [sp[1] for sp in allPDRs.items() if sp[0]==movingNode]
 
