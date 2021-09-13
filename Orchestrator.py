@@ -26,7 +26,7 @@ class MapBuilder(object):
     It declares when the map is complete.
     '''
 
-    HOUSEKEEPING_PERIOD_S    = 1    # in simulated time
+    HOUSEKEEPING_PERIOD_S    = 60    # in simulated time
     MINFEATURESIZE_M         = 1.00 # shortest wall, narrowest opening
 
     def __init__(self):
