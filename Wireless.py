@@ -100,6 +100,7 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _computePDR(self, sender, receiver):
+        return 1
 
         links     = {}
         newLinks  = {}

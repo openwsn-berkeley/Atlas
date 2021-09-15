@@ -566,8 +566,13 @@ class Navigation_Atlas(Navigation):
             (x,y) = self._xy2hCell(stopX,stopY)
             self.hCellsObstacle += [(x, y)]
             traversedCells += [(x,y)]
+        else:
+            (x,y) = self._xy2hCell(stopX,stopY)
+            self.hCellsOpen += [(x, y)]
+            traversedCells += [(x,y)]
 
-        self._buildHeatmap(traversedCells)
+
+        #self._buildHeatmap(traversedCells)
 
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
@@ -623,29 +628,28 @@ class Navigation_Atlas(Navigation):
         while True:
             # keep going towards same target if target hasn't been explored yet
 
-            if (target                                                               and
-               (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
-               (self.skip == False)                                                  or
-               (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
+            if (target and
+               (target not in self.hCellsOpen and target not in self.hCellsObstacle) or
+                (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1):
 
-                if self.movingDuration == 0:
-                    # avoid these cells when finding new path to target
-                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
-
-                if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
-                    # store new movement
-                    dotbot['speed'] = -1
-                    self.readyRelays += [dotbot['ID']]
-                    return
-
-                path2target               = self._path2Target(centreCellcentre,target)
-
+                if dotbot['ID'] in self.positionedRelays:
+                    if centreCellcentre == target:
+                        # store new movement
+                        dotbot['speed'] = -1
+                        self.readyRelays += [dotbot['ID']]
+                        return
+                    else:
+                        path2target = self._path2Target(centreCellcentre, target)
+                else:
+                    path2target = dotbot['previousPath']
+                    if path2target:
+                        path2target.pop(0)
 
             elif (dotbot in self.relayBots):
 
                 target = self._getRelayPosition(dotbot, algorithm)
 
-                if not target :
+                if not target:
                     self.relayBots.remove(dotbot)
                     target = dotbot['target']
                     continue
@@ -655,32 +659,14 @@ class Navigation_Atlas(Navigation):
 
             else:
 
-                # if target explored or no paths to target, find a new target
+                targetandPath = self._findTargetandPath(centreCellcentre)
+                target        = targetandPath[0]
+                path2target   = targetandPath[1]
 
-                # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
-                # find closest frontier to robot and out of those, closest to the initial position cell
-
-                frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
-                if not frontierCellsAndDistances:   # no more available frontier cells
-                    return
-
-                closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
-                frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
-
-                # chose frontier cell
-                frontierCell  = random.choice(frontierCells)
-
-                # chose target
-                for n in self._oneHopNeighborsShuffled(*frontierCell):
-                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                        target = n
-                        break
 
                 assert target
 
-                self.hCellsUnreachable = []   # clear out unreachable cells associated with path to previous target
-
-                path2target            = self._path2Target(centreCellcentre, target)
+                self.hCellsUnreachable = []  # clear out unreachable cells associated with path to previous target
 
             if path2target:
                 break
@@ -690,8 +676,11 @@ class Navigation_Atlas(Navigation):
                 continue
 
 
-        # Find headings and time to reach next step, for every step in path2target
+
+        #Find headings and time to reach next step, for every step in path2target
+
         pathHeadings=[]
+
         for (idx,nextCell) in enumerate(path2target):
             if idx == 0:
                 (x,y)    = (dotbot['x'], dotbot['y'])
@@ -724,6 +713,37 @@ class Navigation_Atlas(Navigation):
         dotbot['seqNumMovement'] += 1
         dotbot['heartbeat']       = self.heartbeat
         dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
+
+    def _findTargetandPath(self,c0):
+
+        openPath    =  []
+        target      =  None
+        currentNode =  c0
+
+        if currentNode in self.hCellsOpen:
+            for nextn in self._oneHopNeighborsShuffled(*currentNode):
+                if (nextn not in self.hCellsOpen) and (nextn not in self.hCellsObstacle):
+                    target = nextn
+                    openPath = [target]
+                    return (target, openPath)
+
+        while True:
+
+            for n in self._oneHopNeighborsShuffled(*currentNode):
+                if n in self.hCellsOpen:
+                    openPath += [n]
+                    currentNode = n
+                    break
+
+            for nn in self._oneHopNeighborsShuffled(*currentNode):
+                if (nn not in self.hCellsOpen) and (nn not in self.hCellsObstacle):
+                    target = nn
+                    openPath += [target]
+                    break
+
+            if target and openPath:
+                return (target, openPath)
+
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
 
@@ -941,6 +961,7 @@ class Navigation_Atlas(Navigation):
     #################################### Relay Placement Algorithms ###################################################
 
     def _getRelayBots(self, allDotBots, algorithm):
+        return
         if algorithm == 'recovery':
             self._recovery_getRelayBots(allDotBots)
             return

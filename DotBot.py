@@ -210,8 +210,9 @@ class DotBot(Wireless.WirelessDevice):
         self.bump = False
         self.packetsRxRatio = self.packetsRX/self.hbLength
         #print('->', self.dotBotId,'->',self.packetsRxRatio,'->',self.x,self.y)
-        self._transmit()
-        if now > 0:
+
+        if now > 0 and self.packetsRX > 1:
+            self._transmit()
             self.packetsRX = 0
         self.PDRarray = []
 
