@@ -195,7 +195,7 @@ FLOORPLANS    = [
 #PDRS          = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
 RELAYPLACEMENTALGS = ['recovery', 'selfHealing', 'naive']
 
-NUMROBOTS          = [10]
+NUMROBOTS          = [50]
 
 SIMSETTINGS   = []
 
@@ -274,11 +274,8 @@ def oneSim(simSetting,simUI):
 
     return {'numDotBots': simSetting['numDotBots'],'navAlgorithm': simSetting['navAlgorithm'],
             'pdr': None, 'timeToFullMapping': timeToFullMapping,
-            'relayAlg': simSetting['relayAlg'],
-            'floorplanType': simSetting['floorplanType'], 'floorplanDrawing': orchestrator.navigation.getHeatmap()[1],
-            'heatmap': orchestrator.navigation.getHeatmap()[0], 'profile': orchestrator.navigation.getProfile(),
-            'relayProfile': orchestrator.navigation.getRelayProfile(), 'pdrProfile': orchestrator.navigation.getPDRprofile(),
-            'timeline': orchestrator.navigation.timeLine}
+            'relayAlg': simSetting['relayAlg']}
+
 
 
 

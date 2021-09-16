@@ -10,8 +10,6 @@ import Orchestrator
 import Wireless
 import Utils as u
 
-# logging
-log = logging.getLogger('DotBot')
 
 class DotBot(Wireless.WirelessDevice):
     '''
@@ -80,8 +78,6 @@ class DotBot(Wireless.WirelessDevice):
         else:
             stopTime = math.inf
 
-        # log
-        log.debug('[%10.3f]    --> RX command %s',now,myMovement['seqNumMovement'])
 
 
 
@@ -187,8 +183,6 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
 
-        # log
-        log.debug('[%10.3f] ================== bump',self.simEngine.currentTime())
         self.bump = True
         self._stopAndTransmit()
 
@@ -264,9 +258,6 @@ class DotBot(Wireless.WirelessDevice):
         }
 
 
-        # log
-        log.debug('[%10.3f]    <-- TX notif %s',self.simEngine.currentTime(),self.seqNumNotification)
-        
         # hand over to wireless
         self.wireless.transmit(
             frame       = frameToTx,

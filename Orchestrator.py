@@ -13,8 +13,6 @@ import Wireless
 import Utils as u
 
 
-# logging
-log = logging.getLogger('Orchestrator')
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -571,9 +569,6 @@ class Navigation_Atlas(Navigation):
             self.hCellsOpen += [(x, y)]
             traversedCells += [(x,y)]
 
-
-        #self._buildHeatmap(traversedCells)
-
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
             try:
@@ -614,7 +609,6 @@ class Navigation_Atlas(Navigation):
         \post modifies the movement directly in dotbotsview
         '''
 
-
         dotbot                  = self.dotbotsview[dotBotId]               # shorthand
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                  = dotbot['target']                         # set target as las allocated target until updated
@@ -628,41 +622,43 @@ class Navigation_Atlas(Navigation):
         while True:
             # keep going towards same target if target hasn't been explored yet
 
-            if (target and
-               (target not in self.hCellsOpen and target not in self.hCellsObstacle) or
-                (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1):
+            if (target                                                               and
+               (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
+               (self.skip == False)                                                  or
+               (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
 
-                if dotbot['ID'] in self.positionedRelays:
-                    if centreCellcentre == target:
-                        # store new movement
-                        dotbot['speed'] = -1
-                        self.readyRelays += [dotbot['ID']]
-                        return
-                    else:
-                        path2target = self._path2Target(centreCellcentre, target)
+                if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
+                    # store new movement
+                    dotbot['speed'] = -1
+                    self.readyRelays += [dotbot['ID']]
+                    return
+
+                if self.movingDuration == 0:
+                    # avoid these cells when finding new path to target
+                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
+
+                    path2target             = self._path2Target(centreCellcentre,target)
                 else:
-                    path2target = dotbot['previousPath']
-                    if path2target:
-                        path2target.pop(0)
+                    path2target             = [target]
+
 
             elif (dotbot in self.relayBots):
 
                 target = self._getRelayPosition(dotbot, algorithm)
-
                 if not target:
                     self.relayBots.remove(dotbot)
                     target = dotbot['target']
                     continue
-
                 else:
-                    path2target = self._path2Target(centreCellcentre, target)
+                    path2target = [target]
 
             else:
 
                 targetandPath = self._findTargetandPath(centreCellcentre)
+                if not targetandPath:
+                    return
                 target        = targetandPath[0]
-                path2target   = targetandPath[1]
-
+                path2target   = [target]
 
                 assert target
 
@@ -743,6 +739,8 @@ class Navigation_Atlas(Navigation):
 
             if target and openPath:
                 return (target, openPath)
+            elif (not target) and (not openPath):
+                return None
 
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
@@ -961,7 +959,6 @@ class Navigation_Atlas(Navigation):
     #################################### Relay Placement Algorithms ###################################################
 
     def _getRelayBots(self, allDotBots, algorithm):
-        return
         if algorithm == 'recovery':
             self._recovery_getRelayBots(allDotBots)
             return
@@ -1140,12 +1137,12 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-        self.navigation.profile += [len(self.navigation.hCellsOpen + self.navigation.hCellsObstacle)]
+        #self.navigation.profile += [len(self.navigation.hCellsOpen + self.navigation.hCellsObstacle)]
         #if self.simEngine.currentTime() % 10 == 0:
 
-        self.navigation.relayProfile += [len(self.navigation.readyRelays)]
-        self.navigation.pdrProfile += [self.wireless.pdrMode()]
-        self.navigation.timeLine   += [self.simEngine.currentTime()]
+        #self.navigation.relayProfile += [len(self.navigation.readyRelays)]
+        #self.navigation.pdrProfile += [self.wireless.pdrMode()]
+        #self.navigation.timeLine   += [self.simEngine.currentTime()]
         #print(self.navigation.pdrProfile)
 
     def _sendDownstreamCommands(self):
@@ -1170,9 +1167,6 @@ class Orchestrator(Wireless.WirelessDevice):
                 }
 
 
-                # log
-                log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
-
                 # hand over to wireless
                 self.wireless.transmit(
                     frame  = frameToTx,
@@ -1187,8 +1181,6 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
-        # log
-        log.debug('[%10.3f] <-- RX notif %s',self.simEngine.currentTime(),frame)
         
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
