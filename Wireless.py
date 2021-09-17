@@ -1,5 +1,6 @@
 # built-in
 import random
+import numpy as np
 # third-party
 # local
 import Utils as u
@@ -99,6 +100,39 @@ class Wireless(object):
 
     # ======================== private =========================================
 
+    PISTER_HACK_LOWER_SHIFT  =         40 # dB
+    TWO_DOT_FOUR_GHZ         = 2400000000 # Hz
+    SPEED_OF_LIGHT           =  299792458 # m/s
+
+    # RSSI and PDR relationship obtained by experiment; dataset was available
+    # at the link shown below:
+    # http://wsn.eecs.berkeley.edu/connectivity/?dataset=dust
+    RSSI_PDR_TABLE = {
+        -97:    0.0000,  # this value is not from experiment
+        -96:    0.1494,
+        -95:    0.2340,
+        -94:    0.4071,
+        # <-- 50% PDR is here, at RSSI=-93.6
+        -93:    0.6359,
+        -92:    0.6866,
+        -91:    0.7476,
+        -90:    0.8603,
+        -89:    0.8702,
+        -88:    0.9324,
+        -87:    0.9427,
+        -86:    0.9562,
+        -85:    0.9611,
+        -84:    0.9739,
+        -83:    0.9745,
+        -82:    0.9844,
+        -81:    0.9854,
+        -80:    0.9903,
+        -79:    1.0000,  # this value is not from experiment
+    }
+
+    TX_POWER = 0
+    ANTENNA_GAIN = 0 # TX & RX
+
     def _computePDR(self, sender, receiver):
 
         links     = {}
@@ -172,7 +206,7 @@ class Wireless(object):
         else:
             return 1
     
-    def _getPisterHackPDR(self,sender,receiver):
+    def _getPisterHackPDR(self,sender,receiver, rssi=False):
         '''
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
@@ -189,45 +223,41 @@ class Wireless(object):
         else:
             return 1
 
+        res = _PisterHackModel(u.distance(pos1, pos2))
+        return res if rssi else res[0]
 
-        distance = int(u.distance(pos1,pos2))
-        distanceToPDR = [1.0000,0.999,0.999,
-                         0.9854,0.9851,0.9848,
-                         0.9745,0.9739,0.9737,
-                         0.9735,0.9731,0.9730,
-                         0.9611,0.9609,0.9605,
-                         0.9562,0.9558,0.9555,
-                         0.9427,0.9405,0.9400,
-                         0.9324,0.8900,0.8800,
-                         0.8702,0.8690,0.8680,
-                         0.8603,0.8590,0.8580,
-                         0.7476,0.7400,0.7300,
-                         0.6866,0.6860,0.6700,
-                         0.6359,0.6100,0.5200,
-                         0.4071,0.3500,0.3200,
-                         0.2340,0.2200,0.2100,
-                         0.1494,0.1400,0.1300,
-                         0.1010,0.1009,0.10003,
+    def _PisterHackModel(self, distance):
+        # sqrt and inverse of the free space path loss (fspl)
+        free_space_path_loss = (
+            self.SPEED_OF_LIGHT / (4 * np.pi * distance * self.TWO_DOT_FOUR_GHZ)
+        )
 
-                        ]
-        # distanceToPDR = [1.0000,0.999,
-        #                  0.9854,0.9851,
-        #                  0.9745,0.9739,
-        #                  0.9735,0.9731,
-        #                  0.9611,0.9609,
-        #                  0.8702,0.8690,
-        #                  0.8603,0.8590,
-        #                  0.7476,0.7400,
-        #                  0.6866,0.6860,
-        #                  0.4071,0.3500,
-        #                  0.2340,0.2200,
-        #                  0.1494,0.1400,
-        #                  0.1010,0.1009,
-        #
-        #                 ]
+        # simple friis equation in Pr = Pt + Gt + Gr + 20log10(fspl)
+        pr = (
+            self.TX_POWER     +
+            self.ANTENNA_GAIN + # tx
+            self.ANTENNA_GAIN + # rx
+            (20 * np.log10(free_space_path_loss))
+        )
 
-        if distance < 50:
-            pdr = distanceToPDR[distance]
+        rssi = pr - random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+
+        minRssi = min(self.RSSI_PDR_TABLE.keys())
+        maxRssi = max(self.RSSI_PDR_TABLE.keys())
+
+        if rssi < minRssi:
+            pdr = 0.0
+        elif rssi > maxRssi:
+            pdr = 1.0
         else:
-            pdr = 0
-        return pdr
+            floor_rssi = int(np.floor(rssi))
+            pdr_low    = self.RSSI_PDR_TABLE[floor_rssi]
+            pdr_high   = self.RSSI_PDR_TABLE[floor_rssi + 1]
+            # linear interpolation
+            pdr = (pdr_high - pdr_low) * (rssi - float(floor_rssi)) + pdr_low
+
+        assert pdr >= 0.0
+        assert pdr <= 1.0
+        
+        return pdr, rssi
+
