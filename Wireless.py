@@ -90,7 +90,6 @@ class Wireless(object):
             if receiver==sender:
                 continue # ensures transmitter doesn't receive
             pdr  = self._computePDR(sender,receiver)
-
             self.pdrs += [pdr]
             rand = random.uniform(0,1)
             if rand<pdr:
@@ -168,11 +167,6 @@ class Wireless(object):
 
                 links[(node1, node2)] = linkPDR
 
-        # if self.lastLinks:
-        #     if (self.lastLinks.keys() == links.keys()) and (self.lastLinks.values() != links.values()):
-        #         treeInput = self.lastTree
-        #     else:
-        #         treeInput = None
 
         if self.lastTree:
             treeInput = self.lastTree
@@ -223,7 +217,12 @@ class Wireless(object):
         else:
             return 1
 
-        res = _PisterHackModel(u.distance(pos1, pos2))
+        distance = u.distance(pos1, pos2)
+        if distance == 0:
+            return 1
+
+        res = self._PisterHackModel(distance)
+
         return res if rssi else res[0]
 
     def _PisterHackModel(self, distance):

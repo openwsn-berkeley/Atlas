@@ -654,11 +654,15 @@ class Navigation_Atlas(Navigation):
 
             else:
 
-                targetandPath = self._findTargetandPath(centreCellcentre)
-                if not targetandPath:
+                target        = self._findTargetandPath(centreCellcentre)
+
+                if not target:
                     return
-                target        = targetandPath[0]
-                path2target   = [target]
+                start = (self.ix,self.iy)
+                if centreCellcentre in self.hCellsObstacle:
+                    path2target = self._path2Target(start,target)
+                else:
+                    path2target   = [target]
 
                 assert target
 
@@ -721,7 +725,7 @@ class Navigation_Atlas(Navigation):
                 if (nextn not in self.hCellsOpen) and (nextn not in self.hCellsObstacle):
                     target = nextn
                     openPath = [target]
-                    return (target, openPath)
+                    self._xy2hCell(target[0],target[1])
 
         while True:
 
@@ -737,76 +741,11 @@ class Navigation_Atlas(Navigation):
                     openPath += [target]
                     break
 
-            if target and openPath:
-                return (target, openPath)
-            elif (not target) and (not openPath):
-                return None
+            if target:
+                return self._xy2hCell(target[0],target[1])
+            else:
+               pass
 
-
-    def _rankHopNeighbourhood(self, c0, distanceRank):
-
-        rankHopNeighbours = []
-
-        # shorthand
-        (c0x,c0y) = c0
-
-        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
-        numberOfSurroundingCells = 8 * distanceRank
-
-        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
-        # find centres of surrounding cells based on DotBot speed and angle
-        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
-        for idx in range(numberOfSurroundingCells):
-            (x, y) = u.computeCurrentPosition(c0x, c0y,
-                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
-                                              1,  # assume speed to be 1 meter per second
-                                              0.5*distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
-
-            (scx,scy) = self._xy2hCell(x, y)
-            rankHopNeighbours += [(scx,scy)]
-
-        return rankHopNeighbours
-
-    def frontierCellsAndDistances(self, c0):
-
-        start                     = (self.ix,self.iy)  # shorthand
-        distanceRank              = 0                  # distance rank between DotBot position and surrounding cell set
-        openCells                 = []
-        frontierCellsAndDistances = []
-
-        # if cell, dotbot is on (c0), is an open cell and has at least 1 unexplored 1 hop neighbour, take c0 as frontier
-        if c0 in self.hCellsOpen and self.hCellsOpen:
-            for n in self._oneHopNeighborsShuffled(*c0):
-                if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                    f2startDistance = u.distance(c0, start)
-                    frontierCellsAndDistances += [(c0, f2startDistance)]
-                    return frontierCellsAndDistances
-
-        # if c0 is an obstacle cell, or c0 is an open cell with no unexplored 1 hop neighbours
-        # find closest open cells at least 1 unexplored 1-hop neighbours and take them as frontiers
-        while not frontierCellsAndDistances:
-
-            distanceRank += 1
-            openCells = []
-
-            rankHopNeighbourhood = self._rankHopNeighbourhood(c0, distanceRank)
-
-            for n in rankHopNeighbourhood:
-                if n in self.hCellsOpen:
-                    openCells += [n]
-
-            # no more frontiers or valid targets
-            if not openCells and c0 != start:
-                return None
-
-            for (ocx,ocy) in openCells:
-                for n in self._oneHopNeighborsShuffled(ocx,ocy):
-                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                        f2startDistance = u.distance((ocx,ocy), start)
-                        frontierCellsAndDistances += [((ocx,ocy),f2startDistance)]
-                        break
-
-        return frontierCellsAndDistances
 
     def _path2Target(self, start, target):
         '''
