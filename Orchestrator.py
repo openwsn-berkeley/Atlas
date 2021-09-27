@@ -472,6 +472,7 @@ class Navigation_Atlas(Navigation):
         super().__init__(numDotBots, initialPosition, relayAlg)
 
         # (additional) local variables
+        self.simEngine = SimEngine.SimEngine()
         # shorthands for initial x,y position
         self.ix                = initialPosition[0]
         self.iy                = initialPosition[1]
@@ -487,10 +488,19 @@ class Navigation_Atlas(Navigation):
         self.readyRelays       = []
         self.algorithm         = relayAlg
         self.targetBotsAndData = []
+        self.frontiers         = []
+        self.allTargets        = []
+        self.allPositions      = []
+
 
         # initial movements
+        self._firstMovements()
+
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
+
+        self.allPositions = []
+        self.simEngine.schedule(self.simEngine.currentTime(), self._updateFrontiersAndTargets)
 
     #======================== public ==========================================
 
@@ -580,6 +590,11 @@ class Navigation_Atlas(Navigation):
         self.hCellsOpen      = list(set(self.hCellsOpen))
         self.hCellsObstacle  = list(set(self.hCellsObstacle))
 
+        if self.allPositions:
+            return
+
+        self._findFrontierBoundary()
+
     def _buildHeatmap(self, cells):
         '''
         builds array with tuples representing (cell position, number of times traversed)
@@ -614,6 +629,7 @@ class Navigation_Atlas(Navigation):
         target                  = dotbot['target']                         # set target as las allocated target until updated
         self.skip               = False
         algorithm               = self.algorithm
+
 
         self._getRelayBots(self.dotbotsview, algorithm)
         self.mapBuilder.numDotBots   = self.numDotBots
@@ -654,13 +670,28 @@ class Navigation_Atlas(Navigation):
 
             else:
 
-                target        = self._findTargetandPath(centreCellcentre)
+                #target        = self._findTargetandPath(centreCellcentre)
+                if self.allPositions:
+                    target   = random.choice(self.allPositions)
+                    self.allPositions.remove(target)
+                else:
+                    if self.allTargets:
+                        #target   =  random.choice(self.allTargets)
+                        target    = self._findBestTarget(centreCellcentre)
+                    else:
+                        target = None
+
+                try:
+                    self.allTargets.remove(target)
+                except ValueError:
+                    pass
 
                 if not target:
                     return
+
                 start = (self.ix,self.iy)
                 if centreCellcentre in self.hCellsObstacle:
-                    path2target = self._path2Target(start,target)
+                    path2target = self._path2Target(centreCellcentre,target)
                 else:
                     path2target   = [target]
 
@@ -674,8 +705,6 @@ class Navigation_Atlas(Navigation):
                 if self.skip == False:
                     self.hCellsObstacle += [target]
                 continue
-
-
 
         #Find headings and time to reach next step, for every step in path2target
 
@@ -746,7 +775,6 @@ class Navigation_Atlas(Navigation):
             else:
                pass
 
-
     def _path2Target(self, start, target):
         '''
         A* Algorithm for finding shortest path to target
@@ -768,6 +796,9 @@ class Navigation_Atlas(Navigation):
 
             if targetBlocked != False and self.hCellsOpen:
                 self.skip = True
+                return None
+
+            if target in self.hCellsObstacle:
                 return None
 
             openCells            = sorted(openCells, key=lambda item: item['fCost']) # find open cell with lowest F cost
@@ -867,6 +898,89 @@ class Navigation_Atlas(Navigation):
 
         return returnVal
 
+    def _rankHopNeighbourhood(self, c0, distanceRank):
+
+        rankHopNeighbours = []
+
+        # shorthand
+        (c0x,c0y) = c0
+
+        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
+        numberOfSurroundingCells = 8 * distanceRank
+
+        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
+        # find centres of surrounding cells based on DotBot speed and angle
+        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
+        for idx in range(numberOfSurroundingCells):
+            (x, y) = u.computeCurrentPosition(c0x, c0y,
+                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
+                                              1,  # assume speed to be 1 meter per second
+                                              0.5*distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
+
+            (scx,scy) = self._xy2hCell(x, y)
+            rankHopNeighbours += [(scx,scy)]
+
+        return rankHopNeighbours
+
+    def _findFrontierBoundary(self):
+
+        self.frontiers  = []
+        self.allcells   = self.hCellsOpen + self.hCellsObstacle
+
+        minX = min([c[0] for c in self.allcells])
+        maxX = max([c[0] for c in self.allcells])
+        minY = min([c[1] for c in self.allcells])
+        maxY = max([c[1] for c in self.allcells])
+
+        for c in self.allcells:
+            if c[0] == minX or c[0] == maxX or c[1] == minY or c[1] == maxY:
+                    self.frontiers += [c]
+        #print('frontiers',self.frontiers)
+
+    def _findTargets(self):
+        for f in self.frontiers:
+            for n in self._oneHopNeighborsShuffled(*f):
+                if n not in self.hCellsOpen and n not in self.hCellsObstacle:
+                    self.allTargets += [n]
+
+        self.allTargets = list(set(self.allTargets))
+        #print(self.allTargets)
+
+    def _updateFrontiersAndTargets(self):
+
+        if not self.allPositions:
+            self._findFrontierBoundary()
+            self._findTargets()
+
+        self.simEngine.schedule(self.simEngine.currentTime() + 1, self._updateFrontiersAndTargets)
+
+    def _findBestTarget(self, dbpos):
+
+        targetsAndDistances2db = []
+
+        for t in self.allTargets:
+            targetsAndDistances2db += [(t,u.distance(dbpos,t))]
+
+        closestTarget = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
+        closestTargets2start = [(c,d) for (c,d) in targetsAndDistances2db if d == closestTarget]
+
+        closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
+        target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
+
+        return  target
+
+
+    def _firstMovements(self):
+
+        start   = (self.ix,self.iy)
+        rank    = 1
+        while len(self.allPositions) <= len(self.dotbotsview):
+            for pos in self._rankHopNeighbourhood(start,rank):
+                self.allPositions += [pos]
+            rank += 1
+        self.allPositions = list(set(self.allPositions))
+        return
+
     def _xy2hCell(self,x,y):
 
         xsteps = int(round((x-self.ix)/ (MapBuilder.MINFEATURESIZE_M/2),0))
@@ -915,7 +1029,6 @@ class Navigation_Atlas(Navigation):
             return self._naive_getRelayPosition(relayBot)
         if algorithm == 'selfHealing':
             return self._selfHealing_getRelayPosition(relayBot)
-
 
     ######## Recovery Algorithm
 
