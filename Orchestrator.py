@@ -630,10 +630,12 @@ class Navigation_Atlas(Navigation):
         self.skip               = False
         algorithm               = self.algorithm
 
-
         self._getRelayBots(self.dotbotsview, algorithm)
         self.mapBuilder.numDotBots   = self.numDotBots
         self.mapBuilder.numRelayBots = len(self.positionedRelays)
+
+        if centreCellcentre in self.allTargets:
+            self.allTargets.remove(target)
 
         while True:
             # keep going towards same target if target hasn't been explored yet
@@ -648,10 +650,19 @@ class Navigation_Atlas(Navigation):
                     dotbot['speed'] = -1
                     self.readyRelays += [dotbot['ID']]
                     return
-
+                targetBlocked = None
                 if self.movingDuration == 0:
                     # avoid these cells when finding new path to target
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
+                    if target in self.hCellsUnreachable:
+                        for n in self._oneHopNeighborsShuffled(*target):
+                            if n in self.hCellsOpen:
+                                targetBlocked = False
+                                break
+                    if targetBlocked != False:
+                        self.allTargets.remove(target)
+                        self.skip = True
+                        continue
 
                     path2target             = self._path2Target(centreCellcentre,target)
                 else:
@@ -687,6 +698,7 @@ class Navigation_Atlas(Navigation):
                     pass
 
                 if not target:
+                    print('RETURNING')
                     return
 
                 start = (self.ix,self.iy)
@@ -799,6 +811,11 @@ class Navigation_Atlas(Navigation):
                 return None
 
             if target in self.hCellsObstacle:
+                self.skip = True
+                try:
+                    self.allTargets.remove(target)
+                except ValueError:
+                    pass
                 return None
 
             openCells            = sorted(openCells, key=lambda item: item['fCost']) # find open cell with lowest F cost
@@ -1011,6 +1028,7 @@ class Navigation_Atlas(Navigation):
     #################################### Relay Placement Algorithms ###################################################
 
     def _getRelayBots(self, allDotBots, algorithm):
+        return
         if algorithm == 'recovery':
             self._recovery_getRelayBots(allDotBots)
             return
