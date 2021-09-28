@@ -89,8 +89,7 @@ class Wireless(object):
         for receiver in self.devices:
             if receiver==sender:
                 continue # ensures transmitter doesn't receive
-            #pdr  = self._computePDR(sender,receiver)
-            pdr = 1
+            pdr  = self._computePDR(sender,receiver)
             self.pdrs += [pdr]
             rand = random.uniform(0,1)
             if rand<pdr:

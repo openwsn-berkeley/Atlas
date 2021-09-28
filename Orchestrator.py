@@ -925,15 +925,14 @@ class Navigation_Atlas(Navigation):
     def _findFrontierBoundary(self):
 
         self.frontiers  = []
-        self.allcells   = self.hCellsOpen + self.hCellsObstacle
 
-        minX = min([c[0] for c in self.allcells])
-        maxX = max([c[0] for c in self.allcells])
-        minY = min([c[1] for c in self.allcells])
-        maxY = max([c[1] for c in self.allcells])
+        minX = min([c[0] for c in self.hCellsOpen])
+        maxX = max([c[0] for c in self.hCellsOpen])
+        minY = min([c[1] for c in self.hCellsOpen])
+        maxY = max([c[1] for c in self.hCellsOpen])
 
-        for c in self.allcells:
-            if c[0] == minX or c[0] == maxX or c[1] == minY or c[1] == maxY:
+        for c in self.hCellsOpen:
+            if c[0] >= minX and c[0] <= maxX and c[1] >= minY and c[1] <= maxY:
                     self.frontiers += [c]
         #print('frontiers',self.frontiers)
 
