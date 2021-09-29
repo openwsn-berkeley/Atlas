@@ -136,7 +136,7 @@ class SimUI(object):
             try:
                 args[0](**kwargs) # blocking
             except Exception as err:
-                if False:  # how to get socket.error? if err[0] == 10013:
+                if False: # how to get socket.error? if err[0] == 10013:
                     print('FATAL: cannot open TCP port {0}.'.format(kwargs['port']))
                     print('    Is another application running on that port?')
                 else:
