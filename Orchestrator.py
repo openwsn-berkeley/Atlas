@@ -687,11 +687,16 @@ class Navigation_Atlas(Navigation):
                     pass
 
                 if not target:
-                    print('RETURNING')
+                    print('RETURNING', dotBotId, self.allTargets, self.simEngine.currentTime())
+                    dotbot['ID']     = dotBotId
+                    dotbot['target'] = centreCellcentre
+                    dotbot['timer']  = None
+                    dotbot['speed']  = 1
+                    dotbot['seqNumMovement'] += 1
+
                     return
 
                 assert target
-
                 if self.end:
                     return
 
