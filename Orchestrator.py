@@ -491,15 +491,18 @@ class Navigation_Atlas(Navigation):
         self.frontiers         = []
         self.allTargets        = []
         self.allPositions      = []
+        self.end               = False
 
 
         # initial movements
         self._firstMovements()
 
         for (dotBotId,_) in enumerate(self.dotbotsview):
+
             self._updateMovement(dotBotId)
 
         self.allPositions = []
+
         self.simEngine.schedule(self.simEngine.currentTime(), self._updateFrontiersAndTargets)
 
     #======================== public ==========================================
@@ -590,11 +593,6 @@ class Navigation_Atlas(Navigation):
         self.hCellsOpen      = list(set(self.hCellsOpen))
         self.hCellsObstacle  = list(set(self.hCellsObstacle))
 
-        if self.allPositions:
-            return
-
-        self._findFrontierBoundary()
-
     def _buildHeatmap(self, cells):
         '''
         builds array with tuples representing (cell position, number of times traversed)
@@ -635,7 +633,10 @@ class Navigation_Atlas(Navigation):
         self.mapBuilder.numRelayBots = len(self.positionedRelays)
 
         if centreCellcentre in self.allTargets:
-            self.allTargets.remove(target)
+            try:
+                self.allTargets.remove(target)
+            except ValueError:
+                pass
 
         while True:
             # keep going towards same target if target hasn't been explored yet
@@ -650,23 +651,13 @@ class Navigation_Atlas(Navigation):
                     dotbot['speed'] = -1
                     self.readyRelays += [dotbot['ID']]
                     return
-                targetBlocked = None
+
                 if self.movingDuration == 0:
                     # avoid these cells when finding new path to target
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
-                    if target in self.hCellsUnreachable:
-                        for n in self._oneHopNeighborsShuffled(*target):
-                            if n in self.hCellsOpen:
-                                targetBlocked = False
-                                break
-                    if targetBlocked != False:
-                        self.allTargets.remove(target)
-                        self.skip = True
-                        continue
 
-                    path2target             = self._path2Target(centreCellcentre,target)
-                else:
-                    path2target             = [target]
+                path2target             = self._path2Target(centreCellcentre,target)
+
 
 
             elif (dotbot in self.relayBots):
@@ -677,18 +668,16 @@ class Navigation_Atlas(Navigation):
                     target = dotbot['target']
                     continue
                 else:
-                    path2target = [target]
+                    path2target = self._path2Target(centreCellcentre,target)
 
             else:
 
-                #target        = self._findTargetandPath(centreCellcentre)
                 if self.allPositions:
-                    target   = random.choice(self.allPositions)
-                    self.allPositions.remove(target)
+                    target     = self.allPositions[dotBotId]
+
                 else:
                     if self.allTargets:
-                        #target   =  random.choice(self.allTargets)
-                        target    = self._findBestTarget(centreCellcentre)
+                        target = self._findBestTarget(centreCellcentre)
                     else:
                         target = None
 
@@ -701,13 +690,15 @@ class Navigation_Atlas(Navigation):
                     print('RETURNING')
                     return
 
-                start = (self.ix,self.iy)
-                if centreCellcentre in self.hCellsObstacle:
-                    path2target = self._path2Target(centreCellcentre,target)
-                else:
-                    path2target   = [target]
-
                 assert target
+
+                if self.end:
+                    return
+
+                if self.allPositions:
+                    path2target = [target]
+                else:
+                    path2target = self._path2Target(centreCellcentre,target)
 
                 self.hCellsUnreachable = []  # clear out unreachable cells associated with path to previous target
 
@@ -951,7 +942,8 @@ class Navigation_Atlas(Navigation):
         for c in self.hCellsOpen:
             if c[0] >= minX and c[0] <= maxX and c[1] >= minY and c[1] <= maxY:
                     self.frontiers += [c]
-        #print('frontiers',self.frontiers)
+        if not self.frontiers:
+            self.end = True
 
     def _findTargets(self):
         for f in self.frontiers:
@@ -960,7 +952,6 @@ class Navigation_Atlas(Navigation):
                     self.allTargets += [n]
 
         self.allTargets = list(set(self.allTargets))
-        #print(self.allTargets)
 
     def _updateFrontiersAndTargets(self):
 
@@ -988,13 +979,15 @@ class Navigation_Atlas(Navigation):
 
     def _firstMovements(self):
 
-        start   = (self.ix,self.iy)
-        rank    = 1
-        while len(self.allPositions) <= len(self.dotbotsview):
+        start     = (self.ix,self.iy)
+        rank      = 1
+        numRobots = len(self.dotbotsview)
+        while len(self.allPositions) <= numRobots:
             for pos in self._rankHopNeighbourhood(start,rank):
                 self.allPositions += [pos]
             rank += 1
         self.allPositions = list(set(self.allPositions))
+
         return
 
     def _xy2hCell(self,x,y):
