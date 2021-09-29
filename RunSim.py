@@ -209,7 +209,7 @@ for (idx,floorplan) in enumerate(FLOORPLANS):
                     'floorplanType'       : idx ,
                     'floorplanDrawing'   : floorplan,
                     'initialPosition'    : (1,1),#(79,11),
-                    'navAlgorithm'       :  'Atlas',
+                    'navAlgorithm'       :  'Ballistic',
                     'relayAlg'           :  relayAlg
                     #'pdr'                :  pdr,
                 },
@@ -249,7 +249,7 @@ def oneSim(simSetting,simUI):
     )
     
     # create the wireless communication medium
-    wireless       = Wireless.Wireless()
+    wireless       = Wireless.WirelessBase()
     wireless.indicateDevices(devices = dotBots+[orchestrator])
     #wireless.overridePDR(simSetting['pdr'])
     

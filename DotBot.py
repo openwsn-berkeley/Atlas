@@ -16,7 +16,7 @@ class DotBot(Wireless.WirelessDevice):
     A single DotBot.
     '''
 
-    def __init__(self, dotBotId, x, y, floorplan):
+    def __init__(self, dotBotId, x, y, floorplan, wireless=Wireless.WirelessBase):
 
         # store params
         self.dotBotId             = dotBotId
@@ -27,7 +27,7 @@ class DotBot(Wireless.WirelessDevice):
         #=== local variables
         # singletons
         self.simEngine            = SimEngine.SimEngine()
-        self.wireless             = Wireless.Wireless()
+        self.wireless             = wireless()
         # sequence numbers (to filter out duplicate commands and notifications)
         self.seqNumMovement       = None
         self.seqNumNotification   = 0

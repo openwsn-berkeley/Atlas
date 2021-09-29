@@ -1035,7 +1035,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
 
-    def __init__(self,numDotBots,initialPosition,navAlgorithm, relayAlg):
+    def __init__(self,numDotBots,initialPosition,navAlgorithm, relayAlg, wireless=Wireless.WirelessBase):
 
         # store params
         self.numDotBots        = numDotBots
@@ -1044,7 +1044,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # local variables
         self.simEngine          = SimEngine.SimEngine()
-        self.wireless           = Wireless.Wireless()
+        self.wireless           = wireless()
         navigationclass         = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
         self.navigation         = navigationclass(self.numDotBots, self.initialPosition, self.relayAlg)
         self.communicationQueue = []
