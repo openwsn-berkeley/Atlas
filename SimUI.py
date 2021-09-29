@@ -135,14 +135,12 @@ class SimUI(object):
         while True:
             try:
                 args[0](**kwargs) # blocking
-            except socket.error as err:
-                if err[0]==10013:
+            except Exception as err:
+                if False:  # how to get socket.error? if err[0] == 10013:
                     print('FATAL: cannot open TCP port {0}.'.format(kwargs['port']))
                     print('    Is another application running on that port?')
                 else:
-                    print(logError(err))
-            except Exception as err:
-                print(logError(err))
+                    print(err)
             print('    Trying again in {0} seconds'.format(RETRY_PERIOD))
             for _ in range(RETRY_PERIOD):
                 time.sleep(1)
