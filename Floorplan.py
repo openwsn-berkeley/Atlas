@@ -33,3 +33,4 @@ class Floorplan(object):
                 if c=='#':
                     obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}]
         return (width,height,obstacles)
+
