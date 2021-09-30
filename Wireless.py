@@ -45,16 +45,11 @@ class PropagationRadius(PropagationBase):
     raise NotImplementedError()
 
 class PropagationFriis(PropagationBase):
-    raise NotImplementedError()
-
-class PropagationPister(PropagationBase):
     '''
     Communications model.
 
-    Pister Hack or Experimental Randomness variant.
+    Classic Friis Path Loss Model: https://www.gaussianwaves.com/2013/09/friss-free-space-propagation-model/
     '''
-
-    PISTER_HACK_LOWER_SHIFT = 40  # dB
     TWO_DOT_FOUR_GHZ = 2400000000  # Hz
     SPEED_OF_LIGHT = 299792458  # m/s
 
@@ -87,34 +82,25 @@ class PropagationPister(PropagationBase):
     TX_POWER = 0
     ANTENNA_GAIN = 0  # TX & RX
 
-    def getPDR(self, sender_loc, receiver_loc, rssi=False):
-        '''
-        Pister Hack model for PDR calculation based on distance/ signal attenuation
-        '''
-        distance = u.distance(sender_loc, receiver_loc)
-        if distance == 0:
-            return 1
+    # TODO: add a loss parameter (alpha=0, dB_loss=0)
 
-        res = self._PisterHackModel(distance)
-
-        return res if rssi else res[0]
-
-    def _PisterHackModel(self, distance):
+    def _friisModel(self, distance):
         # sqrt and inverse of the free space path loss (fspl)
         free_space_path_loss = (
                 self.SPEED_OF_LIGHT / (4 * np.pi * distance * self.TWO_DOT_FOUR_GHZ)
         )
 
         # simple friis equation in Pr = Pt + Gt + Gr + 20log10(fspl)
-        pr = (
+        rssi = (
                 self.TX_POWER +
                 self.ANTENNA_GAIN +  # tx
                 self.ANTENNA_GAIN +  # rx
                 (20 * np.log10(free_space_path_loss))
         )
 
-        rssi = pr - random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+        return rssi
 
+    def _rssi_to_pdr(self, rssi):
         minRssi = min(self.RSSI_PDR_TABLE.keys())
         maxRssi = max(self.RSSI_PDR_TABLE.keys())
 
@@ -132,7 +118,29 @@ class PropagationPister(PropagationBase):
         assert pdr >= 0.0
         assert pdr <= 1.0
 
-        return pdr, rssi
+        return pdr
+
+class PropagationPister(PropagationFriis):
+    '''
+    Communications model.
+
+    Pister Hack or Experimental Randomness variant.
+    '''
+
+    PISTER_HACK_LOWER_SHIFT = 40  # dB
+
+    def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        '''
+        Pister Hack model for PDR calculation based on distance/ signal attenuation
+        '''
+        distance = u.distance(sender_loc, receiver_loc)
+        if distance == 0:
+            return 1
+
+        rssi = self._friisModel(distance) - random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+        pdr = self._rssi_to_pdr(rssi)
+
+        return pdr
 
 class WirelessBase(abc.ABC):
     '''
