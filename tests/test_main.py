@@ -1,6 +1,4 @@
-import pytest
-from Wireless import PropagationPisterHack, PropagationRadius
-import  Utils
+from Wireless import PropagationPister, PropagationRadius
 
 def test_dummy():
     assert 1 + 1 == 2
@@ -8,7 +6,7 @@ def test_dummy():
 def test_get_PDR_PH():
     sender   =  (5,5)
     receiver =  (0,3)
-    pdr, rssi = PropagationPisterHack().getPDR(sender, receiver, rssi=True)
+    pdr, rssi = PropagationPister().getPDR(sender, receiver, rssi=True)
     assert pdr >= 0 and pdr <= 1
 
 def test_get_PDR_R_success():

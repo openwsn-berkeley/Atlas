@@ -23,7 +23,7 @@ class WirelessDevice(object):
         FRAMETYPE_NOTIFICATION,
     ]
     
-    def receive(self,frame):
+    def receive(self, frame):
         raise SystemError('Abstract class')
 
 class PropagationBase(abc.ABC):
@@ -51,8 +51,13 @@ class PropagationRadius(PropagationBase):
 
         return 1 if distance <= self.radius else 0
 
+class PropagationLOS(PropagationBase):
+    raise NotImplementedError()
 
-class PropagationPisterHack(PropagationBase):
+class PropagationFriis(PropagationBase):
+    raise NotImplementedError()
+
+class PropagationPister(PropagationBase):
     '''
     Communications model.
 
@@ -142,6 +147,8 @@ class PropagationPisterHack(PropagationBase):
 class WirelessBase(abc.ABC):
     '''
     The wireless medium through which DotBot and orchestrator communicate.
+
+    Note: Not thread-safe.
     '''
     DFLT_PDR = 1.0
 
@@ -164,7 +171,6 @@ class WirelessBase(abc.ABC):
 
         # store params
         self.devices = []
-        self.constantPDR = self.DFLT_PDR
         self.lastLinks = None
         self.lastLinkPDRs = None
         self.lastTree = None
@@ -179,30 +185,32 @@ class WirelessBase(abc.ABC):
     # ======================== public ==========================================
 
     def indicateDevices(self, devices):
-        self.devices = devices
+        """
+        Indicates devices available for transmission.
+        """
+        self.devices = devices # TODO: make this a set
         #        self.createPDRmatrix(devices)
         self.orch = self.devices[-1]
 
-    def overridePDR(self, pdr):
-        self.constantPDR = pdr
-
     def destroy(self):
+        """
+        Singleton destructor.
+        """
         self._instance = None
         self._init = False
 
-    def transmit(self, frame, sender):
+    def transmit(self, frame, sender: WirelessDevice, receiver_filter: set = None):
 
         assert self.devices  # make sure there are devices
 
         for receiver in self.devices:
-            if receiver == sender:
+            if receiver == sender or \
+                    (receiver_filter is not None and receiver not in receiver_filter):
                 continue  # ensures transmitter doesn't receive
             pdr = self._computePDR(sender, receiver)
             rand = random.uniform(0, 1)
             if rand < pdr:
                 receiver.receive(frame)
-            else:
-                pass
 
     # ======================== private =========================================
 
