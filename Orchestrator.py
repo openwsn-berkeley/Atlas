@@ -6,6 +6,8 @@ import sys
 import math
 import logging
 
+from typing import Union, Optional, List
+
 # third-party
 # local
 import SimEngine
@@ -295,7 +297,7 @@ class MapBuilder(object):
 
 class Navigation(object):
 
-    def __init__(self, numDotBots, initialPosition, relayAlg):
+    def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], **kwargs):
 
         # store params
         self.numDotBots      = numDotBots
@@ -322,11 +324,11 @@ class Navigation(object):
                 'pdrStatus':                None,
 
 
-            } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots)
+            } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots) # TODO: handle initial position List
         ]
         self.mapBuilder       = MapBuilder()
         self.movingDuration   = 0
-        self.heatmap          = [(self.initialPosition, 0)]
+        self.heatmap          = [(self.initialPosition, 0)] # TODO: handle initial position List
         self.profile          = []
         self.relayProfile     = []
         self.pdrProfile       = []
@@ -432,10 +434,8 @@ class Navigation(object):
 
 class Navigation_Ballistic(Navigation):
 
-    def __init__(self, numDotBots, initialPosition, relayAlg):
-
-        # initialize parent
-        super().__init__(numDotBots, initialPosition, relayAlg)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
@@ -466,21 +466,21 @@ class Navigation_Ballistic(Navigation):
 
 class Navigation_Atlas(Navigation):
 
-    def __init__(self, numDotBots, initialPosition, relayAlg):
+    def __init__(self, relayAlg="recovery", *args, **kwargs):
 
         # initialize parent
-        super().__init__(numDotBots, initialPosition, relayAlg)
+        super().__init__(*args, **kwargs)
 
         # (additional) local variables
         # shorthands for initial x,y position
-        self.ix                = initialPosition[0]
-        self.iy                = initialPosition[1]
+        self.ix                = self.initialPosition[0]
+        self.iy                = self.initialPosition[1]
         # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
         self.hCellsOpen        = []
         self.hCellsObstacle    = []
         self.hCellsUnreachable = []
         # the hCell the DotBot start is in, by definition, open
-        self.hCellsOpen       += [initialPosition]
+        self.hCellsOpen       += [self.initialPosition]
         self.relayBots         = []
         self.positionedRelays  = []
         self.relayPositions    = []
@@ -613,9 +613,8 @@ class Navigation_Atlas(Navigation):
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                  = dotbot['target']                         # set target as las allocated target until updated
         self.skip               = False
-        algorithm               = self.algorithm
 
-        self._getRelayBots(self.dotbotsview, algorithm)
+        self._getRelayBots(self.dotbotsview)
         self.mapBuilder.numDotBots   = self.numDotBots
         self.mapBuilder.numRelayBots = len(self.positionedRelays)
 
@@ -644,7 +643,7 @@ class Navigation_Atlas(Navigation):
 
             elif (dotbot in self.relayBots):
 
-                target = self._getRelayPosition(dotbot, algorithm)
+                target = self._getRelayPosition(dotbot)
                 if not target:
                     self.relayBots.remove(dotbot)
                     target = dotbot['target']
@@ -897,23 +896,23 @@ class Navigation_Atlas(Navigation):
 
     #################################### Relay Placement Algorithms ###################################################
 
-    def _getRelayBots(self, allDotBots, algorithm):
-        if algorithm == 'recovery':
+    def _getRelayBots(self, allDotBots):
+        if self.algorithm == 'recovery':
             self._recovery_getRelayBots(allDotBots)
             return
-        if algorithm == 'naive':
+        if self.algorithm == 'naive':
             self._naive_getRelayBots(allDotBots)
             return
-        if algorithm == 'selfHealing':
+        if self.algorithm == 'selfHealing':
             self._selfHealing_getRelayBots(allDotBots)
             return
 
-    def _getRelayPosition(self, relayBot, algorithm):
-        if algorithm == 'recovery':
+    def _getRelayPosition(self, relayBot):
+        if self.algorithm == 'recovery':
             return self._recovery_getRelayPosition(relayBot)
-        if algorithm == 'naive':
+        if self.algorithm == 'naive':
             return self._naive_getRelayPosition(relayBot)
-        if algorithm == 'selfHealing':
+        if self.algorithm == 'selfHealing':
             return self._selfHealing_getRelayPosition(relayBot)
 
 
