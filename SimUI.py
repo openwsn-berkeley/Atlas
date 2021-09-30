@@ -15,12 +15,12 @@ class SimUI(object):
     
     TCPPORT = 8080
     
-    def __init__(self):
+    def __init__(self,floorplan,dotbots,orchestrator):
     
         # store params
-        self.floorplan       = None
-        self.dotbots         = []
-        self.orchestrator    = None
+        self.floorplan       = floorplan
+        self.dotbots         = dotbots
+        self.orchestrator    = orchestrator
         
         # local variables
         self.simEngine       = SimEngine.SimEngine()
@@ -54,11 +54,6 @@ class SimUI(object):
     
     #======================== public ==========================================
     
-    def updateObjectsToQuery(self,floorplan,dotbots,orchestrator):
-        self.floorplan       = floorplan
-        self.dotbots         = dotbots
-        self.orchestrator    = orchestrator
-    
     #======================== private =========================================
     
     #=== web handles
@@ -74,45 +69,23 @@ class SimUI(object):
         return bottle.static_file(filename, root='static/')
     
     def _webhandle_floorplan_GET(self):
-        try:
-            returnVal = self.floorplan.getJSON()
-        except AttributeError:
-            returnVal = ''
-        return returnVal
+        return self.floorplan.getJSON()
     
     def _webhandle_dotbots_GET(self):
         simulatedTime = self.simEngine.currentTime()
         
-        try:
-            orchestratorView = self.orchestrator.getView()
-            
-            returnValDotBots = []
-            # x,y,next_bump_x,next_bump_y
-            for dotbot in self.dotbots:
-                (x,y)                     = dotbot.computeCurrentPosition()
-                (next_bump_x,next_bump_y) = dotbot.getNextBumpPosition()
-                returnValDotBots += [{
-                    'x': x,
-                    'y': y,
-                    'next_bump_x': next_bump_x,
-                    'next_bump_y': next_bump_y,
-                }]
-            # orchestratorview_x,orchestratorview_y
-            for (db,orchestratorview) in zip(returnValDotBots,orchestratorView['dotbotpositions']):
-                db['orchestratorview_x'] = orchestratorview['x']
-                db['orchestratorview_y'] = orchestratorview['y']
-            
-            returnVal = {
-                'mode':                self.simEngine.mode(),
-                'simulatedTime':       self.simEngine.formatSimulatedTime(),
-                'dotbots':             returnValDotBots,
-                'discomap':            orchestratorView['discomap'],
-                'exploredCells':       orchestratorView['exploredCells'],
-            }
-            
-        except AttributeError:
-            returnVal = ''
-        
+        orchestratorView = self.orchestrator.getView()
+        returnVal = {
+            'mode':                self.simEngine.mode(),
+            'simulatedTime':       self.simEngine.formatSimulatedTime(),
+            'dotbots':             [],
+            'discomap':            orchestratorView['discomap'],
+        }
+        for dotbot in self.dotbots:
+            returnVal['dotbots'] += [dotbot.getAttitude()]
+        for (dotbot,orchestratorview) in zip(returnVal['dotbots'],orchestratorView['dotbots']):
+            dotbot['orchestratorview_x'] = orchestratorview['x']
+            dotbot['orchestratorview_y'] = orchestratorview['y']
         return returnVal
      
     def _webhandle_frameforward_POST(self):

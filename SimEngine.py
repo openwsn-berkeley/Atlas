@@ -41,7 +41,7 @@ class SimEngine(threading.Thread):
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
         self.semIsRunning.acquire()
-
+        
         # start thread
         threading.Thread.__init__(self)
         self.name                 = 'SimEngine'
@@ -51,7 +51,6 @@ class SimEngine(threading.Thread):
     #======================== thread ==========================================
     
     def run(self):
-        
         while True:
             
             # wait for simulator to be running
@@ -60,18 +59,13 @@ class SimEngine(threading.Thread):
             
             # wait for at least one event
             self.semNumEvents.acquire()
-
+            
             # handle next event
-            (ts,cb,tag) = self.events.pop(0)
-
+            (ts,cb) = self.events.pop(0)
             assert self._currentTime<=ts
             self._currentTime = ts
-
-            if tag == 'selfDestruct':
-                break
-
             cb()
-
+            
             # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
             if self._mode==self.MODE_FRAMEFORWARD:
                 self._mode=self.MODE_PAUSE
@@ -83,44 +77,11 @@ class SimEngine(threading.Thread):
                 durReal = time.time()-self._startTsReal
                 if durReal*self._playSpeed<durSim:
                     time.sleep( durSim - (durReal*self._playSpeed) )
-
+    
     #======================== public ==========================================
     
-    #=== admin
+    #=== from other elements in simulator
     
-    def destroy(self): 
-        self._instance   = None
-        self._init       = False
-    
-    def runToCompletion(self,startFunc):
-        assert self._currentTime==0
-        self.schedule(0,startFunc) # schedule the first event
-        self.join()                # block until simEngine thread ends
-        
-        return self._currentTime
-    
-    def schedule(self,ts,cb,tag=None):
-        # add new event
-        self.events += [(ts,cb,tag)]
-        # reorder list
-        self.events  = sorted(self.events, key = lambda e: e[0])
-        # release semaphore (increments its internal counter)
-        self.semNumEvents.release()
-
-    def cancelEvent(self, tag):
-        idx = 0
-        while idx<len(self.events):
-            if self.events[idx][2]==tag:
-                self.events.pop(idx)
-            else:
-                idx += 1
-
-
-    def completeRun(self):
-        self.schedule(self._currentTime,None,tag='selfDestruct')
-    
-    #=== helper functions
-
     def currentTime(self):
         return self._currentTime
     
@@ -142,6 +103,16 @@ class SimEngine(threading.Thread):
         returnVal           += [']']
         returnVal            = ' '.join(returnVal)
         return returnVal
+    
+    def schedule(self,ts,cb):
+        # add new event
+        self.events += [(ts,cb)]
+        
+        # reorder list
+        self.events  = sorted(self.events, key = lambda e: e[0])
+        
+        # release semaphore
+        self.semNumEvents.release()
     
     #=== commands from the GUI
     
