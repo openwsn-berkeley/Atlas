@@ -36,6 +36,22 @@ class PropagationBase(abc.ABC):
     def getPDR(self, sender_loc, receiver_loc, **kwargs):
         return 1
 
+class PropagationRadius(PropagationBase):
+    '''
+    Communications model.
+
+    Unit Disk.
+    '''
+
+    def __init__(self, radius=10):
+        self.radius = radius
+
+    def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        distance = u.distance(sender_loc, receiver_loc)
+
+        return 1 if distance <= self.radius else 0
+
+
 class PropagationPisterHack(PropagationBase):
     '''
     Communications model.
