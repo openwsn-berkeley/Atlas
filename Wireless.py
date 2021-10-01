@@ -5,6 +5,7 @@ import random
 import numpy as np
 # local
 import Utils as u
+from Floorplan import Floorplan
 
 from statistics import mode
 from statistics import mean
@@ -52,7 +53,64 @@ class PropagationRadius(PropagationBase):
         return 1 if distance <= self.radius else 0
 
 class PropagationLOS(PropagationBase):
-    raise NotImplementedError()
+
+    def indicateFloorplan(self, floorplan):
+        self.floorplan =   floorplan
+        self.lines     = []
+        for obstacle in self.floorplan.obstacles:
+            ax    = obstacle['x']
+            ay    = obstacle['y']
+            ow    = obstacle['width']
+            oh    = obstacle['height']
+            line1 = ((ax,ay), (ax+ow,ay))
+            line2 = ((ax,ay+oh), (ax+ow,ay+oh))
+            line3 = ((ax,ay), (ax,ay+oh))
+            line4 = ((ax+ow,ay), (ax+ow,ay+oh))
+            self.lines += [line1, line2, line3, line4]
+
+    @staticmethod
+    def line_intersection(line1, line2):
+        line1_x = [line1[0][0], line1[1][0]]
+        line1_y = [line1[0][1], line1[1][1]]
+        line1_xmin = min(line1_x)
+        line1_xmax = max(line1_x)
+        line1_ymin = min(line1_y)
+        line1_ymax = max(line1_y)
+        line2_x = [line2[0][0], line2[1][0]]
+        line2_y = [line2[0][1], line2[1][1]]
+        line2_xmin = min(line2_x)
+        line2_xmax = max(line2_x)
+        line2_ymin = min(line2_y)
+        line2_ymax = max(line2_y)
+        xdiff = (line1_xmax - line1_xmin, line2_xmax - line2_xmin)
+        ydiff = (line1_ymax - line1_xmin, line2_ymax - line2_ymin)
+
+        def det(a, b):
+            return a[0] * b[1] - a[1] * b[0]
+
+        div = det(xdiff, ydiff)
+
+        if div == 0:
+            return False
+
+        d = (det(*line1), det(*line2))
+        xi = det(d, xdiff) / div
+        yi = det(d, ydiff) / div
+
+        intersectionL1 = line1_xmin <= xi <= line1_xmax and line1_ymin <= yi <= line1_ymax
+        intersectionL2 = line2_xmin <= xi <= line2_xmax and line2_ymin <= yi <= line2_ymax
+
+        return intersectionL1 and intersectionL2
+
+
+    def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        # loop through obstacles, looking for intersection
+        line1 = (sender_loc, receiver_loc)
+        for line2 in self.lines:
+            if self.line_intersection(line1, line2):
+                return 0
+        return 1
+
 
 class PropagationFriis(PropagationBase):
     '''
