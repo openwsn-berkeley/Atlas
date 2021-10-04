@@ -39,10 +39,12 @@ class PropagationBase(abc.ABC):
         return 1
 
 class PropagationLOS(PropagationBase):
-    raise NotImplementedError()
+    def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        raise NotImplementedError()
 
 class PropagationRadius(PropagationBase):
-    raise NotImplementedError()
+    def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        raise NotImplementedError()
 
 class PropagationFriis(PropagationBase):
     '''

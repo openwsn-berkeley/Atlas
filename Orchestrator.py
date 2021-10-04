@@ -297,7 +297,7 @@ class MapBuilder(object):
 
 class Navigation(object):
 
-    def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], **kwargs):
+    def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
 
         # store params
         self.numDotBots      = numDotBots
@@ -1034,7 +1034,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
 
-    def __init__(self,numDotBots,initialPosition,navAlgorithm, relayAlg, wireless=Wireless.WirelessBase):
+    def __init__(self, numDotBots, initialPosition, navAlgorithm, relayAlg, wireless=Wireless.WirelessBase):
 
         # store params
         self.numDotBots        = numDotBots
