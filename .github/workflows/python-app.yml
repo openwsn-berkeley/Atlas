@@ -7,7 +7,7 @@ on:
   push:
     branches: [ master, dotbot_develop ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dotbot_develop ]
 
 jobs:
   build:
