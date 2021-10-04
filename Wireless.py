@@ -62,7 +62,7 @@ class PropagationLOS(PropagationBase):
     Based on known environment model.
     """
 
-    ALPHA = 0.001
+    EPS = 0.001
 
     def indicateFloorplan(self, floorplan):
         '''
@@ -89,14 +89,14 @@ class PropagationLOS(PropagationBase):
         line1_x = [line1[0][0], line1[1][0]]
         line1_y = [line1[0][1], line1[1][1]]
 
-        (line1_xmin,line1_xmax) = (min(line1_x),max(line1_x))
-        (line1_ymin,line1_ymax) = (min(line1_y),max(line1_y))
+        (line1_xmin, line1_xmax) = (min(line1_x), max(line1_x))
+        (line1_ymin, line1_ymax) = (min(line1_y) ,max(line1_y))
 
         line2_x = [line2[0][0], line2[1][0]]
         line2_y = [line2[0][1], line2[1][1]]
 
-        (line2_xmin,line2_xmax) = (min(line2_x),max(line2_x))
-        (line2_ymin,line2_ymax) = (min(line2_y),max(line2_y))
+        (line2_xmin, line2_xmax) = (min(line2_x), max(line2_x))
+        (line2_ymin, line2_ymax) = (min(line2_y), max(line2_y))
 
         xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
         ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
@@ -125,7 +125,7 @@ class PropagationLOS(PropagationBase):
         (s_x,s_y) = sender_loc
         (r_x,r_y) = receiver_loc
         # loop through obstacles, looking for intersection
-        line1 = ((s_x - self.ALPHA, s_y - self.ALPHA), (r_x - self.ALPHA, r_y - self.ALPHA))
+        line1 = ((s_x - self.EPS, s_y - self.EPS), (r_x - self.EPS, r_y - self.EPS))
         for line2 in self.lines:
             if self.line_intersection(line1, line2):
                 return 0
