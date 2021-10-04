@@ -54,6 +54,8 @@ class PropagationRadius(PropagationBase):
 
 class PropagationLOS(PropagationBase):
 
+    ALPHA = 0.001
+
     def indicateFloorplan(self, floorplan):
         self.floorplan =   floorplan
         self.lines     = []
@@ -72,18 +74,18 @@ class PropagationLOS(PropagationBase):
     def line_intersection(line1, line2):
         line1_x = [line1[0][0], line1[1][0]]
         line1_y = [line1[0][1], line1[1][1]]
-        line1_xmin = min(line1_x)
-        line1_xmax = max(line1_x)
-        line1_ymin = min(line1_y)
-        line1_ymax = max(line1_y)
+
+        (line1_xmin,line1_xmax) = (min(line1_x),max(line1_x))
+        (line1_ymin,line1_ymax) = (min(line1_y),max(line1_y))
+
         line2_x = [line2[0][0], line2[1][0]]
         line2_y = [line2[0][1], line2[1][1]]
-        line2_xmin = min(line2_x)
-        line2_xmax = max(line2_x)
-        line2_ymin = min(line2_y)
-        line2_ymax = max(line2_y)
-        xdiff = (line1_xmax - line1_xmin, line2_xmax - line2_xmin)
-        ydiff = (line1_ymax - line1_xmin, line2_ymax - line2_ymin)
+
+        (line2_xmin,line2_xmax) = (min(line2_x),max(line2_x))
+        (line2_ymin,line2_ymax) = (min(line2_y),max(line2_y))
+
+        xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+        ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
         def det(a, b):
             return a[0] * b[1] - a[1] * b[0]
@@ -104,13 +106,14 @@ class PropagationLOS(PropagationBase):
 
 
     def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        (s_x,s_y) = sender_loc
+        (r_x,r_y) = receiver_loc
         # loop through obstacles, looking for intersection
-        line1 = (sender_loc, receiver_loc)
+        line1 = ((s_x - self.ALPHA, s_y - self.ALPHA), (r_x - self.ALPHA, r_y - self.ALPHA))
         for line2 in self.lines:
             if self.line_intersection(line1, line2):
                 return 0
         return 1
-
 
 class PropagationFriis(PropagationBase):
     '''

@@ -27,7 +27,7 @@ def test_get_PDR_Friis():
     pdr = PropagationFriis().getPDR(sender, receiver)
     assert pdr >= 0 and pdr <= 1
 
-def test_get_PDR_LOS_success():
+def test_get_PDR_LOS():
     drawing =   '''
 ##################
 #................#
@@ -62,4 +62,4 @@ def test_line_intersect():
     assert not p4
 
 if __name__ == '__main__':
-    test_line_intersect()
+    test_get_PDR_LOS()
