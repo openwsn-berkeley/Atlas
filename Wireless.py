@@ -39,24 +39,35 @@ class PropagationBase(abc.ABC):
 
 class PropagationRadius(PropagationBase):
     '''
-    Communications model.
+    Radius based propagation model.
 
-    Unit Disk.
+    Binary and probabilistic.
     '''
 
     def __init__(self, radius=10):
         self.radius = radius
 
     def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        """
+        Return PDR based on radius model
+        """
         distance = u.distance(sender_loc, receiver_loc)
 
         return 1 if distance <= self.radius else 0
 
 class PropagationLOS(PropagationBase):
+    """
+    Line of Sight propagation model.
+
+    Based on known environment model.
+    """
 
     ALPHA = 0.001
 
     def indicateFloorplan(self, floorplan):
+        '''
+        Break each floorplan obstacle down to 4 lines.
+        '''
         self.floorplan =   floorplan
         self.lines     = []
         for obstacle in self.floorplan.obstacles:
@@ -72,6 +83,9 @@ class PropagationLOS(PropagationBase):
 
     @staticmethod
     def line_intersection(line1, line2):
+        '''
+        Determine whether 2 lines intersect.
+        '''
         line1_x = [line1[0][0], line1[1][0]]
         line1_y = [line1[0][1], line1[1][1]]
 
@@ -104,8 +118,10 @@ class PropagationLOS(PropagationBase):
 
         return intersectionL1 and intersectionL2
 
-
     def getPDR(self, sender_loc, receiver_loc, **kwargs):
+        '''
+        Return PDR based on LOS model
+        '''
         (s_x,s_y) = sender_loc
         (r_x,r_y) = receiver_loc
         # loop through obstacles, looking for intersection
