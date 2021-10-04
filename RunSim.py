@@ -99,6 +99,8 @@ def main(config):
 
     nav_config = config.orchestrator.navigation
 
+    # TODO: SimSettings should handle lack of certain parameters given a different configuration and maintains parameter cross product functionality
+    # TODO: Have a validate configuration script that does an import dry run of all the configuration settings
     for idx, floorplan in enumerate(config.world.floorplans):
         for numrobot in config.world.robots.counts:
             for wireless in config.wireless.models:

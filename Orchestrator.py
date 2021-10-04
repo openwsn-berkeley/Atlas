@@ -295,6 +295,7 @@ class MapBuilder(object):
 
         return returnVal
 
+# TODO: make this an abstract base class with ABC
 class Navigation(object):
 
     def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
@@ -432,7 +433,7 @@ class Navigation(object):
     def _updateMovement(self,dotBotId):
         raise SystemError('abstract method')
 
-class Navigation_Ballistic(Navigation):
+class NavigationBallistic(Navigation):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -464,7 +465,7 @@ class Navigation_Ballistic(Navigation):
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
-class Navigation_Atlas(Navigation):
+class NavigationAtlas(Navigation):
 
     def __init__(self, *args, relayAlg="recovery", **kwargs):
 
@@ -481,10 +482,10 @@ class Navigation_Atlas(Navigation):
         self.hCellsUnreachable = []
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [self.initialPosition]
-        self.relayBots         = []
-        self.positionedRelays  = []
-        self.relayPositions    = []
-        self.readyRelays       = []
+        self.relayBots         = [] # have not been given destinations
+        self.positionedRelays  = [] # have been given destinations, but have not reached them
+        self.relayPositions    = [] # desired positions to fill?
+        self.readyRelays       = [] # relays that have reached their position
         self.algorithm         = relayAlg
         self.targetBotsAndData = []
 
@@ -626,13 +627,23 @@ class Navigation_Atlas(Navigation):
                (self.skip == False)                                                  or
                (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
 
+                # TODO: this should read like plain English
+                # TODO: relay status should be a dotbot attribute (e.g. dotbot.relay_status() -> Enum: None, Unpositioned, Positioned, Ready)
+                #       so we're not always ensuring clean popping out of and insertion into sets
+                # TODO: cell object (i.e. target) should also probably be an object that you can check status of
+                #       e.g. target.open and target.obstacle are valid --> target = self.cell(*coordinates)
+
                 if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
+                    # NOTE: Relay DotBot has reached its target and we make it a ready relay
                     # store new movement
                     dotbot['speed'] = -1
-                    self.readyRelays += [dotbot['ID']]
+                    self.readyRelays += [dotbot['ID']] # FIXME: this is linear in the number of dotbots
                     return
 
                 if self.movingDuration == 0:
+                    # NOTE: this path doesn't work, find another one -- why is this a class state
+                    #       and not per dotbot state? could be called directly after receiveNotification
+
                     # avoid these cells when finding new path to target
                     self.hCellsUnreachable += [dotbot['previousPath'][0]]
 
@@ -649,17 +660,16 @@ class Navigation_Atlas(Navigation):
                     target = dotbot['target']
                     continue
                 else:
-                    path2target = [target]
-
+                    path2target = [target] # NOTE: just go directly to the target in a line
             else:
-
                 target        = self._findTargetandPath(centreCellcentre)
 
                 if not target:
-                    return
-                start = (self.ix,self.iy)
+                    return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
+
+                start = (self.ix, self.iy)
                 if centreCellcentre in self.hCellsObstacle:
-                    path2target = self._path2Target(start,target)
+                    path2target = self._path2Target(start, target)
                 else:
                     path2target   = [target]
 
@@ -1044,7 +1054,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # local variables
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = wireless()
-        navigationclass         = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
+        navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
         self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relayAlg=self.relayAlg)
         self.communicationQueue = []
     
