@@ -8,9 +8,9 @@
             name = "base_log" # semantic prefix to date-time-hash format
 
     [atlas.wireless]
-        model = "Base"
+        models = ["Base"]
         [atlas.wireless.propagation]
-            model = ["Base"]
+            models = ["Base"]
 
     [atlas.orchestrator]
         [atlas.orchestrator.navigation]

@@ -54,8 +54,12 @@ def runSim(simSetting, simUI):
     )
     
     # create the wireless communication medium
-    wireless       = Wireless.WirelessBase()
-    wireless.indicateDevices(devices = dotBots+[orchestrator])
+    wireless_model = getattr(Wireless, f"Wireless{simSetting['wirelessModel']}")
+    propagation_model = getattr(Wireless, f"Propagation{simSetting['propagationModel']}")
+
+    wireless       = wireless_model(propagation=propagation_model)
+    wireless.indicateDevices(devices=dotBots+[orchestrator])
+    wireless.indicateFloorplan(floorplan=floorplan)
     #wireless.overridePDR(simSetting['pdr'])
     
     #======================== run
@@ -97,23 +101,27 @@ def main(config):
 
     for idx, floorplan in enumerate(config.world.floorplans):
         for numrobot in config.world.robots.counts:
-            for nav in nav_config.models:
-                for relay in nav_config.relay.algorithms:
-                    for path_planner in nav_config.path_planning.algorithms:
-                        for target_selector in nav_config.target_selector.algorithms:
-                            SIMSETTINGS.append(
-                                {
-                                    'numDotBots': numrobot,
-                                    'floorplanType': idx,
-                                    'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
-                                                                                   floorplan).decode('utf-8'),
-                                    'initialPosition': (1, 1),
-                                    'navAlgorithm': nav,
-                                    'pathPlanner': path_planner,
-                                    'relayAlg': relay,
-                                    'targetSelector': target_selector
-                                },
-                            )
+            for wireless in config.wireless.models:
+                for propagation in config.wireless.propagation.models:
+                    for nav in nav_config.models:
+                        for relay in nav_config.relay.algorithms:
+                            for path_planner in nav_config.path_planning.algorithms:
+                                for target_selector in nav_config.target_selector.algorithms:
+                                    SIMSETTINGS.append(
+                                        {
+                                            'numDotBots': numrobot,
+                                            'floorplanType': idx,
+                                            'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
+                                                                                           floorplan).decode('utf-8'),
+                                            'initialPosition': (1, 1),
+                                            'navAlgorithm': nav,
+                                            'pathPlanner': path_planner,
+                                            'relayAlg': relay,
+                                            'targetSelector': target_selector,
+                                            'wirelessModel': wireless,
+                                            'propagationModel': propagation
+                                        },
+                                    )
     
     # log
     log.debug('simulation starting')
