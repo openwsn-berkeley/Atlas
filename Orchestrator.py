@@ -466,7 +466,7 @@ class Navigation_Ballistic(Navigation):
 
 class Navigation_Atlas(Navigation):
 
-    def __init__(self, relayAlg="recovery", *args, **kwargs):
+    def __init__(self, *args, relayAlg="recovery", **kwargs):
 
         # initialize parent
         super().__init__(*args, **kwargs)
@@ -1045,7 +1045,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = wireless()
         navigationclass         = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
-        self.navigation         = navigationclass(self.numDotBots, self.initialPosition, self.relayAlg)
+        self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relayAlg=self.relayAlg)
         self.communicationQueue = []
     
     #======================== public ==========================================

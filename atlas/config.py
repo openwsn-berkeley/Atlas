@@ -28,6 +28,7 @@ class BaseConfig(dict):
         with self.lock:
             dict.__delitem__(*args, **kwargs)
 
-class DefaultAtlasConfig(BaseConfig):
-    def __init__(self):
-        super().__init__(pkg_resources.resource_filename(__name__, "resources/default_config.toml"))
+class AtlasConfig(BaseConfig):
+    def __init__(self, config="default", base=None):
+        path = pkg_resources.resource_filename(__name__, f"resources/configs/{config}.toml")
+        super().__init__(path)

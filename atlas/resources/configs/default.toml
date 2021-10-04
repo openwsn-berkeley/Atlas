@@ -10,11 +10,11 @@
     [atlas.wireless]
         model = "Base"
         [atlas.wireless.propagation]
-            model = ["Base", "Friis", "Pister"]
+            model = ["Radius", "Friis", "Pister"]
 
     [atlas.orchestrator]
         [atlas.orchestrator.navigation]
-            models = ["Ballistic"]
+            models = ["Atlas"]
             [atlas.orchestrator.navigation.relay]
                 algorithms = ["recovery", "selfHealing", "naive"]
             [atlas.orchestrator.navigation.path_planning]

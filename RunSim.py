@@ -1,5 +1,6 @@
 # logging (do first)
 import os
+import argparse
 
 import pkg_resources
 import AtlasLogging
@@ -19,7 +20,7 @@ import SimUI
 import time
 import json
 
-from atlas.config import DefaultAtlasConfig
+from atlas.config import AtlasConfig
 
 #============================ helpers =========================================
 
@@ -142,6 +143,11 @@ def main(config):
     input('Press Enter to close simulation.')
 
 if __name__=='__main__':
-    # TODO: add optional
-    config = DefaultAtlasConfig()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--config", type=str, default="default", help="Atlas configuration file name to use (must be TOML)")
+
+    args = parser.parse_args()
+
+    config = AtlasConfig(args.config)
     main(config.atlas)

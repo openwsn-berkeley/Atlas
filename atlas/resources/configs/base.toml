@@ -1,0 +1,29 @@
+[atlas]
+    ui = true
+
+    [atlas.experiment]
+        runs = 1
+        description = "Running a base config experiment"
+        [atlas.experiment.logging]
+            name = "base_log" # semantic prefix to date-time-hash format
+
+    [atlas.wireless]
+        model = "Base"
+        [atlas.wireless.propagation]
+            model = ["Base"]
+
+    [atlas.orchestrator]
+        [atlas.orchestrator.navigation]
+            models = ["Ballistic"]
+            [atlas.orchestrator.navigation.relay]
+                algorithms = ["naive"]
+            [atlas.orchestrator.navigation.path_planning]
+                algorithms = ["A*"] # ["Djikstras", "A*", "D*", "RRT"]
+            [atlas.orchestrator.navigation.target_selector]
+                algorithms = ["frontier"]
+
+    [atlas.world]
+        floorplans = ["small_empty.txt"]
+        [atlas.world.robots]
+            counts = [5]
+            initial_positions = [[1, 1]]

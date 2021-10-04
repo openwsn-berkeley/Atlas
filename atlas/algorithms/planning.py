@@ -1,6 +1,6 @@
 """
 Algorithmic implementation of robot motion planning algorithms.
-E.g., BFS, Djikstra's, A*, D* Lite
+E.g., BFS, Djikstra's, A*, D* Lite, RRT
 
 Created by: Felipe Campos, fmrcampos@berkeley.edu
 Date: Mon, Oct 4, 2021
