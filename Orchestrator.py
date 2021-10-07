@@ -488,7 +488,6 @@ class NavigationAtlas(Navigation):
         # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
         self.hCellsOpen        = []
         self.hCellsObstacle    = []
-        self.hCellsUnreachable = []
         # the hCell the DotBot start is in, by definition, open
         self.hCellsOpen       += [self.initialPosition]
         self.relayBots         = [] # have not been given destinations
@@ -646,6 +645,13 @@ class NavigationAtlas(Navigation):
 
         while True:
             # keep going towards same target if target hasn't been explored yet
+            if centreCellcentre in self.hCellsObstacle:
+                for n in self._oneHopNeighborsShuffled(*centreCellcentre):
+                    if n in self.hCellsOpen:
+                        path2target = [n]
+                        break
+
+                break
 
             if (target                                                               and
                (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
@@ -665,14 +671,8 @@ class NavigationAtlas(Navigation):
                     self.readyRelays += [dotbot['ID']] # FIXME: this is linear in the number of dotbots
                     return
 
-                if self.movingDuration == 0:
-                    # NOTE: this path doesn't work, find another one -- why is this a class state
-                    #       and not per dotbot state? could be called directly after receiveNotification
-
-                    # avoid these cells when finding new path to target
-                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
-
                 path2target             = self._path2Target(centreCellcentre,target)
+
             elif (dotbot in self.relayBots):
                 target = self._getRelayPosition(dotbot)
                 if not target:
@@ -715,13 +715,10 @@ class NavigationAtlas(Navigation):
                 else:
                     path2target = self._path2Target(centreCellcentre,target)
 
-                self.hCellsUnreachable = []  # clear out unreachable cells associated with path to previous target
-
             if path2target:
                 break
             else:
-                if self.skip == False: # NOTE: this is meant to flag target skipping, is strangely class-instance-wide?
-                    self.hCellsObstacle += [target]
+                #self.hCellsObstacle += [target]
                 continue
 
         #Find headings and time to reach next step, for every step in path2target
@@ -755,45 +752,11 @@ class NavigationAtlas(Navigation):
         dotbot['target']          = target
         dotbot['heading']         = pathHeadings[0][0]
         dotbot['timer']           = timeTillStop
-        dotbot['previousPath']    = path2target
+        dotbot['previousPath']    = [centreCellcentre, path2target]
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
         dotbot['heartbeat']       = self.heartbeat
         dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
-
-    def _findTargetandPath(self,c0):
-        """
-        FIXME: This is deprecated and not used.
-        """
-        openPath    =  []
-        target      =  None
-        currentNode =  c0
-
-        if currentNode in self.hCellsOpen:
-            for nextn in self._oneHopNeighborsShuffled(*currentNode):
-                if (nextn not in self.hCellsOpen) and (nextn not in self.hCellsObstacle):
-                    target = nextn
-                    openPath = [target]
-                    self._xy2hCell(target[0],target[1])
-
-        while True:
-
-            for n in self._oneHopNeighborsShuffled(*currentNode):
-                if n in self.hCellsOpen:
-                    openPath += [n]
-                    currentNode = n
-                    break
-
-            for nn in self._oneHopNeighborsShuffled(*currentNode):
-                if (nn not in self.hCellsOpen) and (nn not in self.hCellsObstacle):
-                    target = nn
-                    openPath += [target]
-                    break
-
-            if target:
-                return self._xy2hCell(target[0],target[1])
-            else:
-               pass
 
     def _path2Target(self, start, target):
         '''
@@ -850,18 +813,12 @@ class NavigationAtlas(Navigation):
             for child in self._oneHopNeighborsShuffled(*currentCell): # NOTE: the cells around me, shuffling to randomize order
 
                 # skip neighbour if obstacle or already evaluated (closed)
-                if (child in self.hCellsObstacle or
-                   (child in self.hCellsUnreachable and child != target)):
+                if (child in self.hCellsObstacle):
                     continue
 
                 gCost  = parent['gCost'] + 1
                 hCost  = u.distance(child,target)
                 fCost  = gCost + hCost
-
-                # add penalty to avoid choosing target as first step if it was unreachable last time
-                if (child == target and target in self.hCellsUnreachable and  gCost == 1 and self.movingDuration == 0):
-                    fCost = fCost + 0.5
-                    continue
 
                 # don't consider cell if same cell with lower fcost  is already in closed cells
                 if (child in [cell['cellCentre'] for cell in closedCells
@@ -1086,7 +1043,7 @@ class NavigationAtlas(Navigation):
             if (x>= (p[0] - 10) and x<= (p[0] + 10)) and ((y >= (p[1] - 10) and y<= (p[1] + 10))):
                 return
 
-        if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions and (x,y) not in self.hCellsUnreachable:
+        if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions:
             self.relayPositions += [(x,y)]
             self.positionedRelays += [relayBot['ID']]
             return (x, y)
@@ -1157,7 +1114,7 @@ class NavigationAtlas(Navigation):
 
         (xp,yp) = targetChosen['relayPositions'][-1]
         (x,y)   = self._xy2hCell(xp,yp)
-        if (x,y) not in self.relayPositions and (x,y) not in self.hCellsObstacle and (x,y) not in self.hCellsUnreachable:
+        if (x,y) not in self.relayPositions and (x,y) not in self.hCellsObstacle:
             self.relayPositions += [targetChosen['relayPositions'][-1]]
             self.positionedRelays += [relayBot['ID']]
             return (x,y)
