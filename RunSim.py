@@ -142,7 +142,7 @@ def main(config):
         for (runNum, simSetting) in enumerate(SIMSETTINGS):
             # log
             log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting")
-            kpis = runSim(simSetting,simUI)
+            kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
             time_to_full_mapping = kpis['timeToFullMapping']
             log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s")
             kpis['runNums'] = runNum

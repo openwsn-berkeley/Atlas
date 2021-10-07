@@ -3,28 +3,24 @@
 
     [atlas.experiment]
         runs = 1
-        description = "Running a default config experiment"
+        description = "Running an experiment with all configurations"
         [atlas.experiment.logging]
-            name = "default_log" # semantic prefix to date-time-hash format
+            name = "all_log" # semantic prefix to date-time-hash format
 
     [atlas.wireless]
         models = ["Base"]
         [atlas.wireless.propagation]
-            models = ["Pister"]
-        [atlas.wireless.propagation.custom]
-            args = {}
+            models = ["Base", "Radius", "Friis", "Pister"]
 
     [atlas.orchestrator]
         [atlas.orchestrator.navigation]
             models = ["Atlas"]
             [atlas.orchestrator.navigation.relay]
-                algorithms = ["recovery"]
+                algorithms = ["recovery", "selfHealing", "naive"]
             [atlas.orchestrator.navigation.path_planning]
                 algorithms = ["A*"] # ["Djikstras", "A*", "D*", "RRT"]
             [atlas.orchestrator.navigation.target_selector]
                 algorithms = ["frontier"]
-            [atlas.orchestrator.navigation.custom]
-                args = {}
 
     [atlas.world]
         floorplans = ["scattered_obstacles.txt"]

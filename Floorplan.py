@@ -37,6 +37,6 @@ class Floorplan(object):
         for (y, line) in enumerate(lines):
             for (x, c) in enumerate(line):
                 if c == '#':
-                    obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}]
+                    obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}] # TODO: could do line merging here to
         return width, height, obstacles
 
