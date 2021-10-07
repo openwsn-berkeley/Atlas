@@ -717,9 +717,6 @@ class NavigationAtlas(Navigation):
 
             if path2target:
                 break
-            else:
-                #self.hCellsObstacle += [target]
-                continue
 
         #Find headings and time to reach next step, for every step in path2target
 
