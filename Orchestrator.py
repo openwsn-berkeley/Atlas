@@ -1,4 +1,5 @@
 # built-in
+import abc
 import random
 import threading
 import copy
@@ -295,8 +296,10 @@ class MapBuilder(object):
 
         return returnVal
 
-# TODO: make this an abstract base class with ABC
-class Navigation(object):
+class Navigation(abc.ABC):
+    '''
+    Navigation algorithm.
+    '''
 
     def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
 
@@ -337,8 +340,6 @@ class Navigation(object):
         self.heartbeat        = 1
         self.pdrStatus        = None
 
-
-    
     #======================== public ==========================================
     
     def receiveNotification(self,frame):
@@ -434,6 +435,9 @@ class Navigation(object):
         raise SystemError('abstract method')
 
 class NavigationBallistic(Navigation):
+    '''
+    Robots move in randomly selected heading until next bump.
+    '''
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -466,6 +470,10 @@ class NavigationBallistic(Navigation):
         dotbot['seqNumMovement'] += 1
 
 class NavigationAtlas(Navigation):
+    '''
+    Frontier based target selection.
+    A* path finding.
+    '''
 
     def __init__(self, *args, relayAlg="recovery", **kwargs):
 
@@ -481,7 +489,6 @@ class NavigationAtlas(Navigation):
         self.ix                = self.initialPosition[0]
         self.iy                = self.initialPosition[1]
         # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
-        self.hCellsUnreachable = []
         # the hCell the DotBot start is in, by definition, open
         self.relayBots         = [] # have not been given destinations
         self.positionedRelays  = [] # have been given destinations, but have not reached them
@@ -491,9 +498,8 @@ class NavigationAtlas(Navigation):
         self.targetBotsAndData = []
         self.frontiers         = []
         self.allTargets        = []
-        self.allPositions      = []
+        self.initialPositions  = []
         self.end               = False
-
 
         # initial movements
         self._firstMovements()
@@ -502,7 +508,7 @@ class NavigationAtlas(Navigation):
 
             self._updateMovement(dotBotId)
 
-        self.allPositions = []
+        self.initialPositions = []
 
         self.simEngine.schedule(self.simEngine.currentTime(), self._updateFrontiersAndTargets)
 
@@ -575,6 +581,12 @@ class NavigationAtlas(Navigation):
 
         while True:
             # keep going towards same target if target hasn't been explored yet
+            if centreCellcentre in self.path_planner.map.obstacles:
+                for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*centreCellcentre, local=False)):
+                    if not cell.obstacle:
+                        path2target = [cell.position(_local=False)]
+                        break
+                break
 
             if (target                                                               and
                (target not in self.path_planner.map.explored and target not in self.path_planner.map.obstacles) and
@@ -593,13 +605,6 @@ class NavigationAtlas(Navigation):
                     self.readyRelays += [dotbot['ID']] # FIXME: this is linear in the number of dotbots
                     return
 
-                if self.movingDuration == 0:
-                    # NOTE: this path doesn't work, find another one -- why is this a class state
-                    #       and not per dotbot state? could be called directly after receiveNotification
-
-                    # avoid these cells when finding new path to target
-                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
-
                 path2target             = self.path_planner.computePath(centreCellcentre,target)
             elif (dotbot in self.relayBots):
                 target = self._getRelayPosition(dotbot)
@@ -610,8 +615,8 @@ class NavigationAtlas(Navigation):
                 else:
                     path2target = self.path_planner.computePath(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
             else:
-                if self.allPositions:
-                    target     = self.allPositions[dotBotId]
+                if self.initialPositions:
+                    target     = self.initialPositions[dotBotId]
                 else:
                     if self.allTargets:
                         target = self._findBestTarget(centreCellcentre)
@@ -636,12 +641,10 @@ class NavigationAtlas(Navigation):
                 if self.end:
                     return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
-                if self.allPositions:
+                if self.initialPositions:
                     path2target = [target]
                 else:
                     path2target = self.path_planner.computePath(centreCellcentre, target)
-
-                self.hCellsUnreachable = []  # clear out unreachable cells associated with path to previous target
 
             if path2target:
                 break
@@ -677,7 +680,7 @@ class NavigationAtlas(Navigation):
         dotbot['target']          = target
         dotbot['heading']         = pathHeadings[0][0]
         dotbot['timer']           = timeTillStop
-        dotbot['previousPath']    = path2target
+        dotbot['previousPath']    = [centreCellcentre, path2target]
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
         dotbot['heartbeat']       = self.heartbeat
@@ -760,14 +763,12 @@ class NavigationAtlas(Navigation):
             for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*f, local=False)):
                 if not cell.explored:
                     self.allTargets.append(cell.position(_local=False))
-                else:
-                    pass
 
         self.allTargets = list(set(self.allTargets))
 
     def _updateFrontiersAndTargets(self):
 
-        if not self.allPositions:
+        if not self.initialPositions:
             self._findFrontierBoundary()
             self._findTargets()
 
@@ -794,11 +795,11 @@ class NavigationAtlas(Navigation):
         start     = (self.ix,self.iy)
         rank      = 1
         numRobots = len(self.dotbotsview)
-        while len(self.allPositions) <= numRobots:
+        while len(self.initialPositions) <= numRobots:
             for pos in self._rankHopNeighbourhood(start,rank):
-                self.allPositions += [pos]
+                self.initialPositions += [pos]
             rank += 1
-        self.allPositions = list(set(self.allPositions))
+        self.initialPositions = list(set(self.initialPositions))
 
         return
 
@@ -871,7 +872,7 @@ class NavigationAtlas(Navigation):
             if (x>= (p[0] - 10) and x<= (p[0] + 10)) and ((y >= (p[1] - 10) and y<= (p[1] + 10))):
                 return
 
-        if (x,y) not in self.path_planner.map.obstacles and (x,y) not in self.relayPositions and (x,y) not in self.hCellsUnreachable:
+        if (x,y) not in self.path_planner.map.obstacles and (x,y) not in self.relayPositions:
             self.relayPositions += [(x,y)]
             self.positionedRelays += [relayBot['ID']]
             return (x, y)
@@ -940,12 +941,10 @@ class NavigationAtlas(Navigation):
 
         (xp,yp) = targetChosen['relayPositions'][-1]
         (x,y)   = self._xy2hCell(xp,yp)
-        if (x,y) not in self.relayPositions and (x,y) not in self.path_planner.map.obstacles and (x,y) not in self.hCellsUnreachable:
+        if (x,y) not in self.relayPositions and (x,y) not in self.path_planner.map.obstacles:
             self.relayPositions += [targetChosen['relayPositions'][-1]]
             self.positionedRelays += [relayBot['ID']]
             return (x,y)
-        else:
-            return
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
