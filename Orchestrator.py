@@ -1,4 +1,5 @@
 # built-in
+import abc
 import random
 import threading
 import copy
@@ -295,8 +296,10 @@ class MapBuilder(object):
 
         return returnVal
 
-# TODO: make this an abstract base class with ABC
-class Navigation(object):
+class Navigation(abc.ABC):
+    '''
+    Navigation algorithm.
+    '''
 
     def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
 
@@ -337,8 +340,6 @@ class Navigation(object):
         self.heartbeat        = 1
         self.pdrStatus        = None
 
-
-    
     #======================== public ==========================================
     
     def receiveNotification(self,frame):
@@ -434,6 +435,9 @@ class Navigation(object):
         raise SystemError('abstract method')
 
 class NavigationBallistic(Navigation):
+    '''
+    Robots move in randomly selected heading until next bump.
+    '''
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -466,6 +470,10 @@ class NavigationBallistic(Navigation):
         dotbot['seqNumMovement'] += 1
 
 class NavigationAtlas(Navigation):
+    '''
+    Frontier based target selection.
+    A* path finding.
+    '''
 
     def __init__(self, *args, relayAlg="recovery", **kwargs):
 
@@ -491,9 +499,8 @@ class NavigationAtlas(Navigation):
         self.targetBotsAndData = []
         self.frontiers         = []
         self.allTargets        = []
-        self.allPositions      = []
+        self.initialPositions  = []
         self.end               = False
-
 
         # initial movements
         self._firstMovements()
@@ -502,7 +509,7 @@ class NavigationAtlas(Navigation):
 
             self._updateMovement(dotBotId)
 
-        self.allPositions = []
+        self.initialPositions = []
 
         self.simEngine.schedule(self.simEngine.currentTime(), self._updateFrontiersAndTargets)
 
@@ -577,11 +584,10 @@ class NavigationAtlas(Navigation):
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
             self.hCellsObstacle += [(x, y)]
-            traversedCells += [(x,y)]
+
         else:
             (x,y) = self._xy2hCell(stopX,stopY)
             self.hCellsOpen += [(x, y)]
-            traversedCells += [(x,y)]
 
         # if a cell is obstacle, remove from open cells
         for c in self.hCellsObstacle:
@@ -676,8 +682,8 @@ class NavigationAtlas(Navigation):
                 else:
                     path2target = self._path2Target(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
             else:
-                if self.allPositions:
-                    target     = self.allPositions[dotBotId]
+                if self.initialPositions:
+                    target     = self.initialPositions[dotBotId]
 
                 else:
                     if self.allTargets:
@@ -704,7 +710,7 @@ class NavigationAtlas(Navigation):
                 if self.end:
                     return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
-                if self.allPositions:
+                if self.initialPositions:
                     path2target = [target]
                 else:
                     path2target = self._path2Target(centreCellcentre,target)
@@ -802,7 +808,7 @@ class NavigationAtlas(Navigation):
         while openCells:
 
             # if target has no open cells connected to it directly, there is no valid path to target
-
+            # TODO: this shouldn't be part of path planner
             for n in self._oneHopNeighborsShuffled(*target):
                 if n in self.hCellsOpen:
                     targetBlocked = False
@@ -966,7 +972,7 @@ class NavigationAtlas(Navigation):
 
     def _updateFrontiersAndTargets(self):
 
-        if not self.allPositions:
+        if not self.initialPositions:
             self._findFrontierBoundary()
             self._findTargets()
 
@@ -993,11 +999,11 @@ class NavigationAtlas(Navigation):
         start     = (self.ix,self.iy)
         rank      = 1
         numRobots = len(self.dotbotsview)
-        while len(self.allPositions) <= numRobots:
+        while len(self.initialPositions) <= numRobots:
             for pos in self._rankHopNeighbourhood(start,rank):
-                self.allPositions += [pos]
+                self.initialPositions += [pos]
             rank += 1
-        self.allPositions = list(set(self.allPositions))
+        self.initialPositions = list(set(self.initialPositions))
 
         return
 
