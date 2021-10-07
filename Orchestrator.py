@@ -647,7 +647,7 @@ class NavigationAtlas(Navigation):
             # keep going towards same target if target hasn't been explored yet
             if centreCellcentre in self.hCellsObstacle:
                 for n in self._oneHopNeighborsShuffled(*centreCellcentre):
-                    if n in self.hCellsOpen:
+                    if n not in self.hCellsObstacle:
                         path2target = [n]
                         break
 
