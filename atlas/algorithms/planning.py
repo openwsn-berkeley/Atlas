@@ -90,9 +90,12 @@ class Map(abc.ABC):
     def cell(self, x, y, local=True, **kwargs):
         return self._cell(x, y, **kwargs) if local else self._cell(x - self.offset[0], y - self.offset[1], **kwargs)
 
-    def _cell(self, x, y, expand=True):
-        while expand and (x, y) not in self.cells:
-            self._expand()
+    def _cell(self, x, y, expand=False):
+        if (x, y) not in self.cells:
+            if expand:
+                self._expand()
+            else:
+                self.cells[(x, y)] = self.create_cell(x, y)
         return self.cells.get((x, y))
 
     @staticmethod
@@ -139,12 +142,13 @@ class Map(abc.ABC):
     def cell_neighbors(self, x, y):
         return self.neighbors(self.cell(x, y))
 
-    def neighbors(self, cell, obstacle_ok=False):
+    def neighbors(self, cell, obstacle_ok=False, explored_ok=True):
         neighbors = []
         for dx in [-self.scale, 0, self.scale]:
             for dy in [-self.scale, 0, self.scale]:
                 neighbor = self.cell(cell.x + dx, cell.y + dy)
-                if neighbor and neighbor != cell and (obstacle_ok or not neighbor.obstacle):
+                if neighbor and neighbor != cell and \
+                        (obstacle_ok or not neighbor.obstacle) and (explored_ok or not neighbor.explored):
                     neighbors.append(neighbor)
 
         return neighbors

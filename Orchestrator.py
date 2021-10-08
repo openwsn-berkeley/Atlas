@@ -579,14 +579,12 @@ class NavigationAtlas(Navigation):
             except ValueError:
                 pass
 
-        ignore = False
         while True:
             # keep going towards same target if target hasn't been explored yet
             if centreCellcentre in self.path_planner.map.obstacles:
                 for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*centreCellcentre, local=False)):
-                    if not cell.obstacle:
+                    if not cell.obstacle and cell.explored:
                         path2target = [cell.position(_local=False)]
-                        ignore = True
                         break
                 break
 
@@ -653,10 +651,6 @@ class NavigationAtlas(Navigation):
 
         #Find headings and time to reach next step, for every step in path2target
 
-        if not ignore:
-            print(path2target, u.distance(target, centreCellcentre))
-            print(ignore, tuple(target) in path2target)
-
         pathHeadings=[]
 
         for (idx,nextCell) in enumerate(path2target):
@@ -695,7 +689,7 @@ class NavigationAtlas(Navigation):
     def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
         # scan horizontally
         x_sign = 2 * int(startX < stopX) - 1
-        y_sign = 2 * int(startY < stopX) - 1
+        y_sign = 2 * int(startY < stopY) - 1
 
         step_size = MapBuilder.MINFEATURESIZE_M/2
 
@@ -717,7 +711,7 @@ class NavigationAtlas(Navigation):
             if (y > stopY if y_sign == 1 else y < stopY):
                 break
 
-            x  = startX+(((stopX-startX)*(y-startY))/(stopY-startY))
+            x  = startX + (((stopX-startX) * (y-startY)) / (stopY-startY))
 
             (cx,cy) = self._xy2hCell(x,y)
             self.path_planner.map.explore_cell(cx, cy)
@@ -746,37 +740,16 @@ class NavigationAtlas(Navigation):
 
         return rankHopNeighbours
 
-    def _findFrontierBoundary(self):
-        self.frontiers  = []
-
-        xs = [c[0] for c in self.path_planner.map.explored]
-        ys = [c[1] for c in self.path_planner.map.explored]
-
-        minX = min(xs)
-        maxX = max(xs)
-        minY = min(ys)
-        maxY = max(ys)
-
-        for c in self.path_planner.map.explored:
-            if c[0] >= minX and c[0] <= maxX and c[1] >= minY and c[1] <= maxY:
-                self.frontiers += [c]
-
-        if not self.frontiers:
-            self.end = True
-
     def _findTargets(self):
-        for f in self.frontiers:
-            for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*f, local=False)):
-                if not cell.explored:
-                    self.allTargets.append(cell.position(_local=False))
+        for f in self.path_planner.map.explored:
+            for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*f, local=False), explored_ok=False):
+                self.allTargets.append(cell.position(_local=False))
 
-        print(self.allTargets)
         self.allTargets = list(set(self.allTargets))
 
     def _updateFrontiersAndTargets(self):
 
         if not self.initialPositions:
-            self._findFrontierBoundary()
             self._findTargets()
 
         self.simEngine.schedule(self.simEngine.currentTime() + 1, self._updateFrontiersAndTargets)
