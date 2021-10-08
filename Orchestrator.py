@@ -579,12 +579,14 @@ class NavigationAtlas(Navigation):
             except ValueError:
                 pass
 
+        ignore = False
         while True:
             # keep going towards same target if target hasn't been explored yet
             if centreCellcentre in self.path_planner.map.obstacles:
                 for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*centreCellcentre, local=False)):
                     if not cell.obstacle:
                         path2target = [cell.position(_local=False)]
+                        ignore = True
                         break
                 break
 
@@ -650,6 +652,10 @@ class NavigationAtlas(Navigation):
                 break
 
         #Find headings and time to reach next step, for every step in path2target
+
+        if not ignore:
+            print(path2target, u.distance(target, centreCellcentre))
+            print(ignore, tuple(target) in path2target)
 
         pathHeadings=[]
 
@@ -764,6 +770,7 @@ class NavigationAtlas(Navigation):
                 if not cell.explored:
                     self.allTargets.append(cell.position(_local=False))
 
+        print(self.allTargets)
         self.allTargets = list(set(self.allTargets))
 
     def _updateFrontiersAndTargets(self):

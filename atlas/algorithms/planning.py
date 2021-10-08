@@ -208,6 +208,7 @@ class AStar(PathPlanner):
             currentCell = openCells.get() if self.Q else openCells.pop(0)
             closedCells.add(currentCell)
 
+            # FIXME: debug start cell parent infinite loop
             if currentCell == target:  # we have reached target, backtrack direct path
                 path = []
 
