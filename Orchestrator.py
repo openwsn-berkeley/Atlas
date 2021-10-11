@@ -1,4 +1,5 @@
 # built-in
+import abc
 import random
 import threading
 import copy
@@ -14,7 +15,7 @@ import SimEngine
 import Wireless
 import Utils as u
 
-
+from atlas.algorithms.planning import Map, AStar
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -295,8 +296,10 @@ class MapBuilder(object):
 
         return returnVal
 
-# TODO: make this an abstract base class with ABC
-class Navigation(object):
+class Navigation(abc.ABC):
+    '''
+    Navigation algorithm.
+    '''
 
     def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
 
@@ -337,8 +340,6 @@ class Navigation(object):
         self.heartbeat        = 1
         self.pdrStatus        = None
 
-
-    
     #======================== public ==========================================
     
     def receiveNotification(self,frame):
@@ -434,6 +435,9 @@ class Navigation(object):
         raise SystemError('abstract method')
 
 class NavigationBallistic(Navigation):
+    '''
+    Robots move in randomly selected heading until next bump.
+    '''
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -466,11 +470,18 @@ class NavigationBallistic(Navigation):
         dotbot['seqNumMovement'] += 1
 
 class NavigationAtlas(Navigation):
+    '''
+    Frontier based target selection.
+    A* path finding.
+    '''
 
     def __init__(self, *args, relayAlg="recovery", **kwargs):
 
         # initialize parent
         super().__init__(*args, **kwargs)
+
+        self.map = Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=AStar.Cell)
+        self.path_planner = AStar(self.map)
 
         # (additional) local variables
         self.simEngine = SimEngine.SimEngine()
@@ -478,11 +489,7 @@ class NavigationAtlas(Navigation):
         self.ix                = self.initialPosition[0]
         self.iy                = self.initialPosition[1]
         # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
-        self.hCellsOpen        = []
-        self.hCellsObstacle    = []
-        self.hCellsUnreachable = []
         # the hCell the DotBot start is in, by definition, open
-        self.hCellsOpen       += [self.initialPosition]
         self.relayBots         = [] # have not been given destinations
         self.positionedRelays  = [] # have been given destinations, but have not reached them
         self.relayPositions    = [] # desired positions to fill?
@@ -491,9 +498,8 @@ class NavigationAtlas(Navigation):
         self.targetBotsAndData = []
         self.frontiers         = []
         self.allTargets        = []
-        self.allPositions      = []
+        self.initialPositions  = []
         self.end               = False
-
 
         # initial movements
         self._firstMovements()
@@ -502,97 +508,33 @@ class NavigationAtlas(Navigation):
 
             self._updateMovement(dotBotId)
 
-        self.allPositions = []
+        self.initialPositions = []
 
         self.simEngine.schedule(self.simEngine.currentTime(), self._updateFrontiersAndTargets)
 
     #======================== public ==========================================
 
     def getExploredCells(self):
+        # TODO: store svg rects lazily in cells as their created
         returnVal = {
-            'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
-            'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
+            'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.path_planner.map.explored],
+            'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.path_planner.map.obstacles],
         }
         return returnVal
 
-    def getHeatmap(self):
-        heatMapXMax   = sorted(self.heatmap, key=lambda item: item[0][0])[-1][0][0] + 1
-        heatMapYMax   = sorted(self.heatmap, key=lambda item: item[0][1])[-1][0][1] + 1
-        heatMapXMin   = sorted(self.heatmap, key=lambda item: item[0][0])[0][0][0]
-        heatMapYMin   = sorted(self.heatmap, key=lambda item: item[0][1])[0][0][1]
-
-        heatmapValues = []
-        overlayGrid    = []
-
-        for r in range(int(heatMapYMax)*2):
-            heatmapValues += [[]]
-            overlayGrid    += [[]]
-            for c in range(int(heatMapXMax)*2):
-                heatmapValues[r] += [0]
-                overlayGrid[r]    += '-'
-
-        for h in self.heatmap:
-            x     = h[0][0]
-            y     = h[0][1]
-            value = h[1]
-
-            if x >= heatMapXMax or y >= heatMapYMax:
-                continue
-
-            heatmapValues[int(y*2)][int(x*2)] = value
-            if (x,y) in self.hCellsObstacle:
-                overlayGrid[int(y * 2)][int(x * 2)] = '#'
-            if (x,y) in self.hCellsOpen:
-                overlayGrid[int(y * 2)][int(x * 2)] = '.'
-            if (x,y) == self.initialPosition:
-                overlayGrid[int(y * 2)][int(x * 2)] = 'S'
-
-        overlayGridJoint = []
-
-        for (i,r) in enumerate(overlayGrid):
-            overlayGridJoint += ''.join('\n')
-            overlayGridJoint += ''.join(r)
-
-        overlayGridJoint = ''.join(i for i in overlayGridJoint)
-        return (heatmapValues,overlayGridJoint)
-
-    def getProfile(self):
-        return self.profile
-
-    def getRelayProfile(self):
-        return self.relayProfile
-
-    def getPDRprofile(self):
-        return self.pdrProfile
     #======================== private =========================================
 
     def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
 
         # intermediate cells are open
 
-        traversedCells   = self._cellsTraversed(startX,startY,stopX,stopY)
-        self.hCellsOpen += traversedCells
+        self.markTraversedCells(startX, startY, stopX, stopY)
 
         if self.bump == True:
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
-            self.hCellsObstacle += [(x, y)]
-            traversedCells += [(x,y)]
-        else:
-            (x,y) = self._xy2hCell(stopX,stopY)
-            self.hCellsOpen += [(x, y)]
-            traversedCells += [(x,y)]
-
-        # if a cell is obstacle, remove from open cells
-        for c in self.hCellsObstacle:
-            try:
-                self.hCellsOpen.remove(c)
-            except ValueError:
-                pass
-
-        # filter duplicates in either list
-        self.hCellsOpen      = list(set(self.hCellsOpen))
-        self.hCellsObstacle  = list(set(self.hCellsObstacle))
+            self.path_planner.map.add_obstacle(x, y)
+            self.path_planner.map.unexplore_cell(x, y)
 
     def _buildHeatmap(self, cells):
         '''
@@ -626,7 +568,6 @@ class NavigationAtlas(Navigation):
         dotbot                  = self.dotbotsview[dotBotId]               # shorthand
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
         target                  = dotbot['target']                         # set target as las allocated target until updated
-        self.skip               = False
 
         self._getRelayBots(self.dotbotsview)
         self.mapBuilder.numDotBots   = self.numDotBots
@@ -640,10 +581,15 @@ class NavigationAtlas(Navigation):
 
         while True:
             # keep going towards same target if target hasn't been explored yet
+            if centreCellcentre in self.path_planner.map.obstacles:
+                for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*centreCellcentre, local=False)):
+                    if not cell.obstacle and cell.explored:
+                        path2target = [cell.position(_local=False)]
+                        break
+                break
 
             if (target                                                               and
-               (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
-               (self.skip == False)                                                  or
+               (target not in self.path_planner.map.explored and target not in self.path_planner.map.obstacles) and
                (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
 
                 # TODO: this should read like plain English
@@ -659,14 +605,7 @@ class NavigationAtlas(Navigation):
                     self.readyRelays += [dotbot['ID']] # FIXME: this is linear in the number of dotbots
                     return
 
-                if self.movingDuration == 0:
-                    # NOTE: this path doesn't work, find another one -- why is this a class state
-                    #       and not per dotbot state? could be called directly after receiveNotification
-
-                    # avoid these cells when finding new path to target
-                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
-
-                path2target             = self._path2Target(centreCellcentre,target)
+                path2target             = self.path_planner.computePath(centreCellcentre,target)
             elif (dotbot in self.relayBots):
                 target = self._getRelayPosition(dotbot)
                 if not target:
@@ -674,11 +613,10 @@ class NavigationAtlas(Navigation):
                     target = dotbot['target']
                     continue
                 else:
-                    path2target = self._path2Target(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
+                    path2target = self.path_planner.computePath(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
             else:
-                if self.allPositions:
-                    target     = self.allPositions[dotBotId]
-
+                if self.initialPositions:
+                    target     = self.initialPositions[dotBotId]
                 else:
                     if self.allTargets:
                         target = self._findBestTarget(centreCellcentre)
@@ -700,23 +638,16 @@ class NavigationAtlas(Navigation):
 
                     return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
-                assert target
                 if self.end:
                     return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
-                if self.allPositions:
+                if self.initialPositions:
                     path2target = [target]
                 else:
-                    path2target = self._path2Target(centreCellcentre,target)
-
-                self.hCellsUnreachable = []  # clear out unreachable cells associated with path to previous target
+                    path2target = self.path_planner.computePath(centreCellcentre, target)
 
             if path2target:
                 break
-            else:
-                if self.skip == False: # NOTE: this is meant to flag target skipping, is strangely class-instance-wide?
-                    self.hCellsObstacle += [target]
-                continue
 
         #Find headings and time to reach next step, for every step in path2target
 
@@ -749,173 +680,41 @@ class NavigationAtlas(Navigation):
         dotbot['target']          = target
         dotbot['heading']         = pathHeadings[0][0]
         dotbot['timer']           = timeTillStop
-        dotbot['previousPath']    = path2target
+        dotbot['previousPath']    = [centreCellcentre, path2target]
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
         dotbot['heartbeat']       = self.heartbeat
         dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
 
-    def _findTargetandPath(self,c0):
-        """
-        FIXME: This is deprecated and not used.
-        """
-        openPath    =  []
-        target      =  None
-        currentNode =  c0
-
-        if currentNode in self.hCellsOpen:
-            for nextn in self._oneHopNeighborsShuffled(*currentNode):
-                if (nextn not in self.hCellsOpen) and (nextn not in self.hCellsObstacle):
-                    target = nextn
-                    openPath = [target]
-                    self._xy2hCell(target[0],target[1])
-
-        while True:
-
-            for n in self._oneHopNeighborsShuffled(*currentNode):
-                if n in self.hCellsOpen:
-                    openPath += [n]
-                    currentNode = n
-                    break
-
-            for nn in self._oneHopNeighborsShuffled(*currentNode):
-                if (nn not in self.hCellsOpen) and (nn not in self.hCellsObstacle):
-                    target = nn
-                    openPath += [target]
-                    break
-
-            if target:
-                return self._xy2hCell(target[0],target[1])
-            else:
-               pass
-
-    def _path2Target(self, start, target):
-        '''
-        Path planning algorithm (A* in this case) for finding shortest path to target
-        '''
-
-        targetBlocked        = None
-        openCells            = [{'cellCentre': start, 'gCost': 0, 'hCost': 0, 'fCost': 0}]
-        closedCells          = []
-        parentAndChildCells  = [(None,start)]
-
-        while openCells:
-
-            # if target has no open cells connected to it directly, there is no valid path to target
-
-            for n in self._oneHopNeighborsShuffled(*target):
-                if n in self.hCellsOpen:
-                    targetBlocked = False
-                    break
-
-            if targetBlocked != False and self.hCellsOpen:
-                self.skip = True
-                return None
-
-            if target in self.hCellsObstacle:
-                self.skip = True
-                try:
-                    self.allTargets.remove(target)
-                except ValueError:
-                    pass
-                return None
-
-            openCells            = sorted(openCells, key=lambda item: item['fCost']) # find open cell with lowest F cost
-            parent               = openCells[0]
-            currentCell          = parent['cellCentre']
-            openCells.pop(0)
-            closedCells         += [parent]
-
-            if currentCell == target:              # we have reached target, backtrack direct path
-                directPathCells              = []
-
-                while currentCell is not None:
-                    directPathCells         += [currentCell]
-                    currentCell              = [p[0] for p in parentAndChildCells
-                                               if (p[1] == currentCell and p[1] != None)][0]
-
-                directPathCells.reverse() # FIXME: why are we working backwards?
-
-                if directPathCells[0] == start:     # remove cell robot is in from path
-                    directPathCells.pop(0)
-
-                return directPathCells
-
-            for child in self._oneHopNeighborsShuffled(*currentCell): # NOTE: the cells around me, shuffling to randomize order
-
-                # skip neighbour if obstacle or already evaluated (closed)
-                if (child in self.hCellsObstacle or
-                   (child in self.hCellsUnreachable and child != target)):
-                    continue
-
-                gCost  = parent['gCost'] + 1
-                hCost  = u.distance(child,target)
-                fCost  = gCost + hCost
-
-                # add penalty to avoid choosing target as first step if it was unreachable last time
-                if (child == target and target in self.hCellsUnreachable and  gCost == 1 and self.movingDuration == 0):
-                    fCost = fCost + 0.5
-                    continue
-
-                # don't consider cell if same cell with lower fcost  is already in closed cells
-                if (child in [cell['cellCentre'] for cell in closedCells
-                    if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
-                    continue
-
-                # don't consider cell if same cell with lower fcost  is already in open cells
-                if (child in [cell['cellCentre'] for cell in openCells
-                    if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
-                    continue
-
-                openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
-                parentAndChildCells += [(currentCell, child)]
-
-    def _cellsTraversed(self,startX,startY,stopX,stopY):
-        returnVal = []
-
+    def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
         # scan horizontally
-        x         = startX
+        x_sign = 2 * int(startX < stopX) - 1
+        y_sign = 2 * int(startY < stopY) - 1
+
+        step_size = MapBuilder.MINFEATURESIZE_M/2
+
+        x = startX
         while True:
+            x += x_sign * step_size
+            if (x > stopX if x_sign == 1 else x < stopX):
+                break
 
-            if startX<stopX:
-                # going right
-                x += MapBuilder.MINFEATURESIZE_M/2
-                if x>stopX:
-                    break
-            else:
-                # going left
-                x -= MapBuilder.MINFEATURESIZE_M/2
-                if x<stopX:
-                    break
-
-            y  = startY+(((stopY-startY)*(x-startX))/(stopX-startX))
+            y = startY + (((stopY-startY) * (x-startX)) / (stopX-startX))
 
             (cx,cy) = self._xy2hCell(x,y)
-            returnVal += [(cx,cy)]
+            self.path_planner.map.explore_cell(cx, cy)
 
         # scan vertically
-        y         = startY
+        y = startY
         while True:
+            y += y_sign * step_size
+            if (y > stopY if y_sign == 1 else y < stopY):
+                break
 
-            if startY<stopY:
-                # going down
-                y += MapBuilder.MINFEATURESIZE_M/2
-                if y>stopY:
-                    break
-            else:
-                y -= MapBuilder.MINFEATURESIZE_M/2
-                if y<stopY:
-                    break
-
-            x  = startX+(((stopX-startX)*(y-startY))/(stopY-startY))
+            x  = startX + (((stopX-startX) * (y-startY)) / (stopY-startY))
 
             (cx,cy) = self._xy2hCell(x,y)
-            returnVal += [(cx,cy)]
-
-        # filter duplicates
-        returnVal = list(set(returnVal))
-
-        return returnVal
+            self.path_planner.map.explore_cell(cx, cy)
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
 
@@ -941,33 +740,16 @@ class NavigationAtlas(Navigation):
 
         return rankHopNeighbours
 
-    def _findFrontierBoundary(self):
-
-        self.frontiers  = []
-
-        minX = min([c[0] for c in self.hCellsOpen])
-        maxX = max([c[0] for c in self.hCellsOpen])
-        minY = min([c[1] for c in self.hCellsOpen])
-        maxY = max([c[1] for c in self.hCellsOpen])
-
-        for c in self.hCellsOpen:
-            if c[0] >= minX and c[0] <= maxX and c[1] >= minY and c[1] <= maxY:
-                    self.frontiers += [c]
-        if not self.frontiers:
-            self.end = True
-
     def _findTargets(self):
-        for f in self.frontiers:
-            for n in self._oneHopNeighborsShuffled(*f):
-                if n not in self.hCellsOpen and n not in self.hCellsObstacle:
-                    self.allTargets += [n]
+        for f in self.path_planner.map.explored:
+            for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*f, local=False), explored_ok=False):
+                self.allTargets.append(cell.position(_local=False))
 
         self.allTargets = list(set(self.allTargets))
 
     def _updateFrontiersAndTargets(self):
 
-        if not self.allPositions:
-            self._findFrontierBoundary()
+        if not self.initialPositions:
             self._findTargets()
 
         self.simEngine.schedule(self.simEngine.currentTime() + 1, self._updateFrontiersAndTargets)
@@ -993,11 +775,11 @@ class NavigationAtlas(Navigation):
         start     = (self.ix,self.iy)
         rank      = 1
         numRobots = len(self.dotbotsview)
-        while len(self.allPositions) <= numRobots:
+        while len(self.initialPositions) <= numRobots:
             for pos in self._rankHopNeighbourhood(start,rank):
-                self.allPositions += [pos]
+                self.initialPositions += [pos]
             rank += 1
-        self.allPositions = list(set(self.allPositions))
+        self.initialPositions = list(set(self.initialPositions))
 
         return
 
@@ -1017,16 +799,6 @@ class NavigationAtlas(Navigation):
             'width':    MapBuilder.MINFEATURESIZE_M/2,
             'height':   MapBuilder.MINFEATURESIZE_M/2,
         }
-        return returnVal
-
-    def _oneHopNeighborsShuffled(self,cx,cy):
-        s = MapBuilder.MINFEATURESIZE_M/2 # shorthand
-        returnVal = [
-            (cx-s,cy-s),(cx,cy-s),(cx+s,cy-s),
-            (cx-s,cy  )          ,(cx+s,cy  ),
-            (cx-s,cy+s),(cx,cy+s),(cx+s,cy+s),
-        ]
-        random.shuffle(returnVal)
         return returnVal
 
     #################################### Relay Placement Algorithms ###################################################
@@ -1080,17 +852,15 @@ class NavigationAtlas(Navigation):
             if (x>= (p[0] - 10) and x<= (p[0] + 10)) and ((y >= (p[1] - 10) and y<= (p[1] + 10))):
                 return
 
-        if (x,y) not in self.hCellsObstacle and  (x,y) not in self.relayPositions and (x,y) not in self.hCellsUnreachable:
+        if (x,y) not in self.path_planner.map.obstacles and (x,y) not in self.relayPositions:
             self.relayPositions += [(x,y)]
             self.positionedRelays += [relayBot['ID']]
             return (x, y)
 
-        return
-
     ######## Naïve Algorithm
 
     def _naive_getRelayBots(self, allDotBots):
-        overlayGridSize = len(self.hCellsOpen)+len(self.hCellsObstacle)
+        overlayGridSize = len(self.path_planner.map.explored) + len(self.path_planner.map.obstacles)
         if ((overlayGridSize % 200 == 0)                    and
             (len(self.relayBots) < (overlayGridSize/200))     ):
             self.relayBots += [random.choice(allDotBots)]
@@ -1151,12 +921,10 @@ class NavigationAtlas(Navigation):
 
         (xp,yp) = targetChosen['relayPositions'][-1]
         (x,y)   = self._xy2hCell(xp,yp)
-        if (x,y) not in self.relayPositions and (x,y) not in self.hCellsObstacle and (x,y) not in self.hCellsUnreachable:
+        if (x,y) not in self.relayPositions and (x,y) not in self.path_planner.map.obstacles:
             self.relayPositions += [targetChosen['relayPositions'][-1]]
             self.positionedRelays += [relayBot['ID']]
             return (x,y)
-        else:
-            return
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -1206,13 +974,6 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-        #self.navigation.profile += [len(self.navigation.hCellsOpen + self.navigation.hCellsObstacle)]
-        #if self.simEngine.currentTime() % 10 == 0:
-
-        #self.navigation.relayProfile += [len(self.navigation.readyRelays)]
-        #self.navigation.pdrProfile += [self.wireless.pdrMode()]
-        #self.navigation.timeLine   += [self.simEngine.currentTime()]
-        #print(self.navigation.pdrProfile)
 
     def _sendDownstreamCommands(self):
         '''

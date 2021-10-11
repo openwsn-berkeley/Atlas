@@ -103,27 +103,28 @@ def main(config):
     # TODO: Have a validate configuration script that does an import dry run of all the configuration settings
     for idx, floorplan in enumerate(config.world.floorplans):
         for numrobot in config.world.robots.counts:
-            for wireless in config.wireless.models:
-                for propagation in config.wireless.propagation.models:
-                    for nav in nav_config.models:
-                        for relay in nav_config.relay.algorithms:
-                            for path_planner in nav_config.path_planning.algorithms:
-                                for target_selector in nav_config.target_selector.algorithms:
-                                    SIMSETTINGS.append(
-                                        {
-                                            'numDotBots': numrobot,
-                                            'floorplanType': idx,
-                                            'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
-                                                                                           floorplan).decode('utf-8'),
-                                            'initialPosition': (1, 1),
-                                            'navAlgorithm': nav,
-                                            'pathPlanner': path_planner,
-                                            'relayAlg': relay,
-                                            'targetSelector': target_selector,
-                                            'wirelessModel': wireless,
-                                            'propagationModel': propagation
-                                        },
-                                    )
+            for init_pos in config.world.robots.initial_positions:
+                for wireless in config.wireless.models:
+                    for propagation in config.wireless.propagation.models:
+                        for nav in nav_config.models:
+                            for relay in nav_config.relay.algorithms:
+                                for path_planner in nav_config.path_planning.algorithms:
+                                    for target_selector in nav_config.target_selector.algorithms:
+                                        SIMSETTINGS.append(
+                                            {
+                                                'numDotBots': numrobot,
+                                                'floorplanType': idx,
+                                                'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
+                                                                                               floorplan).decode('utf-8'),
+                                                'initialPosition': tuple(init_pos),
+                                                'navAlgorithm': nav,
+                                                'pathPlanner': path_planner,
+                                                'relayAlg': relay,
+                                                'targetSelector': target_selector,
+                                                'wirelessModel': wireless,
+                                                'propagationModel': propagation
+                                            },
+                                        )
     
     # log
     log.debug('simulation starting')
@@ -142,7 +143,7 @@ def main(config):
         for (runNum, simSetting) in enumerate(SIMSETTINGS):
             # log
             log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting")
-            kpis = runSim(simSetting,simUI)
+            kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
             time_to_full_mapping = kpis['timeToFullMapping']
             log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s")
             kpis['runNums'] = runNum
