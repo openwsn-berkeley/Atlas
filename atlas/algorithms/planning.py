@@ -8,6 +8,7 @@ Date: Mon, Oct 4, 2021
 
 import abc
 import heapq
+import collections
 
 import numpy as np
 
@@ -62,10 +63,13 @@ class Cell(abc.ABC):
     def obstacle(self, value: bool):
         self.parent_map.obstacles.add(self.position(_local=False)) if value else self.parent_map.obstacles.discard(self.position(_local=False))
 
+    def __repr__(self):
+        return f"Global: {self.position(_local=False)} | Local: {self.position()} | Explored: {self.explored} | Obstacle {self.obstacle}"
+
 class Map(abc.ABC):
     # TODO: create a function that maps coordinates here to global coordinates via a translation (and possible a rotation later on)
 
-    def __init__(self, width=50, height=50, scale=0.5, cell_class=Cell, offset=(0, 0), factor=2):
+    def __init__(self, width=100, height=100, scale=0.5, cell_class=Cell, offset=(0, 0), factor=2):
         self.width = width
         self.height = height
         self.scale = scale
@@ -169,20 +173,96 @@ class PathPlanner(abc.ABC):
 
 """ Implementations """
 
+import time
+
+""" BFS """
+
+class BFS(PathPlanner):
+    def computePath(self, start_coords: Tuple[float, float], target_coords: Tuple[float, float]) -> Optional[List[Any]]: # TODO: have type definitions
+        '''
+        Path planning algorithm (A* in this case) for finding shortest path to target
+        '''
+        print(f"{target_coords} Searching........", end="\r")
+        t0 = time.time()
+        start = self.map.cell(*start_coords, local=False)
+        target = self.map.cell(*target_coords, local=False)
+
+        visited, toVisit = set(), collections.deque([start])
+        paths = [[start]]
+
+        if target.obstacle or not self.map.neighbors(target):
+            return None
+
+        # TODO: when it returns None, orchestrator should handle removing target on it's own side
+        path = []
+        while toVisit:
+            nextVisit = toVisit.popleft()
+            path = paths.pop(0)
+            node = path[-1]
+
+            if node == target:
+                return path
+
+            for neighbor in self.map.neighbors(nextVisit):
+                if neighbor not in visited:
+                    new_path = list(path)
+                    new_path.append(neighbor)
+                    visited.add(neighbor)
+                    toVisit.append(neighbor)
+
+        t1 = time.time()
+        print(f"{target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
+        return path
+
 """ A Star """
 
 class AStar(PathPlanner):
-    Q = False
+    Q = True
+    ID = 0
 
     class Cell(Cell):
-        def __init__(self, x, y, map, g=0, h=0, parent=None, **kwargs):
+        def __init__(self, x, y, map, g=0, h=0,
+                     parent=None, **kwargs):
             super().__init__(x, y, map, **kwargs)
+            self.id = AStar.ID
             self.set_costs(g, h)
             self.parent = parent
 
+        def __lt__(self, other):
+            return self.hCost < other.hCost
+
+        def reset(self):
+            if self.id == AStar.ID:
+                return
+            self.h = 0
+            self.g = 0
+            self._parent = None
+            self.id = AStar.ID
+
         def set_costs(self, g, h):
-            self.gCost = g
-            self.hCost = h
+            self.reset()
+            self.g = g
+            self.h = h
+
+        @property
+        def parent(self):
+            self.reset()
+            return self._parent
+
+        @parent.setter
+        def parent(self, value):
+            self.reset()
+            self._parent = value
+
+        @property
+        def hCost(self):
+            self.reset()
+            return self.h
+
+        @property
+        def gCost(self):
+            self.reset()
+            return self.g
 
         @property
         def fCost(self):
@@ -195,21 +275,27 @@ class AStar(PathPlanner):
         '''
         Path planning algorithm (A* in this case) for finding shortest path to target
         '''
+        print(f"{target_coords} Searching........", end="\r")
+        t0 = time.time()
         start = self.map.cell(*start_coords, local=False)
         target = self.map.cell(*target_coords, local=False)
 
         openCells = PriorityQueue() if self.Q else []
-        openCells.put(start.priority()) if self.Q else openCells.append(start)
+        openCells.put(*start.priority()) if self.Q else openCells.append(start)
         closedCells = set()
 
         if target.obstacle or not self.map.neighbors(target):
             return None
 
         # TODO: when it returns None, orchestrator should handle removing target on it's own side
-
-        while openCells:
+        path = None
+        while not openCells.empty() if self.Q else openCells:
             openCells = openCells if self.Q else sorted(openCells, key=lambda item: item.fCost)  # find open cell with lowest F cost # TODO: this should be a min_heap / priority queue!!!
             currentCell = openCells.get() if self.Q else openCells.pop(0)
+            if currentCell is None:
+                print("NO PATH!")
+                return
+
             closedCells.add(currentCell)
 
             # FIXME: debug start cell parent infinite loop
@@ -221,7 +307,7 @@ class AStar(PathPlanner):
                     currentCell = currentCell.parent
 
                 path.reverse()
-                return path
+                break
 
             for child in self.map.neighbors(currentCell): # TODO: should we randomize? make a flag and test if there's any difference
                 gCost = currentCell.gCost + 1
@@ -234,3 +320,8 @@ class AStar(PathPlanner):
                 child.set_costs(gCost, hCost)
                 child.parent = currentCell
                 openCells.put(*child.priority()) if self.Q else openCells.append(child)
+
+        t1 = time.time()
+        print(f"{target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
+        AStar.ID += 1
+        return path

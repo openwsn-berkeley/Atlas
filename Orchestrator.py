@@ -510,8 +510,6 @@ class NavigationAtlas(Navigation):
 
         self.initialPositions = []
 
-        self.simEngine.schedule(self.simEngine.currentTime(), self._updateFrontiersAndTargets)
-
     #======================== public ==========================================
 
     def getExploredCells(self):
@@ -564,6 +562,9 @@ class NavigationAtlas(Navigation):
         '''
         \post modifies the movement directly in dotbotsview
         '''
+
+        if not self.initialPositions:
+            self._findTargets()
 
         dotbot                  = self.dotbotsview[dotBotId]               # shorthand
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
@@ -747,13 +748,6 @@ class NavigationAtlas(Navigation):
 
         self.allTargets = list(set(self.allTargets))
 
-    def _updateFrontiersAndTargets(self):
-
-        if not self.initialPositions:
-            self._findTargets()
-
-        self.simEngine.schedule(self.simEngine.currentTime() + 1, self._updateFrontiersAndTargets)
-
     def _findBestTarget(self, dbpos):
 
         targetsAndDistances2db = []
@@ -804,22 +798,20 @@ class NavigationAtlas(Navigation):
     #################################### Relay Placement Algorithms ###################################################
 
     def _getRelayBots(self, allDotBots):
-        if self.algorithm == 'recovery':
-            self._recovery_getRelayBots(allDotBots)
-        elif self.algorithm == 'naive':
-            self._naive_getRelayBots(allDotBots)
-        elif self.algorithm == 'selfHealing':
-            self._selfHealing_getRelayBots(allDotBots)
+        relay = getattr(self, f"_{self.algorithm}_getRelayBots")
+        relay(allDotBots)
 
     def _getRelayPosition(self, relayBot):
-        if self.algorithm == 'recovery':
-            return self._recovery_getRelayPosition(relayBot)
-        if self.algorithm == 'naive':
-            return self._naive_getRelayPosition(relayBot)
-        if self.algorithm == 'selfHealing':
-            return self._selfHealing_getRelayPosition(relayBot)
+        relay = getattr(self, f"_{self.algorithm}_getRelayPosition")
+        relay(relayBot)
 
     ######## Recovery Algorithm
+
+    def _none_getRelayBots(self, allDotBots):
+        return
+
+    def _none_getRelayPosition(self, relayBots):
+        return
 
     def _recovery_getRelayBots(self, allDotBots):
 
