@@ -14,12 +14,15 @@ class PriorityQueue:
         return len(self.elements) == 0
 
     def put(self, priority, item):
-        if item not in self.check:
-            heapq.heappush(self.elements, (priority, item))
-            self.check.add(item)
+        heapq.heappush(self.elements, (priority, item))
+        self.check.add(item)
         assert len(self.elements) >= len(self.check)
 
     def get(self):
         item = heapq.heappop(self.elements)[1]
+        while item not in self.check:
+            if self.empty():
+                return None
+            item = heapq.heappop(self.elements)[1]
         self.check.remove(item)
         return item
