@@ -180,7 +180,7 @@ import time
 class BFS(PathPlanner):
     def computePath(self, start_coords: Tuple[float, float], target_coords: Tuple[float, float]) -> Optional[List[Any]]: # TODO: have type definitions
         '''
-        Path planning algorithm (A* in this case) for finding shortest path to target
+        Path planning algorithm (BFS in this case) for finding path to target
         '''
         print(f"{target_coords} Searching........", end="\r")
         t0 = time.time()

@@ -15,7 +15,7 @@ import SimEngine
 import Wireless
 import Utils as u
 
-from atlas.algorithms.planning import Map, AStar
+from atlas.algorithms.planning import Map, AStar, BFS
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -298,7 +298,7 @@ class MapBuilder(object):
 
 class Navigation(abc.ABC):
     '''
-    Navigation algorithm.
+    Navigation algorithm .
     '''
 
     def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
@@ -344,7 +344,7 @@ class Navigation(abc.ABC):
     
     def receiveNotification(self,frame):
         '''
-        We just received a notification for a DotBot.
+        We just received a notification from a DotBot.
         '''
         
         # shorthand
@@ -531,8 +531,8 @@ class NavigationAtlas(Navigation):
         if self.bump == True:
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
-            self.path_planner.map.add_obstacle(x, y)
-            self.path_planner.map.unexplore_cell(x, y)
+            self.map.add_obstacle(x, y)
+            self.map.unexplore_cell(x, y)
 
     def _buildHeatmap(self, cells):
         '''
@@ -567,7 +567,7 @@ class NavigationAtlas(Navigation):
             self._findTargets()
 
         dotbot                  = self.dotbotsview[dotBotId]               # shorthand
-        centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
+        centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in #TODO: change var name
         target                  = dotbot['target']                         # set target as las allocated target until updated
 
         self._getRelayBots(self.dotbotsview)
@@ -583,14 +583,14 @@ class NavigationAtlas(Navigation):
         while True:
             # keep going towards same target if target hasn't been explored yet
             if centreCellcentre in self.path_planner.map.obstacles:
-                for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*centreCellcentre, local=False)):
+                for cell in self.map.neighbors(self.map.cell(*centreCellcentre, local=False)):
                     if not cell.obstacle and cell.explored:
                         path2target = [cell.position(_local=False)]
                         break
                 break
 
             if (target                                                               and
-               (target not in self.path_planner.map.explored and target not in self.path_planner.map.obstacles) and
+               (target not in self.map.explored and target not in self.map.obstacles) and
                (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
 
                 # TODO: this should read like plain English
@@ -630,7 +630,6 @@ class NavigationAtlas(Navigation):
                     pass
 
                 if not target:
-                    print('RETURNING', dotBotId, self.allTargets, self.simEngine.currentTime())
                     dotbot['ID']     = dotBotId
                     dotbot['target'] = centreCellcentre
                     dotbot['timer']  = None
@@ -703,7 +702,7 @@ class NavigationAtlas(Navigation):
             y = startY + (((stopY-startY) * (x-startX)) / (stopX-startX))
 
             (cx,cy) = self._xy2hCell(x,y)
-            self.path_planner.map.explore_cell(cx, cy)
+            self.map.explore_cell(cx, cy)
 
         # scan vertically
         y = startY
@@ -715,7 +714,7 @@ class NavigationAtlas(Navigation):
             x  = startX + (((stopX-startX) * (y-startY)) / (stopY-startY))
 
             (cx,cy) = self._xy2hCell(x,y)
-            self.path_planner.map.explore_cell(cx, cy)
+            self.map.explore_cell(cx, cy)
 
     def _rankHopNeighbourhood(self, c0, distanceRank):
 
@@ -742,8 +741,8 @@ class NavigationAtlas(Navigation):
         return rankHopNeighbours
 
     def _findTargets(self):
-        for f in self.path_planner.map.explored:
-            for cell in self.path_planner.map.neighbors(self.path_planner.map.cell(*f, local=False), explored_ok=False):
+        for f in self.map.explored:
+            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
                 self.allTargets.append(cell.position(_local=False))
 
         self.allTargets = list(set(self.allTargets))
@@ -844,7 +843,7 @@ class NavigationAtlas(Navigation):
             if (x>= (p[0] - 10) and x<= (p[0] + 10)) and ((y >= (p[1] - 10) and y<= (p[1] + 10))):
                 return
 
-        if (x,y) not in self.path_planner.map.obstacles and (x,y) not in self.relayPositions:
+        if (x,y) not in self.map.obstacles and (x,y) not in self.relayPositions:
             self.relayPositions += [(x,y)]
             self.positionedRelays += [relayBot['ID']]
             return (x, y)
@@ -852,7 +851,7 @@ class NavigationAtlas(Navigation):
     ######## Naïve Algorithm
 
     def _naive_getRelayBots(self, allDotBots):
-        overlayGridSize = len(self.path_planner.map.explored) + len(self.path_planner.map.obstacles)
+        overlayGridSize = len(self.map.explored) + len(self.map.obstacles)
         if ((overlayGridSize % 200 == 0)                    and
             (len(self.relayBots) < (overlayGridSize/200))     ):
             self.relayBots += [random.choice(allDotBots)]
@@ -892,28 +891,23 @@ class NavigationAtlas(Navigation):
 
                     relayPosition = (x ,y)
                     tb['relayPositions'] += [relayPosition]
-                    #print('---', self.targetBotsAndData)
+
                 else:
                     x = ((d['x'] + self.ix)/2)
                     y = ((d['y'] + self.iy)/2)
                     self.targetBotsAndData += [ {'targetBot':d, 'relayPositions' : [(x , y)]} ]
-                    #print('+++', self.targetBotsAndData)
-
 
                 self.relayBots += [random.choice([db for db in allDotBots if (db != d)])]
-                #print(self.relayBots)
-                #break
 
         return
 
     def _selfHealing_getRelayPosition(self, relayBot):
-        #print(self.targetBotsAndData)
-        #print('.....')
+
         targetChosen = random.choice(self.targetBotsAndData)
 
         (xp,yp) = targetChosen['relayPositions'][-1]
         (x,y)   = self._xy2hCell(xp,yp)
-        if (x,y) not in self.relayPositions and (x,y) not in self.path_planner.map.obstacles:
+        if (x,y) not in self.relayPositions and (x,y) not in self.map.obstacles:
             self.relayPositions += [targetChosen['relayPositions'][-1]]
             self.positionedRelays += [relayBot['ID']]
             return (x,y)
