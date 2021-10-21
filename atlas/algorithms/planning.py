@@ -351,7 +351,9 @@ class AtlasTargets(TargetSelector):
         self.iy = start_y
 
         self.numDotBots = num_bots
-        self.allTargets = []
+        self.allTargets = set()
+
+        self.not_frontiers = set()
 
 
     def allocateTarget(self, dotbot_position):
@@ -364,8 +366,8 @@ class AtlasTargets(TargetSelector):
             alloc_target = random.choice(all_targets)
             return alloc_target
 
-        if not self.allTargets:
-            self._findTargets()
+        # if not self.allTargets:
+        #     self._findTargets()
 
         targetsAndDistances2db = []
 
@@ -378,9 +380,24 @@ class AtlasTargets(TargetSelector):
 
         closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
         alloc_target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
-        self.allTargets.remove(alloc_target)
+
+        self.allTargets.discard(alloc_target)
 
         return alloc_target
+
+    def findTargets(self):
+
+        # if len(self.allTargets) > self.numDotBots:
+        #     return
+
+        for f in self.map.explored:
+            if f in self.not_frontiers:
+                continue
+            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
+                self.allTargets.add(cell.position(_local=False))
+            self.not_frontiers.add(f)
+
+
 
     def _firstMovements(self):
 
@@ -394,14 +411,6 @@ class AtlasTargets(TargetSelector):
             rank += 1
 
         return list(set(initial_positions))
-
-    def _findTargets(self):
-
-        for f in self.map.explored:
-            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
-                self.allTargets.append(cell.position(_local=False))
-
-        self.allTargets = list(set(self.allTargets))
 
     def _xy2hCell(self, x, y):
         xsteps = int(round((x - 1) / 0.5, 0))

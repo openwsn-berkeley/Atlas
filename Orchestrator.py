@@ -216,8 +216,8 @@ class MapBuilder(object):
     def _isMapComplete(self):
 
         #print(self.numDotBots, self.numRelayBots)
-        if (self.numRelayBots >= self.numDotBots) and self.numRelayBots > 0:
-            return True
+        # if (self.numRelayBots >= self.numDotBots) and self.numRelayBots > 0:
+        #     return True
 
         while True: # "loop" only once
 
@@ -507,6 +507,7 @@ class NavigationAtlas(Navigation):
 
             self._updateMovement(dotBotId)
 
+        self.simEngine.schedule(self.simEngine.currentTime() + 1, self.scheduleCheckForTargets)
 
     #======================== public ==========================================
 
@@ -670,6 +671,10 @@ class NavigationAtlas(Navigation):
         dotbot['seqNumMovement'] += 1
         dotbot['heartbeat']       = self.heartbeat
         dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
+
+    def scheduleCheckForTargets(self):
+        self.target_selector.findTargets()
+        self.simEngine.schedule(self.simEngine.currentTime()+1, self.scheduleCheckForTargets)
 
     def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
         # scan horizontally
