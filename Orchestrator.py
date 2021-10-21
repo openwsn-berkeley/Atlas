@@ -15,7 +15,7 @@ import SimEngine
 import Wireless
 import Utils as u
 
-from atlas.algorithms.planning import Map, AStar, BFS
+from atlas.algorithms.planning import Map, AStar, AtlasTargets
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -501,14 +501,12 @@ class NavigationAtlas(Navigation):
         self.initialPositions  = []
         self.end               = False
 
-        # initial movements
-        self._firstMovements()
+        self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
 
         for (dotBotId,_) in enumerate(self.dotbotsview):
 
             self._updateMovement(dotBotId)
 
-        self.initialPositions = []
 
     #======================== public ==========================================
 
@@ -563,9 +561,6 @@ class NavigationAtlas(Navigation):
         \post modifies the movement directly in dotbotsview
         '''
 
-        if not self.initialPositions:
-            self._findTargets()
-
         dotbot                  = self.dotbotsview[dotBotId]               # shorthand
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in #TODO: change var name
         target                  = dotbot['target']                         # set target as las allocated target until updated
@@ -616,18 +611,8 @@ class NavigationAtlas(Navigation):
                 else:
                     path2target = self.path_planner.computePath(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
             else:
-                if self.initialPositions:
-                    target     = self.initialPositions[dotBotId]
-                else:
-                    if self.allTargets:
-                        target = self._findBestTarget(centreCellcentre)
-                    else:
-                        target = None
 
-                try:
-                    self.allTargets.remove(target)
-                except ValueError:
-                    pass
+                target = self.target_selector.allocateTarget(centreCellcentre)
 
                 if not target:
                     dotbot['ID']     = dotBotId
@@ -715,66 +700,6 @@ class NavigationAtlas(Navigation):
 
             (cx,cy) = self._xy2hCell(x,y)
             self.map.explore_cell(cx, cy)
-
-    def _rankHopNeighbourhood(self, c0, distanceRank):
-
-        rankHopNeighbours = []
-
-        # shorthand
-        (c0x,c0y) = c0
-
-        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
-        numberOfSurroundingCells = 8 * distanceRank
-
-        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
-        # find centres of surrounding cells based on DotBot speed and angle
-        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
-        for idx in range(numberOfSurroundingCells):
-            (x, y) = u.computeCurrentPosition(c0x, c0y,
-                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
-                                              1,  # assume speed to be 1 meter per second
-                                              0.5*distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
-
-            (scx,scy) = self._xy2hCell(x, y)
-            rankHopNeighbours += [(scx,scy)]
-
-        return rankHopNeighbours
-
-    def _findTargets(self):
-        for f in self.map.explored:
-            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
-                self.allTargets.append(cell.position(_local=False))
-
-        self.allTargets = list(set(self.allTargets))
-
-    def _findBestTarget(self, dbpos):
-
-        targetsAndDistances2db = []
-
-        for t in self.allTargets:
-            targetsAndDistances2db += [(t,u.distance(dbpos,t))]
-
-        closestTarget = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
-        closestTargets2start = [(c,d) for (c,d) in targetsAndDistances2db if d == closestTarget]
-
-        closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
-        target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
-
-        return  target
-
-
-    def _firstMovements(self):
-
-        start     = (self.ix,self.iy)
-        rank      = 1
-        numRobots = len(self.dotbotsview)
-        while len(self.initialPositions) <= numRobots:
-            for pos in self._rankHopNeighbourhood(start,rank):
-                self.initialPositions += [pos]
-            rank += 1
-        self.initialPositions = list(set(self.initialPositions))
-
-        return
 
     def _xy2hCell(self,x,y):
 

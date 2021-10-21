@@ -10,6 +10,10 @@ import abc
 import heapq
 import collections
 
+import random
+
+import Utils as u
+
 import numpy as np
 
 from typing import Optional, Tuple, List, Any
@@ -158,7 +162,15 @@ class Map(abc.ABC):
         return neighbors
 
 class TargetSelector(abc.ABC):
-    pass
+    class Cell(Cell):
+        pass
+
+    def __init__(self, map=None, map_kwargs={}):
+        self.map = map or Map(cell_class=self.Cell, **map_kwargs)
+
+    @abc.abstractmethod
+    def allocateTarget(self, *args, **kwargs):
+        ...
 
 class PathPlanner(abc.ABC):
     class Cell(Cell):
@@ -325,3 +337,100 @@ class AStar(PathPlanner):
         print(f"{target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
         AStar.ID += 1
         return path
+
+""" Atlas Target Selector"""
+
+class AtlasTargets(TargetSelector):
+
+    def __init__(self, start_x, start_y, num_bots, *args, **kwargs):
+
+        # initialize parent
+        super().__init__(*args, **kwargs)
+
+        self.ix = start_x
+        self.iy = start_y
+
+        self.numDotBots = num_bots
+        self.allTargets = []
+
+
+    def allocateTarget(self, dotbot_position):
+        '''
+        Allocates a target to a dotBot based on distance to robot and distance to starting point.
+        '''
+
+        if dotbot_position == (self.ix,self.iy):
+            all_targets  = self._firstMovements()
+            alloc_target = random.choice(all_targets)
+            return alloc_target
+
+        if not self.allTargets:
+            self._findTargets()
+
+        targetsAndDistances2db = []
+
+        for t in self.allTargets:
+            if t != dotbot_position:
+                targetsAndDistances2db += [(t, u.distance(dotbot_position, t))]
+
+        closestTarget        = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
+        closestTargets2start = [(c, d) for (c, d) in targetsAndDistances2db if d == closestTarget]
+
+        closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
+        alloc_target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
+        self.allTargets.remove(alloc_target)
+
+        return alloc_target
+
+    def _firstMovements(self):
+
+        initial_positions = []
+        start = (self.ix, self.iy)
+        rank  = 1
+
+        while len(initial_positions) <= self.numDotBots:
+            for pos in self._rankHopNeighbourhood(start, rank):
+                initial_positions += [pos]
+            rank += 1
+
+        return list(set(initial_positions))
+
+    def _findTargets(self):
+
+        for f in self.map.explored:
+            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
+                self.allTargets.append(cell.position(_local=False))
+
+        self.allTargets = list(set(self.allTargets))
+
+    def _xy2hCell(self, x, y):
+        xsteps = int(round((x - 1) / 0.5, 0))
+        cx = 1 + xsteps * 0.5
+        ysteps = int(round((y - 1) / 0.5, 0))
+        cy = 1 + ysteps * 0.5
+
+        return (cx, cy)
+
+    def _rankHopNeighbourhood(self, c0, distanceRank):
+
+        rankHopNeighbours = []
+
+        # shorthand
+        (c0x, c0y) = c0
+
+        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
+        numberOfSurroundingCells = 8 * distanceRank
+
+        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
+        # find centres of surrounding cells based on DotBot speed and angle
+        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
+        for idx in range(numberOfSurroundingCells):
+            (x, y) = u.computeCurrentPosition(c0x, c0y,
+                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
+                                              1,  # assume speed to be 1 meter per second
+                                              0.5 * distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
+
+            (scx, scy) = self._xy2hCell(x, y)
+            rankHopNeighbours += [(scx, scy)]
+
+        return rankHopNeighbours
