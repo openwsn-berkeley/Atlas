@@ -1,40 +1,25 @@
 import heapq
-import itertools
 
 class PriorityQueue:
     def __init__(self):
-        self.elements =  []          # list of entries arranged in a heap
-        self.entry_finder = {}       # mapping of tasks to entries
-        self.REMOVED = object()      # placeholder for a removed task
+        self.elements = []
+        self.check = set()
 
     def __contains__(self, item):
-        return item in self.elements
+        assert len(self.elements) >= len(self.check)
+        return item in self.check
 
     def empty(self):
+        assert len(self.elements) >= len(self.check)
         return len(self.elements) == 0
 
     def put(self, priority, item):
-        # Add a new task or update the priority of an existing task
-
-        if item in self.entry_finder:
-            previous_entry = self.entry_finder[item]
-            previous_priority = previous_entry[0]
-            if priority < previous_priority:
-                previous_entry[-1] = self.REMOVED
-
-        self.entry_finder[item] = [priority, item]
-        heapq.heappush(self.elements, (priority, item))
+        if item not in self.check:
+            heapq.heappush(self.elements, (priority, item))
+            self.check.add(item)
+        assert len(self.elements) >= len(self.check)
 
     def get(self):
-        # Remove and return the lowest priority task. Raise KeyError if empty
-        while self.elements:
-            item = heapq.heappop(self.elements)[1]
-            if item is not self.REMOVED:
-                try:
-                    del self.entry_finder[item]
-                except KeyError:
-                    continue
-                return item
-            else:
-                pass
-        raise KeyError('pop from an empty priority queue')
+        item = heapq.heappop(self.elements)[1]
+        self.check.remove(item)
+        return item

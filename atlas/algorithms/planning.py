@@ -287,7 +287,7 @@ class AStar(PathPlanner):
         '''
         Path planning algorithm (A* in this case) for finding shortest path to target
         '''
-        print(f"{target_coords} Searching........", end="\r")
+        print(f"from {start_coords} to {target_coords} Searching........", end="\r")
         t0 = time.time()
         start = self.map.cell(*start_coords, local=False)
         target = self.map.cell(*target_coords, local=False)
@@ -334,13 +334,105 @@ class AStar(PathPlanner):
                 openCells.put(*child.priority()) if self.Q else openCells.append(child)
 
         t1 = time.time()
-        print(f"{target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
+        print(f"From {start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
         AStar.ID += 1
         return path
 
 """ Atlas Target Selector"""
 
+class AtlasTargetsPriority(TargetSelector):
+
+    def __init__(self, start_x, start_y, num_bots, *args, **kwargs):
+
+        # initialize parent
+        super().__init__(*args, **kwargs)
+
+        self.ix = start_x
+        self.iy = start_y
+
+        self.numDotBots = num_bots
+        self.allTargets = PriorityQueue()
+
+        self.not_frontiers = set()
+
+
+    def allocateTarget(self, dotbot_position):
+        '''
+        Allocates a target to a dotBot based on distance to robot and distance to starting point.
+        '''
+
+        if dotbot_position == (self.ix,self.iy):
+            all_targets  = self._firstMovements()
+            alloc_target = random.choice(all_targets)
+            return alloc_target
+
+        if self.allTargets.empty():
+            self.findTargets()
+
+        alloc_target = self.allTargets.get()
+        return alloc_target
+
+
+    def findTargets(self):
+
+        # if len(self.allTargets) > self.numDotBots:
+        #     return
+
+        for f in self.map.explored:
+            if f in self.not_frontiers:
+                continue
+            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
+                distance2start = u.distance(cell.position(_local=False), (self.ix, self.iy))
+                self.allTargets.put(distance2start, cell.position(_local=False))
+            self.not_frontiers.add(f)
+
+    def _firstMovements(self):
+
+        initial_positions = []
+        start = (self.ix, self.iy)
+        rank  = 1
+
+        while len(initial_positions) <= self.numDotBots:
+            for pos in self._rankHopNeighbourhood(start, rank):
+                initial_positions += [pos]
+            rank += 1
+
+        return list(set(initial_positions))
+
+    def _xy2hCell(self, x, y):
+        xsteps = int(round((x - 1) / 0.5, 0))
+        cx = 1 + xsteps * 0.5
+        ysteps = int(round((y - 1) / 0.5, 0))
+        cy = 1 + ysteps * 0.5
+
+        return (cx, cy)
+
+    def _rankHopNeighbourhood(self, c0, distanceRank):
+
+        rankHopNeighbours = []
+
+        # shorthand
+        (c0x, c0y) = c0
+
+        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
+        numberOfSurroundingCells = 8 * distanceRank
+
+        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
+        # find centres of surrounding cells based on DotBot speed and angle
+        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
+        for idx in range(numberOfSurroundingCells):
+            (x, y) = u.computeCurrentPosition(c0x, c0y,
+                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
+                                              1,  # assume speed to be 1 meter per second
+                                              0.5 * distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
+
+            (scx, scy) = self._xy2hCell(x, y)
+            rankHopNeighbours += [(scx, scy)]
+
+        return rankHopNeighbours
+
 class AtlasTargets(TargetSelector):
+
 
     def __init__(self, start_x, start_y, num_bots, *args, **kwargs):
 
@@ -376,8 +468,10 @@ class AtlasTargets(TargetSelector):
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t))]
 
         closestTarget        = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
-        closestTargets2start = [c for (c, d) in targetsAndDistances2db if d == closestTarget]
-        alloc_target = closestTargets2start[0]
+        closestTargets2start = [(c, d) for (c, d) in targetsAndDistances2db if d == closestTarget]
+
+        closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
+        alloc_target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
 
         self.allTargets.discard(alloc_target)
 
@@ -394,8 +488,6 @@ class AtlasTargets(TargetSelector):
             for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
                 self.allTargets.add(cell.position(_local=False))
             self.not_frontiers.add(f)
-
-
 
     def _firstMovements(self):
 
