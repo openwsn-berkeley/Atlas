@@ -376,10 +376,8 @@ class AtlasTargets(TargetSelector):
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t))]
 
         closestTarget        = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
-        closestTargets2start = [(c, d) for (c, d) in targetsAndDistances2db if d == closestTarget]
-
-        closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
-        alloc_target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
+        closestTargets2start = [c for (c, d) in targetsAndDistances2db if d == closestTarget]
+        alloc_target = closestTargets2start[0]
 
         self.allTargets.discard(alloc_target)
 

@@ -586,7 +586,7 @@ class NavigationAtlas(Navigation):
                 break
 
             if (target                                                               and
-               (target not in self.map.explored and target not in self.map.obstacles) and
+               (target not in self.map.explored and target not in self.map.obstacles) or
                (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
 
                 # TODO: this should read like plain English
@@ -603,6 +603,7 @@ class NavigationAtlas(Navigation):
                     return
 
                 path2target             = self.path_planner.computePath(centreCellcentre,target)
+
             elif (dotbot in self.relayBots):
                 target = self._getRelayPosition(dotbot)
                 if not target:
@@ -727,6 +728,7 @@ class NavigationAtlas(Navigation):
     #################################### Relay Placement Algorithms ###################################################
 
     def _getRelayBots(self, allDotBots):
+        return
         relay = getattr(self, f"_{self.algorithm}_getRelayBots")
         relay(allDotBots)
 
