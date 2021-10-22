@@ -326,7 +326,7 @@ class AStar(PathPlanner):
                 hCost = target.distance(child)
 
                 # don't consider cell if same cell with lower fcost is already in open or closed cells
-                if ((child in closedCells or child in openCells) and child.fCost < gCost + hCost):
+                if ((child in closedCells or child in openCells) and child.fCost <= gCost + hCost):
                     continue
 
                 child.set_costs(gCost, hCost)
