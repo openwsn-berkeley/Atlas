@@ -15,7 +15,7 @@ import SimEngine
 import Wireless
 import Utils as u
 
-from atlas.algorithms.planning import Map, AStar, AtlasTargets
+from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -481,7 +481,7 @@ class NavigationAtlas(Navigation):
         super().__init__(*args, **kwargs)
 
         self.map = Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=AStar.Cell)
-        self.path_planner = AStar(self.map)
+        self.path_planner = BFS(self.map)
 
         # (additional) local variables
         self.simEngine = SimEngine.SimEngine()

@@ -190,17 +190,17 @@ import time
 """ BFS """
 
 class BFS(PathPlanner):
+
     def computePath(self, start_coords: Tuple[float, float], target_coords: Tuple[float, float]) -> Optional[List[Any]]: # TODO: have type definitions
         '''
         Path planning algorithm (BFS in this case) for finding path to target
         '''
-        print(f"{target_coords} Searching........", end="\r")
+        print(f"{start_coords} to {target_coords} Searching........", end="\r")
         t0 = time.time()
         start = self.map.cell(*start_coords, local=False)
         target = self.map.cell(*target_coords, local=False)
 
         visited, toVisit = set(), collections.deque([start])
-        paths = [[start]]
 
         if target.obstacle or not self.map.neighbors(target):
             return None
@@ -208,23 +208,23 @@ class BFS(PathPlanner):
         # TODO: when it returns None, orchestrator should handle removing target on it's own side
         path = []
         while toVisit:
-            nextVisit = toVisit.popleft()
-            path = paths.pop(0)
-            node = path[-1]
+            node = toVisit.popleft()
+            visited.add(node)
 
             if node == target:
+                t1 = time.time()
+                print(f"{start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
+                print(path)
                 return path
 
-            for neighbor in self.map.neighbors(nextVisit):
+            for neighbor in self.map.neighbors(node):
                 if neighbor not in visited:
-                    new_path = list(path)
-                    new_path.append(neighbor)
-                    visited.add(neighbor)
                     toVisit.append(neighbor)
+            if node != start:
+                path.append(node.position(_local=False))
 
-        t1 = time.time()
-        print(f"{target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
-        return path
+
+
 
 """ A Star """
 
@@ -432,7 +432,6 @@ class AtlasTargetsPriority(TargetSelector):
         return rankHopNeighbours
 
 class AtlasTargets(TargetSelector):
-
 
     def __init__(self, start_x, start_y, num_bots, *args, **kwargs):
 
