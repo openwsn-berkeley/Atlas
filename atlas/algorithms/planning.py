@@ -7,10 +7,14 @@ Date: Mon, Oct 4, 2021
 """
 
 import abc
-import heapq
+
 import collections
 
 import random
+
+from functools import wraps
+
+import time
 
 import Utils as u
 
@@ -27,6 +31,18 @@ NOTES:
 - It's likely that each implementation will define it's own graph structure (with or without costs etc.)
 - So maybe we define a basic graph class and extend from there?
 '''
+
+def timeit(my_func):
+    @wraps(my_func)
+    def timed(*args, **kw):
+        tstart = time.time()
+        output = my_func(*args, **kw)
+        tend = time.time()
+
+        print('"{}" took {:.3f} ms to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
+        return output
+
+    return timed
 
 """ Abstract Base Classes """
 
@@ -97,6 +113,14 @@ class Map(abc.ABC):
 
     def cell(self, x, y, local=True, **kwargs):
         return self._cell(x, y, **kwargs) if local else self._cell(x - self.offset[0], y - self.offset[1], **kwargs)
+
+    def xy2hCell(self, x, y):
+        xsteps = int(round((x - 1) / 0.5, 0))
+        cx = 1 + xsteps * 0.5
+        ysteps = int(round((y - 1) / 0.5, 0))
+        cy = 1 + ysteps * 0.5
+
+        return (cx, cy)
 
     def _cell(self, x, y, expand=False):
         if (x, y) not in self.cells:
@@ -183,9 +207,25 @@ class PathPlanner(abc.ABC):
     def computePath(self, *args, **kwargs) -> Optional[List[Any]]: # TODO: define the type of object that the path should be comprised of, likely a cell object or tuple
         ...
 
-""" Implementations """
+class RelayPlanner(abc.ABC):
+    class Cell(Cell):
+        pass
 
-import time
+    def __init__(self, map=None, map_kwargs={}):
+        self.map = map or Map(cell_class=self.Cell, **map_kwargs)
+        self.assigned_relays = []   # robots assigned to become relays
+        self.targeted_relays = []   # relay robots that have been given a target position
+        self.relay_positions = set()   # all potential positions to be assigned to relays
+
+    @abc.abstractmethod
+    def assignRelay(self, robots_data):
+        ...
+
+    @abc.abstractmethod
+    def positionRelay(self, relay):
+        ...
+
+""" Implementations """
 
 """ BFS """
 
@@ -224,57 +264,60 @@ class BFS(PathPlanner):
                 path.append(node.position(_local=False))
 
 
-
-
 """ A Star """
 
 class AStar(PathPlanner):
     Q = True
     ID = 0
 
+    def __init__(self, map=None, map_kwargs={}):
+        super().__init__(map=map, map_kwargs=map_kwargs)
+
+
     class Cell(Cell):
         def __init__(self, x, y, map, g=0, h=0,
                      parent=None, **kwargs):
             super().__init__(x, y, map, **kwargs)
-            self.id = AStar.ID
+            self.parent_map.hcosts = {}
+            self.parent_map.gcosts = {}
+            self.parent_map.parents = {}
             self.set_costs(g, h)
             self.parent = parent
+
 
         def __lt__(self, other):
             return self.hCost < other.hCost
 
         def reset(self):
-            if self.id == AStar.ID:
-                return
-            self.h = 0
-            self.g = 0
-            self._parent = None
-            self.id = AStar.ID
+            self.parent_map.hcosts = {}
+            self.parent_map.gcosts = {}
+            self.parent_map.parents = {}
 
         def set_costs(self, g, h):
-            self.reset()
+            # set key value of hcosts and gcosts in dictionary
+            self.parent_map.hcosts[self.position()] = h
+            self.parent_map.gcosts[self.position()] = g
             self.g = g
             self.h = h
 
         @property
         def parent(self):
-            self.reset()
-            return self._parent
+            return self.parent_map.parents.get(self.position())
 
         @parent.setter
         def parent(self, value):
-            self.reset()
             self._parent = value
+            self.parent_map.parents[self.position()] = value
 
         @property
         def hCost(self):
-            self.reset()
-            return self.h
+            h = self.parent_map.hcosts.get(self.position())
+            return 0 if h is None else h
 
         @property
         def gCost(self):
-            self.reset()
-            return self.g
+            g = self.parent_map.gcosts.get(self.position())
+            return 0 if g is None else g
 
         @property
         def fCost(self):
@@ -282,7 +325,7 @@ class AStar(PathPlanner):
 
         def priority(self):
             return (self.fCost, self)
-
+    @timeit
     def computePath(self, start_coords: Tuple[float, float], target_coords: Tuple[float, float]) -> Optional[List[Any]]: # TODO: have type definitions
         '''
         Path planning algorithm (A* in this case) for finding shortest path to target
@@ -301,6 +344,7 @@ class AStar(PathPlanner):
 
         # TODO: when it returns None, orchestrator should handle removing target on it's own side
         path = None
+
         while not openCells.empty() if self.Q else openCells:
             openCells = openCells if self.Q else sorted(openCells, key=lambda item: item.fCost)  # find open cell with lowest F cost # TODO: this should be a min_heap / priority queue!!!
             currentCell = openCells.get() if self.Q else openCells.pop(0)
@@ -319,6 +363,7 @@ class AStar(PathPlanner):
                     currentCell = currentCell.parent
 
                 path.reverse()
+                currentCell.reset()
                 break
 
             for child in self.map.neighbors(currentCell): # TODO: should we randomize? make a flag and test if there's any difference
@@ -335,10 +380,9 @@ class AStar(PathPlanner):
 
         t1 = time.time()
         print(f"From {start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
-        AStar.ID += 1
         return path
 
-""" Atlas Target Selector"""
+""" Atlas Target Selector """
 
 class AtlasTargetsPriority(TargetSelector):
 
@@ -446,7 +490,9 @@ class AtlasTargets(TargetSelector):
 
         self.not_frontiers = set()
 
+        self.findTargets()
 
+    @timeit
     def allocateTarget(self, dotbot_position):
         '''
         Allocates a target to a dotBot based on distance to robot and distance to starting point.
@@ -457,8 +503,8 @@ class AtlasTargets(TargetSelector):
             alloc_target = random.choice(all_targets)
             return alloc_target
 
-        # if not self.allTargets:
-        #     self._findTargets()
+        if not self.allTargets:
+            self.findTargets()
 
         targetsAndDistances2db = []
 
@@ -532,3 +578,143 @@ class AtlasTargets(TargetSelector):
             rankHopNeighbours += [(scx, scy)]
 
         return rankHopNeighbours
+
+""" Relay Recovery Placement"""
+
+class Recovery(RelayPlanner):
+    '''
+    Relay placement based on Recovery algorithm.
+    '''
+
+    def assignRelay(self, robots_data):
+        for robot in robots_data:
+            hb = robot['heartbeat']
+            if (0 < hb < 0.7):
+                self.assigned_relays.append(robot)
+                return
+
+    def positionRelay(self, relay):
+        x = None
+        y = None
+        num_placed_relays = len(self.targeted_relays)
+
+        pdrHistory = relay['pdrHistory']
+        pdrHistoryReversed = pdrHistory[::-1]
+        for value in pdrHistoryReversed:
+            if value[0] >= (1 - (num_placed_relays / 10)):
+                bestPDRposition = value[1]
+                x = bestPDRposition[0]
+                y = bestPDRposition[1]
+                break
+
+        if not x and not y:
+            return
+
+        # Enforce safety zone to avoid redundancies
+        # FIXME: fix the logic of this to radius or line of sight
+        for p in self.relay_positions:
+            if ((p[0] - 10) <= x <= (p[0] + 10)) and ((p[1] - 10) <= y <= (p[1] + 10)):
+                return
+
+        if (x, y) not in self.map.obstacles and (x, y) not in self.relay_positions:
+            self.relay_positions.add((x, y))
+            self.targeted_relays.append(relay['ID'])
+            return (x, y)
+
+""" Relay Naive Placement"""
+
+class Naive(RelayPlanner):
+    '''
+    Relay Placement algorithms based on random selection.
+    '''
+
+    def assignRelay(self, robots_data):
+        num_cells_explored = len(self.map.explored) + len(self.map.obstacles)
+        # FIXME: add logic to number of cells that define when this happens
+        if (num_cells_explored % 200 == 0) and (len(self.assigned_relays) < (num_cells_explored / 200)):
+            self.assigned_relays += [random.choice(robots_data)]
+
+    def positionRelay(self, relay):
+        x = relay['x']
+        y = relay['y']
+        self.relay_positions.add((x, y))
+        self.targeted_relays.append(relay['ID'])
+        return (x, y)
+
+""" Relay Self-Healing Placement"""
+
+class SelfHealing(RelayPlanner):
+    '''
+    Relay placement based on self-healing algorithm.
+    Builds chain between an RX with fixed distance between every 2 nodes.
+    '''
+
+    def __init__(self, start_x, start_y, *args, **kwargs):
+
+        # initialize parent
+        super().__init__(*args, **kwargs)
+
+        self.ix = start_x
+        self.iy = start_y
+        self.lostBots_and_data = []
+
+    def assignRelay(self, robots_data):
+
+        distances  = []
+        need_relay = False
+
+        for robot in robots_data:
+            start_to_robot_distance = u.distance((robot['x'], robot['y']), (self.ix, self.iy))
+            # FIXME: replace 30 with a variable and add logic behind it
+            if start_to_robot_distance >= 30:
+                need_relay = True
+            else:
+                continue
+
+            if self.relay_positions:
+                distances += [u.distance((robot['x'], robot['y']), robot_pos) for robot_pos in self.relay_positions]
+                for distance in distances:
+                    if distance <= 30:
+                        need_relay = False
+                        break
+
+            if need_relay == True:
+                if self.lostBots_and_data and robot in [lb['targetBot'] for lb in self.lostBots_and_data]:
+                    # FIXME: do this in a smarter way
+                    bot_to_save = [lostBot for lostBot in self.lostBots_and_data if lostBot['targetBot'] == robot][0]
+                    x = ((robot['x'] + bot_to_save['relayPositions'][-1][0]) / 2)
+                    y = ((robot['y'] + bot_to_save['relayPositions'][-1][1]) / 2)
+
+                    relay_position = (x, y)
+                    bot_to_save['relayPositions'] += [relay_position]
+
+                else:
+                    x = ((robot['x'] + self.ix) / 2)
+                    y = ((robot['y'] + self.iy) / 2)
+                    self.lostBots_and_data += [{'targetBot': robot, 'relayPositions': [(x, y)]}]
+
+                self.assigned_relays += [random.choice([r for r in robots_data if (r != robot)])]
+
+
+    def positionRelay(self, relay):
+        targetChosen = random.choice(self.lostBots_and_data)
+
+        (xp, yp) = targetChosen['relayPositions'][-1]
+        (x, y) = self.map.xy2hCell(xp, yp)
+        if (x, y) not in self.relay_positions and (x, y) not in self.map.obstacles:
+            self.relay_positions.add(targetChosen['relayPositions'][-1])
+            self.targeted_relays.append(relay['ID'])
+            return (x, y)
+
+
+""" No Relay Placement"""
+class NoRelays(RelayPlanner):
+    '''
+    No relays to be assigned.
+    '''
+
+    def assignRelay(self, robots_data):
+        return
+
+    def positionRelay(self, relay):
+        return
