@@ -47,7 +47,7 @@ def timeit(my_func):
 """ Abstract Base Classes """
 
 class Cell(abc.ABC):
-    def __init__(self, x, y, map, explored=False, obstacle=False):
+    def __init__(self, x, y, map, explored=False, obstacle=False, unreachable=False):
         self.x = x
         self.y = y
 
@@ -55,6 +55,7 @@ class Cell(abc.ABC):
 
         self.explored = explored
         self.obstacle = obstacle
+        self.unreachable = unreachable
 
     def position(self, _np=False, _local=True):
         x, y = self.x, self.y
@@ -83,6 +84,14 @@ class Cell(abc.ABC):
     def obstacle(self, value: bool):
         self.parent_map.obstacles.add(self.position(_local=False)) if value else self.parent_map.obstacles.discard(self.position(_local=False))
 
+    @property
+    def unreachable(self):
+        return self.position(_local=False) in self.parent_map.unreachable
+
+    @unreachable.setter
+    def unreachable(self, value:bool):
+        self.parent_map.unreachable.add(self.position(_local=False)) if value else self.parent_map.unreachable.discard(self.position(_local=False))
+
     def __repr__(self):
         return f"Global: {self.position(_local=False)} | Local: {self.position()} | Explored: {self.explored} | Obstacle {self.obstacle}"
 
@@ -99,6 +108,7 @@ class Map(abc.ABC):
 
         self.explored = set()
         self.obstacles = set()
+        self.unreachable = set()
 
         self.cell_class = cell_class
         self.cells = {
@@ -158,6 +168,18 @@ class Map(abc.ABC):
 
     def _remove_obstacle(self, cell):
         cell.obstacle = False
+
+    def add_unreachable(self, x, y, local=False):
+        self._add_unreachable(self.cell(x, y, local))
+
+    def _add_unreachable(self, cell):
+        cell.unreachable = True
+
+    def remove_unreachable(self, x, y, local=False):
+        self._remove_unreachable(self.cell(x, y, local))
+
+    def _remove_unreachable(self, cell):
+        cell.unreachable = False
 
     def explore_cell(self, x, y, local=False):
         self._explore_cell(self.cell(x, y, local))
@@ -339,8 +361,21 @@ class AStar(PathPlanner):
         openCells.put(*start.priority()) if self.Q else openCells.append(start)
         closedCells = set()
 
+        path_avaliable = False
+
+        for cell in self.map.neighbors(self.map.cell(*target.position(_local=False), local=False), explored_ok=True):
+            if cell.explored is True and cell.obstacle is False:
+                path_avaliable = True
+                break
+
+        if not path_avaliable:
+            self.map.add_unreachable(*target_coords)
+            print("------", self.map.unreachable)
+            return None
+
         if target.obstacle or not self.map.neighbors(target):
             return None
+
 
         # TODO: when it returns None, orchestrator should handle removing target on it's own side
         path = None
@@ -503,22 +538,37 @@ class AtlasTargets(TargetSelector):
             alloc_target = random.choice(all_targets)
             return alloc_target
 
-        if not self.allTargets:
-            self.findTargets()
-
         targetsAndDistances2db = []
 
-        for t in self.allTargets:
-            if t != dotbot_position:
-                targetsAndDistances2db += [(t, u.distance(dotbot_position, t))]
+        # for t in self.allTargets:
+        #     if t != dotbot_position:
+        #         targetsAndDistances2db += [(t, u.distance(dotbot_position, t))]
+        #
+        # closestTarget        = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
+        # closestTargets2start = [(c, d) for (c, d) in targetsAndDistances2db if d == closestTarget]
+        #
+        # closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
+        # alloc_target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
+        #
+        # self.allTargets.discard(alloc_target)
+        alloc_target = None
 
-        closestTarget        = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
-        closestTargets2start = [(c, d) for (c, d) in targetsAndDistances2db if d == closestTarget]
+        while not alloc_target:
+            if not self.allTargets:
+                self.findTargets()
+            if not self.allTargets:
+                # TODO: MAKE THIS MORE LOGICAL
+                return None
+            target = random.choice(list(self.allTargets))
+            if target.obstacle is False:
+                for cell in self.map.neighbors(self.map.cell(*target.position(_local=False), local=False), explored_ok=True):
+                    if cell.obstacle is False and cell.unreachable is False:
+                        alloc_target = target.position(_local=False)
+                        break
+            else:
+                self.allTargets.discard(target)
 
-        closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
-        alloc_target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
-
-        self.allTargets.discard(alloc_target)
+        self.allTargets.discard(target)
 
         return alloc_target
 
@@ -531,7 +581,8 @@ class AtlasTargets(TargetSelector):
             if f in self.not_frontiers:
                 continue
             for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
-                self.allTargets.add(cell.position(_local=False))
+                if cell.obstacle is False:
+                    self.allTargets.add(cell)
             self.not_frontiers.add(f)
 
     def _firstMovements(self):

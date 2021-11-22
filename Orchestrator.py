@@ -589,7 +589,7 @@ class NavigationAtlas(Navigation):
                 break
 
             if (target                                                               and
-               (target not in self.map.explored and target not in self.map.obstacles) or
+               (target not in self.map.explored and target not in self.map.obstacles and target not in self.map.unreachable) or
                (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
 
                 # TODO: this should read like plain English
