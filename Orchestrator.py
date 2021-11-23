@@ -15,7 +15,7 @@ import SimEngine
 import Wireless
 import Utils as u
 
-from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery
+from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -482,7 +482,9 @@ class NavigationAtlas(Navigation):
 
         self.map = Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=AStar.Cell)
         self.path_planner  = AStar(self.map)
-        self.relay_planner = Recovery(map=self.map)
+        #self.relay_planner = Recovery(map=self.map)
+        self.relay_planner = NoRelays(map=self.map)
+
 
 
         # (additional) local variables

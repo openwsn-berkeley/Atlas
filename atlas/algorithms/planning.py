@@ -370,7 +370,6 @@ class AStar(PathPlanner):
 
         if not path_avaliable:
             self.map.add_unreachable(*target_coords)
-            print("------", self.map.unreachable)
             return None
 
         if target.obstacle or not self.map.neighbors(target):
@@ -383,6 +382,7 @@ class AStar(PathPlanner):
         while not openCells.empty() if self.Q else openCells:
             openCells = openCells if self.Q else sorted(openCells, key=lambda item: item.fCost)  # find open cell with lowest F cost # TODO: this should be a min_heap / priority queue!!!
             currentCell = openCells.get() if self.Q else openCells.pop(0)
+
             if currentCell is None:
                 print("NO PATH!")
                 return
@@ -394,6 +394,9 @@ class AStar(PathPlanner):
                 path = []
 
                 while currentCell != start:
+                    if currentCell == None:
+                        return None
+
                     path.append(currentCell.position(_local=False))
                     currentCell = currentCell.parent
 
@@ -412,6 +415,7 @@ class AStar(PathPlanner):
                 child.set_costs(gCost, hCost)
                 child.parent = currentCell
                 openCells.put(*child.priority()) if self.Q else openCells.append(child)
+
 
         t1 = time.time()
         print(f"From {start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
