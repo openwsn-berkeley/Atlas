@@ -542,19 +542,6 @@ class AtlasTargets(TargetSelector):
             alloc_target = random.choice(all_targets)
             return alloc_target
 
-        targetsAndDistances2db = []
-
-        # for t in self.allTargets:
-        #     if t != dotbot_position:
-        #         targetsAndDistances2db += [(t, u.distance(dotbot_position, t))]
-        #
-        # closestTarget        = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
-        # closestTargets2start = [(c, d) for (c, d) in targetsAndDistances2db if d == closestTarget]
-        #
-        # closestTarget2start = sorted(closestTargets2start, key=lambda item: item[1])[0][1]
-        # alloc_target = [c for (c, d) in closestTargets2start if d == closestTarget2start][0]
-        #
-        # self.allTargets.discard(alloc_target)
         alloc_target = None
 
         while not alloc_target:
@@ -563,7 +550,10 @@ class AtlasTargets(TargetSelector):
             if not self.allTargets:
                 # TODO: MAKE THIS MORE LOGICAL
                 return None
-            target = random.choice(list(self.allTargets))
+
+            targets = self.findClosestTargetsToRobot(dotbot_position)
+            target = self.findDistanceToStart(targets)
+
             if target.obstacle is False:
                 for cell in self.map.neighbors(self.map.cell(*target.position(_local=False), local=False), explored_ok=True):
                     if cell.obstacle is False and cell.unreachable is False:
@@ -575,6 +565,36 @@ class AtlasTargets(TargetSelector):
         self.allTargets.discard(target)
 
         return alloc_target
+
+    def findDistanceToStart(self, targets):
+        '''
+        take input and assign each cell and distance to start rank
+        '''
+        targetsAndDistances2start = []
+        for t in targets:
+            t_position = t.position(_local=False)
+            targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
+
+        min_target_distance = sorted(targetsAndDistances2start, key=lambda item: item[1])[0][1]
+        closest_targets_to_start = [c for (c, d) in targetsAndDistances2start if d == min_target_distance]
+        closest_target = closest_targets_to_start[0]
+        return closest_target
+
+    def findClosestTargetsToRobot(self, dotbot_position):
+        '''
+        find closest 5 targets to robot
+        '''
+        targetsAndDistances2db = []
+        for t in self.allTargets:
+            t_position = t.position(_local=False)
+            if t_position != dotbot_position:
+                targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
+
+        min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
+        closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
+        closest_targets = closest_targets_to_dotbot[:5]
+        return closest_targets
+
 
     def findTargets(self):
 
