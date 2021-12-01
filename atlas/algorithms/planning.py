@@ -445,15 +445,17 @@ class AtlasTargets(TargetSelector):
         '''
         Allocates a target to a dotBot based on distance to robot and distance to starting point.
         '''
-
+        print(self.frontier_cells)
         alloc_target = None
 
         while not alloc_target:
 
             # end of mission if no frontier cells left
+
+            self.updateFrontierBoundary(dotbot_position)
+
             if not self.frontier_cells and dotbot_position != (self.ix,self.iy):
                 return
-            self.updateFrontierBoundary(dotbot_position)
 
             closest_frontiers_to_robot = self.findClosestTargetsToRobot(dotbot_position)
             alloc_frontier = self.findDistanceToStart(closest_frontiers_to_robot)
