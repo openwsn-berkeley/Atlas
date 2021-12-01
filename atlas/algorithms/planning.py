@@ -423,97 +423,6 @@ class AStar(PathPlanner):
 
 """ Atlas Target Selector """
 
-class AtlasTargetsPriority(TargetSelector):
-
-    def __init__(self, start_x, start_y, num_bots, *args, **kwargs):
-
-        # initialize parent
-        super().__init__(*args, **kwargs)
-
-        self.ix = start_x
-        self.iy = start_y
-
-        self.numDotBots = num_bots
-        self.allTargets = PriorityQueue()
-
-        self.not_frontiers = set()
-
-
-    def allocateTarget(self, dotbot_position):
-        '''
-        Allocates a target to a dotBot based on distance to robot and distance to starting point.
-        '''
-
-        if dotbot_position == (self.ix,self.iy):
-            all_targets  = self._firstMovements()
-            alloc_target = random.choice(all_targets)
-            return alloc_target
-
-        if self.allTargets.empty():
-            self.findTargets()
-
-        alloc_target = self.allTargets.get()
-        return alloc_target
-
-
-    def findTargets(self):
-
-        # if len(self.allTargets) > self.numDotBots:
-        #     return
-
-        for f in self.map.explored:
-            if f in self.not_frontiers:
-                continue
-            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
-                distance2start = u.distance(cell.position(_local=False), (self.ix, self.iy))
-                self.allTargets.put(distance2start, cell.position(_local=False))
-            self.not_frontiers.add(f)
-
-    def _firstMovements(self):
-
-        initial_positions = []
-        start = (self.ix, self.iy)
-        rank  = 1
-
-        while len(initial_positions) <= self.numDotBots:
-            for pos in self._rankHopNeighbourhood(start, rank):
-                initial_positions += [pos]
-            rank += 1
-
-        return list(set(initial_positions))
-
-    def _xy2hCell(self, x, y):
-        xsteps = int(round((x - 1) / 0.5, 0))
-        cx = 1 + xsteps * 0.5
-        ysteps = int(round((y - 1) / 0.5, 0))
-        cy = 1 + ysteps * 0.5
-
-        return (cx, cy)
-
-    def _rankHopNeighbourhood(self, c0, distanceRank):
-
-        rankHopNeighbours = []
-
-        # shorthand
-        (c0x, c0y) = c0
-
-        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
-        numberOfSurroundingCells = 8 * distanceRank
-
-        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
-        # find centres of surrounding cells based on DotBot speed and angle
-        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
-        for idx in range(numberOfSurroundingCells):
-            (x, y) = u.computeCurrentPosition(c0x, c0y,
-                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
-                                              1,  # assume speed to be 1 meter per second
-                                              0.5 * distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
-
-            (scx, scy) = self._xy2hCell(x, y)
-            rankHopNeighbours += [(scx, scy)]
-
-        return rankHopNeighbours
-
 class AtlasTargets(TargetSelector):
 
     def __init__(self, start_x, start_y, num_bots, *args, **kwargs):
@@ -525,11 +434,11 @@ class AtlasTargets(TargetSelector):
         self.iy = start_y
 
         self.numDotBots = num_bots
-        self.allTargets = set()
+
+        self.frontier_cells = set() # all frontier boundary cells
 
         self.not_frontiers = set()
 
-        self.findTargets()
 
     @timeit
     def allocateTarget(self, dotbot_position):
@@ -537,34 +446,26 @@ class AtlasTargets(TargetSelector):
         Allocates a target to a dotBot based on distance to robot and distance to starting point.
         '''
 
-        if dotbot_position == (self.ix,self.iy):
-            all_targets  = self._firstMovements()
-            alloc_target = random.choice(all_targets)
-            return alloc_target
-
         alloc_target = None
 
         while not alloc_target:
-            if not self.allTargets:
-                self.findTargets()
-            if not self.allTargets:
-                # TODO: MAKE THIS MORE LOGICAL
-                return None
 
-            targets = self.findClosestTargetsToRobot(dotbot_position)
-            target = self.findDistanceToStart(targets)
+            # end of mission if no frontier cells left
+            if not self.frontier_cells and dotbot_position != (self.ix,self.iy):
+                return
+            self.updateFrontierBoundary(dotbot_position)
 
-            if target.obstacle is False:
-                for cell in self.map.neighbors(self.map.cell(*target.position(_local=False), local=False), explored_ok=True):
-                    if cell.obstacle is False and cell.unreachable is False:
-                        alloc_target = target.position(_local=False)
-                        break
-            else:
-                self.allTargets.discard(target)
+            closest_frontiers_to_robot = self.findClosestTargetsToRobot(dotbot_position)
+            alloc_frontier = self.findDistanceToStart(closest_frontiers_to_robot)
+            alloc_target = alloc_frontier.position(_local=False)
 
-        self.allTargets.discard(target)
+        self.frontier_cells.discard(alloc_frontier)
 
         return alloc_target
+
+    def updateFrontierBoundary(self, current_cell):
+        for cell in self.map.neighbors(self.map.cell(*current_cell, local=False), explored_ok=False):
+            self.frontier_cells.add(cell)
 
     def findDistanceToStart(self, targets):
         '''
@@ -585,7 +486,7 @@ class AtlasTargets(TargetSelector):
         find closest 5 targets to robot
         '''
         targetsAndDistances2db = []
-        for t in self.allTargets:
+        for t in self.frontier_cells:
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
@@ -595,64 +496,6 @@ class AtlasTargets(TargetSelector):
         closest_targets = closest_targets_to_dotbot[:5]
         return closest_targets
 
-
-    def findTargets(self):
-
-        # if len(self.allTargets) > self.numDotBots:
-        #     return
-
-        for f in self.map.explored:
-            if f in self.not_frontiers:
-                continue
-            for cell in self.map.neighbors(self.map.cell(*f, local=False), explored_ok=False):
-                if cell.obstacle is False:
-                    self.allTargets.add(cell)
-            self.not_frontiers.add(f)
-
-    def _firstMovements(self):
-
-        initial_positions = []
-        start = (self.ix, self.iy)
-        rank  = 1
-
-        while len(initial_positions) <= self.numDotBots:
-            for pos in self._rankHopNeighbourhood(start, rank):
-                initial_positions += [pos]
-            rank += 1
-
-        return list(set(initial_positions))
-
-    def _xy2hCell(self, x, y):
-        xsteps = int(round((x - 1) / 0.5, 0))
-        cx = 1 + xsteps * 0.5
-        ysteps = int(round((y - 1) / 0.5, 0))
-        cy = 1 + ysteps * 0.5
-
-        return (cx, cy)
-
-    def _rankHopNeighbourhood(self, c0, distanceRank):
-
-        rankHopNeighbours = []
-
-        # shorthand
-        (c0x, c0y) = c0
-
-        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
-        numberOfSurroundingCells = 8 * distanceRank
-
-        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
-        # find centres of surrounding cells based on DotBot speed and angle
-        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
-        for idx in range(numberOfSurroundingCells):
-            (x, y) = u.computeCurrentPosition(c0x, c0y,
-                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
-                                              1,  # assume speed to be 1 meter per second
-                                              0.5 * distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
-
-            (scx, scy) = self._xy2hCell(x, y)
-            rankHopNeighbours += [(scx, scy)]
-
-        return rankHopNeighbours
 
 """ Relay Recovery Placement"""
 
