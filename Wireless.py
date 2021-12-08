@@ -257,9 +257,9 @@ class WirelessBase(abc.ABC):
             cls._instance = super(WirelessBase, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, propagation=PropagationBase):
+    def __init__(self, propagation=PropagationPister):
 
-        # singleton patterm
+        # singleton pattern
         # if instance of class already exists the return, to restrict to one instance only
         if self._init:
             return
@@ -345,7 +345,7 @@ class WirelessConcurrentTransmission(WirelessBase):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        raise NotImplementedError("Concurrent transmission not currently implemented.")
+        #raise NotImplementedError("Concurrent transmission not currently implemented.")
 
     def _computePDR(self, sender, receiver):
         links = {}
@@ -410,8 +410,112 @@ class WirelessConcurrentTransmission(WirelessBase):
         else:
             return 1
 
-    def _computeSuccess(self, *args, **kwargs):
-        raise NotImplementedError()
+    def _computeSuccess(self, links, lastTree = None, newLinks=None, *args, **kwargs):
+        sender = None
+        tree = []
+        rootBranches = []
+        pdrPerNode = {}
+        processedRootNodes = []
+        sucessProbabilities = {}
+        endBranch = False
+
+        sender = (list(links.keys())[0], list(links.values())[0])
+
+        if not lastTree:
+            for item in links.items():
+                if item[0][0] == sender[0][0]:
+                    if item[1] != 0:
+                        rootBranches += [item]
+
+            for rb in rootBranches:
+                rbExtendedBranch = []
+                while True:
+                    connectingNode = rb
+                    branch = {}
+                    branch[rb[0]] = rb[1]
+                    idx = 0
+                    while idx <= len(rootBranches):
+                        for link in links.items():
+
+                            if link[0] in rbExtendedBranch:
+                                continue
+                            if link[0] in branch.keys():
+                                continue
+                            if link[0][1] == connectingNode[0][0]:
+                                continue
+                            if link[0][1] in [b[0] for b in branch.keys()]:
+                                continue
+                            if link[0][0] == connectingNode[0][1]:
+                                connectingNode = link
+                                branch[link[0]] = link[1]
+                                break
+                        idx += 1
+                    if branch == {rb[0]: rb[1]} or endBranch:
+                        endBranch = False
+                        break
+                    else:
+                        tree += [branch]
+                        rbExtendedBranch += branch
+        elif newLinks:
+            for rb in lastTree:
+                rbExtendedBranch = []
+                while True:
+                    connectingNode = (list(rb.keys())[0], list(rb.values())[0])
+                    branch = rb
+                    idx = 0
+                    while idx <= len(rootBranches):
+                        for link in newLinks.items():
+
+                            if link[0] in rbExtendedBranch:
+                                continue
+                            if link[0] in branch.keys():
+                                continue
+                            if link[0][1] == connectingNode[0][0]:
+                                continue
+                            if link[0][1] in [b[0] for b in branch.keys()]:
+                                continue
+                            if link[0][0] == connectingNode[0][1]:
+                                connectingNode = link
+                                branch[link[0]] = link[1]
+                                break
+                        idx += 1
+                    if branch == rb or endBranch:
+                        endBranch = False
+                        break
+                    else:
+                        tree += [branch]
+                        rbExtendedBranch += branch
+        else:
+            tree = lastTree
+
+        for b in tree:
+
+            pdr = 1
+            pdrPerNode[sender[0][0]] = [pdr]
+
+            for node in b.items():
+
+                pdr = pdr * node[1]
+
+                if node in processedRootNodes:
+                    continue
+
+                if node[0][0] == sender[0][0]:
+                    processedRootNodes += [node]
+
+                if node[0][1] not in pdrPerNode.keys():
+                    pdrPerNode[node[0][1]] = [round(pdr, 4)]
+                else:
+                    pdrPerNode[node[0][1]] += [round(pdr, 4)]
+
+        for node in pdrPerNode.items():
+            failureProbability = 1
+            for pdr in node[1]:
+                failureProbability = failureProbability * (1 - round(pdr, 4))
+            successProbability = 1 - failureProbability
+            sucessProbabilities[node[0]] = round(successProbability, 4)
+
+        return [sucessProbabilities, tree]
 
 
 

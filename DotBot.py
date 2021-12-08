@@ -16,7 +16,7 @@ class DotBot(Wireless.WirelessDevice):
     A single DotBot.
     '''
 
-    def __init__(self, dotBotId, x, y, floorplan, wireless=Wireless.WirelessBase):
+    def __init__(self, dotBotId, x, y, floorplan, wireless=Wireless.WirelessConcurrentTransmission):
 
         # store params
         self.dotBotId             = dotBotId

@@ -276,7 +276,7 @@ class BFS(PathPlanner):
             if node == target:
                 t1 = time.time()
                 print(f"{start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
-                print(path)
+
                 return path
 
             for neighbor in self.map.neighbors(node):
@@ -347,7 +347,7 @@ class AStar(PathPlanner):
 
         def priority(self):
             return (self.fCost, self)
-    @timeit
+
     def computePath(self, start_coords: Tuple[float, float], target_coords: Tuple[float, float]) -> Optional[List[Any]]: # TODO: have type definitions
         '''
         Path planning algorithm (A* in this case) for finding shortest path to target
@@ -440,12 +440,11 @@ class AtlasTargets(TargetSelector):
         self.not_frontiers = set()
 
 
-    @timeit
     def allocateTarget(self, dotbot_position):
         '''
         Allocates a target to a dotBot based on distance to robot and distance to starting point.
         '''
-        print(self.frontier_cells)
+
         alloc_target = None
 
         while not alloc_target:
@@ -507,11 +506,15 @@ class Recovery(RelayPlanner):
     '''
 
     def assignRelay(self, robots_data):
+
         for robot in robots_data:
             hb = robot['heartbeat']
+
             if (0 < hb < 0.7):
                 self.assigned_relays.append(robot)
-                return
+                return robot["ID"]
+
+        return None
 
     def positionRelay(self, relay):
         x = None
@@ -528,7 +531,7 @@ class Recovery(RelayPlanner):
                 break
 
         if not x and not y:
-            return
+            return None
 
         # Enforce safety zone to avoid redundancies
         # FIXME: fix the logic of this to radius or line of sight

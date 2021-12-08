@@ -495,7 +495,7 @@ class NavigationAtlas(Navigation):
         # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
         # the hCell the DotBot start is in, by definition, open
         self.relayBots         = [] # have not been given destinations
-        self.positionedRelays  = [] # have been given destinations, but have not reached them
+        self.positionedRelays  = set() # have been given destinations, but have not reached them
         self.relayPositions    = [] # desired positions to fill?
         self.readyRelays       = [] # relays that have reached their position
         self.algorithm         = relayAlg
@@ -504,15 +504,16 @@ class NavigationAtlas(Navigation):
         self.allTargets        = []
         self.initialPositions  = []
         self.end               = False
+        self.relayBots         = set()
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
+
+        self.scheduleCheckForRelays()
 
         for (dotBotId,_) in enumerate(self.dotbotsview):
 
             self._updateMovement(dotBotId)
 
-
-        #self.simEngine.schedule(self.simEngine.currentTime() + 1, self.scheduleCheckForTargets)
 
     #======================== public ==========================================
 
@@ -571,7 +572,6 @@ class NavigationAtlas(Navigation):
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in #TODO: change var name
         target                  = dotbot['target']                         # set target as las allocated target until updated
 
-        self._getRelayBots(self.dotbotsview)
         self.mapBuilder.numDotBots   = self.numDotBots
         self.mapBuilder.numRelayBots = len(self.positionedRelays)
 
@@ -609,13 +609,14 @@ class NavigationAtlas(Navigation):
 
                 path2target             = self.path_planner.computePath(centreCellcentre,target)
 
-            elif (dotbot in self.relayBots):
+            elif (dotbot["ID"] in self.relayBots):
                 target = self._getRelayPosition(dotbot)
                 if not target:
-                    self.relayBots.remove(dotbot)
+                    self.relayBots.discard(dotbot["ID"])
                     target = dotbot['target']
                     continue
                 else:
+                    self.positionedRelays.add(dotbot["ID"])
                     path2target = self.path_planner.computePath(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
             else:
 
@@ -678,9 +679,10 @@ class NavigationAtlas(Navigation):
         dotbot['heartbeat']       = self.heartbeat
         dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
 
-    def scheduleCheckForTargets(self):
-        self.target_selector.findTargets()
-        self.simEngine.schedule(self.simEngine.currentTime()+1, self.scheduleCheckForTargets)
+    def scheduleCheckForRelays(self):
+        self._getRelayBots(self.dotbotsview)
+
+        self.simEngine.schedule(self.simEngine.currentTime()+1, self.scheduleCheckForRelays)
 
     def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
         # scan horizontally
@@ -731,10 +733,13 @@ class NavigationAtlas(Navigation):
         return returnVal
 
     def _getRelayBots(self, robots_data):
-        self.relay_planner.assignRelay(robots_data)
+        new_relays = self.relay_planner.assignRelay(robots_data)
+        if new_relays != None:
+            self.relayBots.add(new_relays)
+
 
     def _getRelayPosition(self, relay):
-        self.relay_planner.positionRelay(relay)
+        return self.relay_planner.positionRelay(relay)
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -743,7 +748,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
 
-    def __init__(self, numDotBots, initialPosition, navAlgorithm, relayAlg, wireless=Wireless.WirelessBase):
+    def __init__(self, numDotBots, initialPosition, navAlgorithm, relayAlg, wireless=Wireless.WirelessConcurrentTransmission):
 
         # store params
         self.numDotBots        = numDotBots
