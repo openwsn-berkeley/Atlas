@@ -345,7 +345,7 @@ class WirelessConcurrentTransmission(WirelessBase):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #raise NotImplementedError("Concurrent transmission not currently implemented.")
+
 
     def _computePDR(self, sender, receiver):
         links = {}
@@ -359,6 +359,7 @@ class WirelessConcurrentTransmission(WirelessBase):
 
         allDotBots = self.devices.copy()
         allDotBots.pop()
+        # FIXME: can defo make this smarter
         allRelays = [d for d in allDotBots if d.dotBotId in self.orch.navigation.readyRelays.copy()]
 
         allNodes = [self.orch] + allRelays + [movingNode]

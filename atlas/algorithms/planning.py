@@ -233,11 +233,12 @@ class RelayPlanner(abc.ABC):
     class Cell(Cell):
         pass
 
-    def __init__(self, map=None, map_kwargs={}):
+    def __init__(self, map=None, radius=10, map_kwargs={}):
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
         self.assigned_relays = []   # robots assigned to become relays
         self.targeted_relays = []   # relay robots that have been given a target position
         self.relay_positions = set()   # all potential positions to be assigned to relays
+        self.radius          = radius
 
     @abc.abstractmethod
     def assignRelay(self, robots_data):
@@ -508,6 +509,9 @@ class Recovery(RelayPlanner):
     def assignRelay(self, robots_data):
 
         for robot in robots_data:
+            if robot['ID'] in self.targeted_relays:
+                continue
+
             hb = robot['heartbeat']
 
             if (0 < hb < 0.7):
@@ -525,6 +529,7 @@ class Recovery(RelayPlanner):
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
             if value[0] >= (1 - (num_placed_relays / 10)):
+            #if value[0] >= 0.8:
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]
@@ -536,7 +541,8 @@ class Recovery(RelayPlanner):
         # Enforce safety zone to avoid redundancies
         # FIXME: fix the logic of this to radius or line of sight
         for p in self.relay_positions:
-            if ((p[0] - 10) <= x <= (p[0] + 10)) and ((p[1] - 10) <= y <= (p[1] + 10)):
+            distance_relay_to_relay = u.distance(p, (relay['x'], relay['y']))
+            if distance_relay_to_relay < self.radius:
                 return
 
         if (x, y) not in self.map.obstacles and (x, y) not in self.relay_positions:
@@ -555,7 +561,9 @@ class Naive(RelayPlanner):
         num_cells_explored = len(self.map.explored) + len(self.map.obstacles)
         # FIXME: add logic to number of cells that define when this happens
         if (num_cells_explored % 200 == 0) and (len(self.assigned_relays) < (num_cells_explored / 200)):
-            self.assigned_relays += [random.choice(robots_data)]
+            relay = random.choice(robots_data)
+            self.assigned_relays.append(relay)
+            return relay["ID"]
 
     def positionRelay(self, relay):
         x = relay['x']
@@ -616,7 +624,9 @@ class SelfHealing(RelayPlanner):
                     y = ((robot['y'] + self.iy) / 2)
                     self.lostBots_and_data += [{'targetBot': robot, 'relayPositions': [(x, y)]}]
 
-                self.assigned_relays += [random.choice([r for r in robots_data if (r != robot)])]
+                relay = random.choice([r for r in robots_data if (r != robot)])
+                self.assigned_relays.append(relay)
+                return relay["ID"]
 
 
     def positionRelay(self, relay):

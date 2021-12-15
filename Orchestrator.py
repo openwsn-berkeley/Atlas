@@ -15,7 +15,7 @@ import SimEngine
 import Wireless
 import Utils as u
 
-from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays
+from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -353,8 +353,7 @@ class Navigation(abc.ABC):
 
         if frame['heartbeat']:
             self.heartbeat = frame['heartbeat']
-            self.pdrStatus = frame['pdrStatus']
-            return
+
         # filter out duplicates
         if frame['seqNumNotification'] == dotbot['seqNumNotification']:
             return
@@ -482,8 +481,9 @@ class NavigationAtlas(Navigation):
 
         self.map = Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=AStar.Cell)
         self.path_planner  = AStar(self.map)
-        self.relay_planner = Recovery(map=self.map)
-        #self.relay_planner = NoRelays(map=self.map)
+
+
+        #self.relay_planner = NoRelays(map=self.map, radius=10)
 
 
 
@@ -505,6 +505,9 @@ class NavigationAtlas(Navigation):
         self.initialPositions  = []
         self.end               = False
         self.relayBots         = set()
+
+        # SelfHealing, Naive, NoRelay, Recovery
+        self.relay_planner = Recovery(map=self.map, radius=10)
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
 
@@ -617,6 +620,7 @@ class NavigationAtlas(Navigation):
                     continue
                 else:
                     self.positionedRelays.add(dotbot["ID"])
+                    print("positioned",self.positionedRelays)
                     path2target = self.path_planner.computePath(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
             else:
 
@@ -682,7 +686,7 @@ class NavigationAtlas(Navigation):
     def scheduleCheckForRelays(self):
         self._getRelayBots(self.dotbotsview)
 
-        self.simEngine.schedule(self.simEngine.currentTime()+1, self.scheduleCheckForRelays)
+        self.simEngine.schedule(self.simEngine.currentTime()+1, self.scheduleCheckForRelays) # TODO: chage 1 to variable
 
     def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
         # scan horizontally
@@ -747,7 +751,7 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
-
+    # WirelessConcurrentTransmission or WirelessBase
     def __init__(self, numDotBots, initialPosition, navAlgorithm, relayAlg, wireless=Wireless.WirelessConcurrentTransmission):
 
         # store params
