@@ -60,8 +60,6 @@ class DotBot(Wireless.WirelessDevice):
         # drop any frame that is NOT a FRAMETYPE_COMMAND
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
-        
-        self.packetsRX += 1
 
         myMovement = [movement for movement in frame['movements'] if movement['ID'] == self.dotBotId]
 
@@ -71,6 +69,8 @@ class DotBot(Wireless.WirelessDevice):
             myMovement = myMovement[0]
 
         now      = self.simEngine.currentTime()
+
+        self._updatePacketCount()
 
         if myMovement['timer']:
             stopTime = now + myMovement['timer']
@@ -164,6 +164,13 @@ class DotBot(Wireless.WirelessDevice):
         self.bump = False
         self._stopAndTransmit()
 
+    def _updatePacketCount(self):
+        self.packetsRX += 1
+        #print(self.packetsRX)
+
+    def _resetPacketCount(self):
+        self.packetsRX = 0
+
     def _updateHeartbeat(self):
         '''
         send heartbeat with percentage of packets recieved since last heartbeat
@@ -177,12 +184,12 @@ class DotBot(Wireless.WirelessDevice):
             return
 
         self.packetsRxRatio = self.packetsRX/self.hbLength
+        self._resetPacketCount()
         #print('->', self.dotBotId,'->',self.packetsRxRatio,'->',self.x,self.y)
 
         self.bump = False
         self._transmit()
 
-        self.packetsRX = 0
 
     def _stopAndTransmit(self):
         '''

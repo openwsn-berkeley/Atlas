@@ -235,8 +235,8 @@ class RelayPlanner(abc.ABC):
 
     def __init__(self, map=None, radius=10, map_kwargs={}):
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
-        self.assigned_relays = []   # robots assigned to become relays
-        self.targeted_relays = []   # relay robots that have been given a target position
+        self.assigned_relays = set()   # robots assigned to become relays
+        self.targeted_relays = set()   # relay robots that have been given a target position
         self.relay_positions = set()   # all potential positions to be assigned to relays
         self.radius          = radius
 
@@ -258,7 +258,7 @@ class BFS(PathPlanner):
         '''
         Path planning algorithm (BFS in this case) for finding path to target
         '''
-        print(f"{start_coords} to {target_coords} Searching........", end="\r")
+        #print(f"{start_coords} to {target_coords} Searching........", end="\r")
         t0 = time.time()
         start = self.map.cell(*start_coords, local=False)
         target = self.map.cell(*target_coords, local=False)
@@ -276,7 +276,7 @@ class BFS(PathPlanner):
 
             if node == target:
                 t1 = time.time()
-                print(f"{start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
+                #print(f"{start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
 
                 return path
 
@@ -353,7 +353,7 @@ class AStar(PathPlanner):
         '''
         Path planning algorithm (A* in this case) for finding shortest path to target
         '''
-        print(f"from {start_coords} to {target_coords} Searching........", end="\r")
+        #print(f"from {start_coords} to {target_coords} Searching........", end="\r")
         t0 = time.time()
         start = self.map.cell(*start_coords, local=False)
         target = self.map.cell(*target_coords, local=False)
@@ -419,7 +419,7 @@ class AStar(PathPlanner):
 
 
         t1 = time.time()
-        print(f"From {start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
+        #print(f"From {start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
         return path
 
 """ Atlas Target Selector """
@@ -515,7 +515,6 @@ class Recovery(RelayPlanner):
             hb = robot['heartbeat']
 
             if (0 < hb < 0.7):
-                self.assigned_relays.append(robot)
                 return robot["ID"]
 
         return None
@@ -539,7 +538,7 @@ class Recovery(RelayPlanner):
             return None
 
         # Enforce safety zone to avoid redundancies
-        # FIXME: fix the logic of this to radius or line of sight
+
         for p in self.relay_positions:
             distance_relay_to_relay = u.distance(p, (relay['x'], relay['y']))
             if distance_relay_to_relay < self.radius:
@@ -547,7 +546,7 @@ class Recovery(RelayPlanner):
 
         if (x, y) not in self.map.obstacles and (x, y) not in self.relay_positions:
             self.relay_positions.add((x, y))
-            self.targeted_relays.append(relay['ID'])
+            self.targeted_relays.add(relay['ID'])
             return (x, y)
 
 """ Relay Naive Placement"""
@@ -562,14 +561,14 @@ class Naive(RelayPlanner):
         # FIXME: add logic to number of cells that define when this happens
         if (num_cells_explored % 200 == 0) and (len(self.assigned_relays) < (num_cells_explored / 200)):
             relay = random.choice(robots_data)
-            self.assigned_relays.append(relay)
+            self.assigned_relays.add(relay["ID"])
             return relay["ID"]
 
     def positionRelay(self, relay):
         x = relay['x']
         y = relay['y']
         self.relay_positions.add((x, y))
-        self.targeted_relays.append(relay['ID'])
+        self.targeted_relays.add(relay['ID'])
         return (x, y)
 
 """ Relay Self-Healing Placement"""
@@ -625,7 +624,7 @@ class SelfHealing(RelayPlanner):
                     self.lostBots_and_data += [{'targetBot': robot, 'relayPositions': [(x, y)]}]
 
                 relay = random.choice([r for r in robots_data if (r != robot)])
-                self.assigned_relays.append(relay)
+                self.assigned_relays.add(relay["ID"])
                 return relay["ID"]
 
 
@@ -636,7 +635,7 @@ class SelfHealing(RelayPlanner):
         (x, y) = self.map.xy2hCell(xp, yp)
         if (x, y) not in self.relay_positions and (x, y) not in self.map.obstacles:
             self.relay_positions.add(targetChosen['relayPositions'][-1])
-            self.targeted_relays.append(relay['ID'])
+            self.targeted_relays.add(relay['ID'])
             return (x, y)
 
 

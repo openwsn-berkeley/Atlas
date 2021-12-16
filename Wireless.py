@@ -2,6 +2,8 @@
 import abc
 import sys
 import random
+import time
+from functools import wraps
 import numpy as np
 # local
 import Utils as u
@@ -9,6 +11,17 @@ from Floorplan import Floorplan
 
 from statistics import mode
 from statistics import mean
+
+def timeit(my_func):
+    @wraps(my_func)
+    def timed(*args, **kw):
+        tstart = time.time()
+        output = my_func(*args, **kw)
+        tend = time.time()
+        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart)))
+        return output
+
+    return timed
 
 # TODO: Add timing infrastructure to all these
 
@@ -287,6 +300,7 @@ class WirelessBase(abc.ABC):
         self.devices = devices # TODO: make this a set
         #        self.createPDRmatrix(devices)
         self.orch = self.devices[-1]
+        self.dotbots = self.devices[:-1]
 
     def indicateFloorplan(self, floorplan):
         self.propagation.indicateFloorplan(floorplan)
@@ -351,45 +365,42 @@ class WirelessConcurrentTransmission(WirelessBase):
         links = {}
         newLinks = {}
         treeInput = None
+        allNodes = set()
 
         if sender == self.orch:
             movingNode = receiver
         else:
             movingNode = sender
 
-        allDotBots = self.devices.copy()
-        allDotBots.pop()
-        # FIXME: can defo make this smarter
-        allRelays = [d for d in allDotBots if d.dotBotId in self.orch.navigation.readyRelays.copy()]
-
-        allNodes = [self.orch] + allRelays + [movingNode]
+        allRelays = self.orch.navigation.readyRelays
 
         if not allRelays:
             pdr = self._getPDR(sender, receiver)
             self.currentPDR = pdr
             return pdr
 
-        for node1 in allNodes:
-            for node2 in allNodes:
-                if node2 == node1:
-                    continue
+        # FIXME: can we do this without looping over all robots
+        for db in self.dotbots:
+            if db.dotBotId in allRelays:
+                allNodes.add(db)
 
-                linkPDR = self._getPDR(node1, node2)
+        allNodes.add(self.orch)
+        allNodes.add(movingNode)
+        all_nodes_copy = list(allNodes)
 
-                # if linkPDR == 0:
-                #     continue
-
-                links[(node1, node2)] = linkPDR
+        for (i, node) in enumerate(allNodes):
+            nodes_left = all_nodes_copy[i+1:]
+            while nodes_left:
+                links[(node, nodes_left[0])] = self._getPDR(node, nodes_left[0])
+                nodes_left.pop()
 
         if self.lastTree:
             treeInput = self.lastTree
-
-        if not self.lastTree:
-            newLinks = None
-        else:
             for link in links.items():
                 if link[0][0] in self.lastNodes:
                     newLinks[link[0]] = link[1]
+        else:
+            newLinks = None
 
         if self.lastLinks == links:
             allPDRs = self.lastLinkPDRs
@@ -412,7 +423,7 @@ class WirelessConcurrentTransmission(WirelessBase):
             return 1
 
     def _computeSuccess(self, links, lastTree = None, newLinks=None, *args, **kwargs):
-        sender = None
+
         tree = []
         rootBranches = []
         pdrPerNode = {}
@@ -459,7 +470,7 @@ class WirelessConcurrentTransmission(WirelessBase):
                         rbExtendedBranch += branch
         elif newLinks:
             for rb in lastTree:
-                rbExtendedBranch = []
+                rbExtendedBranch = set()
                 while True:
                     connectingNode = (list(rb.keys())[0], list(rb.values())[0])
                     branch = rb
@@ -485,7 +496,7 @@ class WirelessConcurrentTransmission(WirelessBase):
                         break
                     else:
                         tree += [branch]
-                        rbExtendedBranch += branch
+                        rbExtendedBranch.add(branch)
         else:
             tree = lastTree
 

@@ -497,7 +497,7 @@ class NavigationAtlas(Navigation):
         self.relayBots         = [] # have not been given destinations
         self.positionedRelays  = set() # have been given destinations, but have not reached them
         self.relayPositions    = [] # desired positions to fill?
-        self.readyRelays       = [] # relays that have reached their position
+        self.readyRelays       = set() # relays that have reached their position
         self.algorithm         = relayAlg
         self.targetBotsAndData = []
         self.frontiers         = []
@@ -607,7 +607,7 @@ class NavigationAtlas(Navigation):
                     # NOTE: Relay DotBot has reached its target and we make it a ready relay
                     # store new movement
                     dotbot['speed'] = -1
-                    self.readyRelays += [dotbot['ID']] # FIXME: this is linear in the number of dotbots
+                    self.readyRelays.add(dotbot['ID']) # FIXME: this is linear in the number of dotbots
                     return
 
                 path2target             = self.path_planner.computePath(centreCellcentre,target)
@@ -620,7 +620,7 @@ class NavigationAtlas(Navigation):
                     continue
                 else:
                     self.positionedRelays.add(dotbot["ID"])
-                    print("positioned",self.positionedRelays)
+                    #print("positioned",self.positionedRelays)
                     path2target = self.path_planner.computePath(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
             else:
 
