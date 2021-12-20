@@ -434,10 +434,12 @@ class WirelessConcurrentTransmission(WirelessBase):
         sender = (list(links.keys())[0], list(links.values())[0])
 
         if not lastTree:
-            for item in links.items():
-                if item[0][0] == sender[0][0]:
-                    if item[1] != 0:
-                        rootBranches += [item]
+            for link in links.items():
+                node_1   = link[0][0]
+                link_pdr = link[1]
+                if node_1 == sender[0][0]:
+                    if link_pdr != 0:
+                        rootBranches += [link]
 
             for rb in rootBranches:
                 rbExtendedBranch = []
