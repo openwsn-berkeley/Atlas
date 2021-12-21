@@ -365,7 +365,7 @@ class WirelessConcurrentTransmission(WirelessBase):
         links = {}
         newLinks = {}
         treeInput = None
-        allNodes = set()
+        allNodes = [self.orch]
 
         if sender == self.orch:
             movingNode = receiver
@@ -382,17 +382,9 @@ class WirelessConcurrentTransmission(WirelessBase):
         # FIXME: can we do this without looping over all robots
         for db in self.dotbots:
             if db.dotBotId in allRelays:
-                allNodes.add(db)
+                allNodes.append(db)
 
-        allNodes.add(self.orch)
-        allNodes.add(movingNode)
-        all_nodes_copy = list(allNodes)
-
-        for (i, node) in enumerate(allNodes):
-            nodes_left = all_nodes_copy[i+1:]
-            while nodes_left:
-                links[(node, nodes_left[0])] = self._getPDR(node, nodes_left[0])
-                nodes_left.pop()
+        allNodes.append(movingNode)
 
         if self.lastTree:
             treeInput = self.lastTree
@@ -405,7 +397,7 @@ class WirelessConcurrentTransmission(WirelessBase):
         if self.lastLinks == links:
             allPDRs = self.lastLinkPDRs
         else:
-            CToutput = self._computeSuccess(links, treeInput, newLinks)
+            CToutput = self._computeSuccess(all_nodes=allNodes, last_tree=treeInput)
             allPDRs = CToutput[0]
             self.lastTree = CToutput[1]
 
@@ -422,114 +414,84 @@ class WirelessConcurrentTransmission(WirelessBase):
         else:
             return 1
 
-    def _computeSuccess(self, links, lastTree = None, newLinks=None, *args, **kwargs):
+    def _computeSuccess(self, all_nodes, last_tree=None, new_nodes=None, *args, **kwargs):
+        all_nodes = all_nodes
+        root_node = all_nodes.pop(0)
 
-        tree = []
-        rootBranches = []
-        pdrPerNode = {}
-        processedRootNodes = []
-        sucessProbabilities = {}
-        endBranch = False
+        tree = self._updateTree(last_tree, root_node, all_nodes, new_nodes)
 
-        sender = (list(links.keys())[0], list(links.values())[0])
+        updated_tree = tree
+        print(updated_tree)
 
-        if not lastTree:
-            for link in links.items():
-                node_1   = link[0][0]
-                link_pdr = link[1]
-                if node_1 == sender[0][0]:
-                    if link_pdr != 0:
-                        rootBranches += [link]
+        node_pdrs = self._updateNodesPDR(updated_tree, last_tree)
+        sp = self._findSuccessProbability(node_pdrs)
+        return (sp, tree)
 
-            for rb in rootBranches:
-                rbExtendedBranch = []
-                while True:
-                    connectingNode = rb
-                    branch = {}
-                    branch[rb[0]] = rb[1]
-                    idx = 0
-                    while idx <= len(rootBranches):
-                        for link in links.items():
+    def _updateTree(self, last_tree, root_node, all_nodes, new_nodes):
+        extended_tree = self._extendBranches(last_tree, root_node, all_nodes, new_nodes)
+        return extended_tree
 
-                            if link[0] in rbExtendedBranch:
-                                continue
-                            if link[0] in branch.keys():
-                                continue
-                            if link[0][1] == connectingNode[0][0]:
-                                continue
-                            if link[0][1] in [b[0] for b in branch.keys()]:
-                                continue
-                            if link[0][0] == connectingNode[0][1]:
-                                connectingNode = link
-                                branch[link[0]] = link[1]
-                                break
-                        idx += 1
-                    if branch == {rb[0]: rb[1]} or endBranch:
-                        endBranch = False
-                        break
-                    else:
-                        tree += [branch]
-                        rbExtendedBranch += branch
-        elif newLinks:
-            for rb in lastTree:
-                rbExtendedBranch = set()
-                while True:
-                    connectingNode = (list(rb.keys())[0], list(rb.values())[0])
-                    branch = rb
-                    idx = 0
-                    while idx <= len(rootBranches):
-                        for link in newLinks.items():
+    def _extendBranches(self, existing_branches, root_node, all_nodes, new_nodes):
 
-                            if link[0] in rbExtendedBranch:
-                                continue
-                            if link[0] in branch.keys():
-                                continue
-                            if link[0][1] == connectingNode[0][0]:
-                                continue
-                            if link[0][1] in [b[0] for b in branch.keys()]:
-                                continue
-                            if link[0][0] == connectingNode[0][1]:
-                                connectingNode = link
-                                branch[link[0]] = link[1]
-                                break
-                        idx += 1
-                    if branch == rb or endBranch:
-                        endBranch = False
-                        break
-                    else:
-                        tree += [branch]
-                        rbExtendedBranch.add(branch)
+        if not existing_branches:
+            new_nodes = all_nodes
         else:
-            tree = lastTree
+            new_nodes = new_nodes
 
-        for b in tree:
+        existing_branches = self._addRootBranches(root_node, new_nodes)
+        updated_branches = []
 
-            pdr = 1
-            pdrPerNode[sender[0][0]] = [pdr]
-
-            for node in b.items():
-
-                pdr = pdr * node[1]
-
-                if node in processedRootNodes:
+        i = 0
+        while i < len(existing_branches):
+            for (idx, node) in enumerate(all_nodes):
+                if node in existing_branches[i]:
                     continue
 
-                if node[0][0] == sender[0][0]:
-                    processedRootNodes += [node]
+                new_branch = existing_branches[i] + [node]
+                if len(new_branch) == (len(all_nodes) + 1):
+                    updated_branches.append(new_branch)
+                existing_branches.append(new_branch)
 
-                if node[0][1] not in pdrPerNode.keys():
-                    pdrPerNode[node[0][1]] = [round(pdr, 4)]
-                else:
-                    pdrPerNode[node[0][1]] += [round(pdr, 4)]
+            i += 1
 
-        for node in pdrPerNode.items():
-            failureProbability = 1
-            for pdr in node[1]:
-                failureProbability = failureProbability * (1 - round(pdr, 4))
-            successProbability = 1 - failureProbability
-            sucessProbabilities[node[0]] = round(successProbability, 4)
+        return updated_branches
 
-        return [sucessProbabilities, tree]
+    def _addRootBranches(self, root_node, new_nodes):
+        root = root_node
+        root_branches = []
+        for node in new_nodes:
+            root_branches.append([root, node])
+
+        return root_branches
+
+    def _updateNodesPDR(self, tree, last_tree):
+
+        root = tree[0][0]
+        node_pdrs = {root: [1]}
+
+        for branch in tree:
+            pdr_of_previous_node = 1
+            for i in range(len(branch) - 1):
+                link_pdr = self._getPDR(branch[i], branch[i+1])
+                if str(branch[i + 1]) not in node_pdrs.keys():
+                    node_pdrs[str(branch[i + 1])] = []
+                node_pdr = round(link_pdr * pdr_of_previous_node, 4)
+                node_pdrs[str(branch[i + 1])] += [node_pdr]
+                pdr_of_previous_node = node_pdr
+
+        return node_pdrs
+
+    def _findSuccessProbability(self, node_pdrs):
+        nodes = node_pdrs.keys()
+        final_pdrs = {}
+
+        for node in nodes:
+            failure_probability = round(np.prod([1 - node_pdr for node_pdr in list(set(node_pdrs[node]))]), 4)
+            success_probability = 1 - failure_probability
+            final_pdrs[node] = success_probability
+
+        return final_pdrs
+
 
 
 
