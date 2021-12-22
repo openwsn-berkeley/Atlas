@@ -420,10 +420,9 @@ class WirelessConcurrentTransmission(WirelessBase):
 
         tree = self._updateTree(last_tree, root_node, all_nodes, new_nodes)
 
-        updated_tree = tree
-        print(updated_tree)
+        #updated_tree = tree
 
-        node_pdrs = self._updateNodesPDR(updated_tree, last_tree)
+        node_pdrs = self._updateNodesPDR(tree, last_tree)
         sp = self._findSuccessProbability(node_pdrs)
         return (sp, tree)
 

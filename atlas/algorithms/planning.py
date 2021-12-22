@@ -233,7 +233,7 @@ class RelayPlanner(abc.ABC):
     class Cell(Cell):
         pass
 
-    def __init__(self, map=None, radius=10, map_kwargs={}):
+    def __init__(self, map=None, radius=10, start_x=None, start_y=None, map_kwargs={}):
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
         self.assigned_relays = set()   # robots assigned to become relays
         self.targeted_relays = set()   # relay robots that have been given a target position
@@ -495,7 +495,7 @@ class AtlasTargets(TargetSelector):
 
         min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
         closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
-        closest_targets = closest_targets_to_dotbot[:5]
+        closest_targets = closest_targets_to_dotbot
         return closest_targets
 
 

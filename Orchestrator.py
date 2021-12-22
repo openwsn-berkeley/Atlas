@@ -498,7 +498,7 @@ class NavigationAtlas(Navigation):
         self.positionedRelays  = set() # have been given destinations, but have not reached them
         self.relayPositions    = [] # desired positions to fill?
         self.readyRelays       = set() # relays that have reached their position
-        self.algorithm         = relayAlg
+        #self.algorithm         = relayAlg
         self.targetBotsAndData = []
         self.frontiers         = []
         self.allTargets        = []
@@ -507,7 +507,8 @@ class NavigationAtlas(Navigation):
         self.relayBots         = set()
 
         # SelfHealing, Naive, NoRelay, Recovery
-        self.relay_planner = Recovery(map=self.map, radius=10)
+        relay_algorithm = globals()[str(relayAlg)]
+        self.relay_planner = relay_algorithm(map=self.map, radius=10,  start_x=self.ix, start_y=self.iy)
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
 
