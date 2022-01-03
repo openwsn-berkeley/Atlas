@@ -315,15 +315,21 @@ class WirelessBase(abc.ABC):
     def transmit(self, frame, sender: WirelessDevice, receiver_filter: set = None):
 
         assert self.devices  # make sure there are devices
-
+        self.pdrs = []
         for receiver in self.devices:
             if receiver == sender or \
                     (receiver_filter is not None and receiver not in receiver_filter):
                 continue  # ensures transmitter doesn't receive
             pdr = self._computePDR(sender, receiver)
+            print(pdr)
+            self.pdrs.append(pdr)
             rand = random.uniform(0, 1)
             if rand < pdr:
                 receiver.receive(frame)
+        self.getPdrAvg()
+
+    def getPdrAvg(self):
+        return sum(self.pdrs)/len(self.pdrs)
 
     # ======================== private =========================================
 

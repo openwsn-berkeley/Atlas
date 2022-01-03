@@ -81,9 +81,12 @@ def runSim(simSetting, simUI):
     simEngine.destroy()
     wireless.destroy()
 
-    return {'numDotBots': simSetting['numDotBots'], 'navAlgorithm': simSetting['navAlgorithm'],
-            'pdr': None, 'timeToFullMapping': timeToFullMapping,
-            'relayAlg': simSetting['relayAlg']}
+    return {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
+            'timeToFullMapping': timeToFullMapping,
+            'relayAlg': simSetting['relayAlg'], 'navAlgorithm': simSetting['navAlgorithm'],
+            'mappingProfile': orchestrator.mappingProfile, 'relayProfile': orchestrator.relayProfile,
+            'pdrProfile': orchestrator.pdrProfile,
+            'timeline': orchestrator.timeline}
 
 
 

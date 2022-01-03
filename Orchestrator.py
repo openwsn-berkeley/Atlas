@@ -508,7 +508,7 @@ class NavigationAtlas(Navigation):
 
         # SelfHealing, Naive, NoRelay, Recovery
         relay_algorithm = globals()[str(relayAlg)]
-        self.relay_planner = relay_algorithm(map=self.map, radius=10,  start_x=self.ix, start_y=self.iy)
+        self.relay_planner = relay_algorithm(map=self.map, radius=5,  start_x=self.ix, start_y=self.iy)
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
 
@@ -609,6 +609,7 @@ class NavigationAtlas(Navigation):
                     # store new movement
                     dotbot['speed'] = -1
                     self.readyRelays.add(dotbot['ID']) # FIXME: this is linear in the number of dotbots
+                    self.relayPositions.append(centreCellcentre)
                     return
 
                 path2target             = self.path_planner.computePath(centreCellcentre,target)
@@ -766,6 +767,12 @@ class Orchestrator(Wireless.WirelessDevice):
         navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
         self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relayAlg=self.relayAlg)
         self.communicationQueue = []
+
+        #logging
+        self.pdrProfile     = []
+        self.timeline       = []
+        self.relayProfile   = []
+        self.mappingProfile = []
     
     #======================== public ==========================================
 
@@ -788,7 +795,10 @@ class Orchestrator(Wireless.WirelessDevice):
         
         # send downstream command
         self._sendDownstreamCommands()
-        
+
+        # collect data for logging purposes
+        self._collectData()
+
         # arm next downstream communication
         self.simEngine.schedule(
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
@@ -823,6 +833,12 @@ class Orchestrator(Wireless.WirelessDevice):
                     sender = self,
                 )
 
+
+    def _collectData(self):
+        self.mappingProfile.append(len(self.navigation.map.obstacles)+len(self.navigation.map.explored))
+        self.relayProfile.append(len(self.navigation.relayPositions))
+        self.pdrProfile.append(self.wireless.getPdrAvg())
+        self.timeline.append(self.simEngine.currentTime())
 
     
     def receive(self,frame):
