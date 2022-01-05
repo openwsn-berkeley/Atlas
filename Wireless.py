@@ -187,7 +187,7 @@ class PropagationFriis(PropagationBase):
         -82: 0.9844,
         -81: 0.9854,
         -80: 0.9903,
-        -79: 1.0000,  # this value is not from experiment
+        #-79: 1.0000,  # this value is not from experiment
     }
 
     TX_POWER = 0
@@ -321,7 +321,6 @@ class WirelessBase(abc.ABC):
                     (receiver_filter is not None and receiver not in receiver_filter):
                 continue  # ensures transmitter doesn't receive
             pdr = self._computePDR(sender, receiver)
-            print(pdr)
             self.pdrs.append(pdr)
             rand = random.uniform(0, 1)
             if rand < pdr:
@@ -368,9 +367,7 @@ class WirelessConcurrentTransmission(WirelessBase):
 
 
     def _computePDR(self, sender, receiver):
-        links = {}
-        newLinks = {}
-        treeInput = None
+
         allNodes = [self.orch]
 
         if sender == self.orch:
@@ -392,58 +389,40 @@ class WirelessConcurrentTransmission(WirelessBase):
 
         allNodes.append(movingNode)
 
-        if self.lastTree:
-            treeInput = self.lastTree
-            for link in links.items():
-                if link[0][0] in self.lastNodes:
-                    newLinks[link[0]] = link[1]
-        else:
-            newLinks = None
+        CToutput = self._computeSuccess(all_nodes=allNodes, last_tree=self.lastTree)
+        allPDRs = CToutput[0]
+        self.lastTree = CToutput[1]
 
-        if self.lastLinks == links:
-            allPDRs = self.lastLinkPDRs
-        else:
-            CToutput = self._computeSuccess(all_nodes=allNodes, last_tree=treeInput)
-            allPDRs = CToutput[0]
-            self.lastTree = CToutput[1]
-
-        self.lastLinks = links
-        self.lastLinkPDRs = allPDRs
         self.lastNodes = allNodes
 
-        pdr = [sp[1] for sp in allPDRs.items() if sp[0] == movingNode]
+        pdr = [sp[1] for sp in allPDRs.items() if sp[0] == str(movingNode)]
 
         if pdr:
             self.currentPDR = pdr[0]
             return pdr[0]
 
         else:
+            print("NO PDR RETURNED!")
             return 1
 
     def _computeSuccess(self, all_nodes, last_tree=None, new_nodes=None, *args, **kwargs):
         all_nodes = all_nodes
         root_node = all_nodes.pop(0)
 
-        tree = self._updateTree(last_tree, root_node, all_nodes, new_nodes)
+        tree = self._updateTree(root_node=root_node, all_nodes=all_nodes)
 
-        #updated_tree = tree
+        node_pdrs = self._updateNodesPDR(tree)
 
-        node_pdrs = self._updateNodesPDR(tree, last_tree)
         sp = self._findSuccessProbability(node_pdrs)
+
         return (sp, tree)
 
-    def _updateTree(self, last_tree, root_node, all_nodes, new_nodes):
-        extended_tree = self._extendBranches(last_tree, root_node, all_nodes, new_nodes)
+    def _updateTree(self, root_node, all_nodes):
+        extended_tree = self._extendBranches(root_node=root_node, all_nodes=all_nodes)
         return extended_tree
 
-    def _extendBranches(self, existing_branches, root_node, all_nodes, new_nodes):
-
-        if not existing_branches:
-            new_nodes = all_nodes
-        else:
-            new_nodes = new_nodes
-
-        existing_branches = self._addRootBranches(root_node, new_nodes)
+    def _extendBranches(self,root_node, all_nodes):
+        existing_branches = self._addRootBranches(root_node, all_nodes)
         updated_branches = []
 
         i = 0
@@ -458,18 +437,22 @@ class WirelessConcurrentTransmission(WirelessBase):
                 existing_branches.append(new_branch)
 
             i += 1
+        if not updated_branches:
+            new_branches = existing_branches
+        else:
+            new_branches = updated_branches
 
-        return updated_branches
+        return new_branches
 
-    def _addRootBranches(self, root_node, new_nodes):
+    def _addRootBranches(self, root_node, nodes):
         root = root_node
         root_branches = []
-        for node in new_nodes:
+        for node in nodes:
             root_branches.append([root, node])
 
         return root_branches
 
-    def _updateNodesPDR(self, tree, last_tree):
+    def _updateNodesPDR(self, tree):
 
         root = tree[0][0]
         node_pdrs = {root: [1]}
