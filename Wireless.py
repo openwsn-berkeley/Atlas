@@ -280,9 +280,8 @@ class WirelessBase(abc.ABC):
 
         # store params
         self.devices = []
-        self.lastLinks = None
-        self.lastLinkPDRs = None
         self.lastTree = None
+        self.last_num_relays = 0
         self.lastNodes = None
         self.currentPDR = None
         self.propagation = propagation()
@@ -387,15 +386,23 @@ class WirelessConcurrentTransmission(WirelessBase):
             if db.dotBotId in allRelays:
                 allNodes.append(db)
 
-        allNodes.append(movingNode)
+        new_relay = allNodes[-1]
 
-        CToutput = self._computeSuccess(all_nodes=allNodes, last_tree=self.lastTree)
-        allPDRs = CToutput[0]
-        self.lastTree = CToutput[1]
+        num_relays = len(allRelays) if allRelays else 0
+        allNodes.append("moving node")
 
-        self.lastNodes = allNodes
+        if num_relays > self.last_num_relays:
+            tree = self._updateTree(self.orch, allNodes, self.lastTree, new_relay)
+        else:
+            tree = self.lastTree
 
-        pdr = [sp[1] for sp in allPDRs.items() if sp[0] == str(movingNode)]
+        CToutput = self._computeSuccess(tree, movingNode)
+        allPDRs = CToutput
+
+        self.lastTree = tree
+        self.last_num_relays = num_relays
+
+        pdr = [sp[1] for sp in allPDRs.items() if sp[0] == "moving node"]
 
         if pdr:
             self.currentPDR = pdr[0]
@@ -405,54 +412,45 @@ class WirelessConcurrentTransmission(WirelessBase):
             print("NO PDR RETURNED!")
             return 1
 
-    def _computeSuccess(self, all_nodes, last_tree=None, new_nodes=None, *args, **kwargs):
-        all_nodes = all_nodes
-        root_node = all_nodes.pop(0)
+    def _computeSuccess(self, tree, moving_node, *args, **kwargs):
 
-        tree = self._updateTree(root_node=root_node, all_nodes=all_nodes)
-
-        node_pdrs = self._updateNodesPDR(tree)
+        node_pdrs = self._recomputeAllPDRs(tree, moving_node)
 
         sp = self._findSuccessProbability(node_pdrs)
 
-        return (sp, tree)
+        return sp
 
-    def _updateTree(self, root_node, all_nodes):
-        extended_tree = self._extendBranches(root_node=root_node, all_nodes=all_nodes)
-        return extended_tree
+    def _updateTree(self,root_node, all_nodes, last_tree, new_relay):
+        # need to evaluate how many branches need to branch out from this one
+        # add new branch to branches to be extended if current node != moving node
+        # once all possible extensions have been added pop from branches to be extended
+        # until we no longer have branches to be extended
 
-    def _extendBranches(self,root_node, all_nodes):
-        existing_branches = self._addRootBranches(root_node, all_nodes)
-        updated_branches = []
-
-        i = 0
-        while i < len(existing_branches):
-            for (idx, node) in enumerate(all_nodes):
-                if node in existing_branches[i]:
-                    continue
-
-                new_branch = existing_branches[i] + [node]
-                if len(new_branch) == (len(all_nodes) + 1):
-                    updated_branches.append(new_branch)
-                existing_branches.append(new_branch)
-
-            i += 1
-        if not updated_branches:
-            new_branches = existing_branches
+        if last_tree:
+            current_tree = last_tree
         else:
-            new_branches = updated_branches
+            current_tree = [[root_node, "moving node"]]
 
-        return new_branches
+        branches_to_extend = [branch[0:-1] + [new_relay] for branch in current_tree]
 
-    def _addRootBranches(self, root_node, nodes):
-        root = root_node
-        root_branches = []
-        for node in nodes:
-            root_branches.append([root, node])
+        idx = 0
+        while branches_to_extend:
+            branch = branches_to_extend[idx]
+            extension_nodes = set(all_nodes) - set(branch)
+            for node in extension_nodes:
+                if node != "moving node":
+                    branches_to_extend.append(branch + [node])
+                else:
+                    current_tree.append(branch + [node])
+                    branches_to_extend.remove(branch)
 
-        return root_branches
+        return current_tree
 
     def _updateNodesPDR(self, tree):
+
+        return
+
+    def _recomputeAllPDRs(self, tree, moving_node):
 
         root = tree[0][0]
         node_pdrs = {root: [1]}
@@ -460,7 +458,13 @@ class WirelessConcurrentTransmission(WirelessBase):
         for branch in tree:
             pdr_of_previous_node = 1
             for i in range(len(branch) - 1):
-                link_pdr = self._getPDR(branch[i], branch[i+1])
+                if branch[i+1] == "moving node":
+                    next_node = moving_node
+                else:
+                    next_node = branch[i+1]
+                if branch[i] == next_node:
+                    continue
+                link_pdr = self._getPDR(branch[i], next_node)
                 if str(branch[i + 1]) not in node_pdrs.keys():
                     node_pdrs[str(branch[i + 1])] = []
                 node_pdr = round(link_pdr * pdr_of_previous_node, 4)
