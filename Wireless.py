@@ -187,7 +187,7 @@ class PropagationFriis(PropagationBase):
         -82: 0.9844,
         -81: 0.9854,
         -80: 0.9903,
-        #-79: 1.0000,  # this value is not from experiment
+        -79: 1.0000,  # this value is not from experiment
     }
 
     TX_POWER = 0
@@ -283,6 +283,7 @@ class WirelessBase(abc.ABC):
         self.lastTree = None
         self.last_num_relays = 0
         self.lastNodes = None
+        self.edge_node_pdrs = None
         self.currentPDR = None
         self.propagation = propagation()
 
@@ -396,25 +397,23 @@ class WirelessConcurrentTransmission(WirelessBase):
         else:
             tree = self.lastTree
 
-        CToutput = self._computeSuccess(tree, movingNode)
+        CToutput = self._computeSuccess(tree, movingNode, num_relays)
         allPDRs = CToutput
 
         self.lastTree = tree
         self.last_num_relays = num_relays
 
-        pdr = [sp[1] for sp in allPDRs.items() if sp[0] == "moving node"]
+        return   allPDRs["moving node"]
 
-        if pdr:
-            self.currentPDR = pdr[0]
-            return pdr[0]
+    def _computeSuccess(self, tree, moving_node,num_relays, *args, **kwargs):
 
+        if num_relays > self.last_num_relays:
+            recomputed_pdrs = self._recomputeAllPDRs(tree, moving_node)
+            node_pdrs       = recomputed_pdrs[0]
+            self.last_pdrs  = node_pdrs
+            self.edge_node_pdrs  = recomputed_pdrs[1]
         else:
-            print("NO PDR RETURNED!")
-            return 1
-
-    def _computeSuccess(self, tree, moving_node, *args, **kwargs):
-
-        node_pdrs = self._recomputeAllPDRs(tree, moving_node)
+            node_pdrs = self._updateNodesPDR(tree, self.last_pdrs, moving_node, self.edge_node_pdrs)
 
         sp = self._findSuccessProbability(node_pdrs)
 
@@ -446,14 +445,26 @@ class WirelessConcurrentTransmission(WirelessBase):
 
         return current_tree
 
-    def _updateNodesPDR(self, tree):
+    def _updateNodesPDR(self, tree, last_pdrs, moving_node, edge_node_pdrs):
+        # for every edge node, find pdr with moving node then multiply by edge connecting node pdr
+        # remove the final entry from node pdrs and replace with new entry for this moving node
+        # the finding success probability will be done in the same way
 
-        return
+        node_pdrs = last_pdrs
+        node_pdrs["moving node"] = []
+        for node in edge_node_pdrs:
+            if node[0] == "moving node" or node[0] == moving_node:
+                continue
+            link_pdr = self._getPDR(node[0],moving_node)
+            node_pdrs["moving node"].append(link_pdr * node[1])
+
+        return node_pdrs
 
     def _recomputeAllPDRs(self, tree, moving_node):
 
         root = tree[0][0]
         node_pdrs = {root: [1]}
+        edge_nodes = []
 
         for branch in tree:
             pdr_of_previous_node = 1
@@ -469,9 +480,11 @@ class WirelessConcurrentTransmission(WirelessBase):
                     node_pdrs[str(branch[i + 1])] = []
                 node_pdr = round(link_pdr * pdr_of_previous_node, 4)
                 node_pdrs[str(branch[i + 1])] += [node_pdr]
+                if branch[i] == branch[-2]:
+                    edge_nodes.append((branch[i],pdr_of_previous_node))
                 pdr_of_previous_node = node_pdr
 
-        return node_pdrs
+        return node_pdrs, edge_nodes
 
     def _findSuccessProbability(self, node_pdrs):
         nodes = node_pdrs.keys()

@@ -508,7 +508,7 @@ class NavigationAtlas(Navigation):
 
         # SelfHealing, Naive, NoRelay, Recovery
         relay_algorithm = globals()[str(relayAlg)]
-        self.relay_planner = relay_algorithm(map=self.map, radius=5,  start_x=self.ix, start_y=self.iy)
+        self.relay_planner = relay_algorithm(map=self.map, radius=10,  start_x=self.ix, start_y=self.iy)
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
 
