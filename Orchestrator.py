@@ -6,6 +6,8 @@ import copy
 import sys
 import math
 import logging
+from functools import wraps
+import time
 
 from typing import Union, Optional, List
 
@@ -16,6 +18,17 @@ import Wireless
 import Utils as u
 
 from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
+
+def timeit(my_func):
+    @wraps(my_func)
+    def timed(*args, **kw):
+        tstart = time.time()
+        output = my_func(*args, **kw)
+        tend = time.time()
+        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart)))
+        return output
+
+    return timed
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -482,11 +495,6 @@ class NavigationAtlas(Navigation):
         self.map = Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=AStar.Cell)
         self.path_planner  = AStar(self.map)
 
-
-        #self.relay_planner = NoRelays(map=self.map, radius=10)
-
-
-
         # (additional) local variables
         self.simEngine = SimEngine.SimEngine()
         # shorthands for initial x,y position
@@ -508,7 +516,7 @@ class NavigationAtlas(Navigation):
 
         # SelfHealing, Naive, NoRelay, Recovery
         relay_algorithm = globals()[str(relayAlg)]
-        self.relay_planner = relay_algorithm(map=self.map, radius=10,  start_x=self.ix, start_y=self.iy)
+        self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy)
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
 
@@ -587,16 +595,22 @@ class NavigationAtlas(Navigation):
 
         while True:
             # keep going towards same target if target hasn't been explored yet
+            # FIXME
+            neighbours = self.map.neighbors(self.map.cell(*centreCellcentre, local=False))
+            random.shuffle(neighbours)
             if centreCellcentre in self.path_planner.map.obstacles:
-                for cell in self.map.neighbors(self.map.cell(*centreCellcentre, local=False)):
+                for cell in neighbours:
                     if not cell.obstacle and cell.explored:
                         path2target = [cell.position(_local=False)]
                         break
                 break
 
-            if (target                                                               and
-               (target not in self.map.explored and target not in self.map.obstacles and target not in self.map.unreachable) or
-               (dotbot['ID'] in self.positionedRelays) and dotbot['speed'] != -1) :
+            if (target                                 and
+               (target not in self.map.explored        and
+                target not in self.map.obstacles       and
+                target not in self.map.unreachable)     or
+               (dotbot['ID'] in self.positionedRelays) and
+                dotbot['speed'] != -1):
 
                 # TODO: this should read like plain English
                 # TODO: relay status should be a dotbot attribute (e.g. dotbot.relay_status() -> Enum: None, Unpositioned, Positioned, Ready)
@@ -606,15 +620,15 @@ class NavigationAtlas(Navigation):
 
                 if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
                     # NOTE: Relay DotBot has reached its target and we make it a ready relay
-                    # store new movement
+
                     dotbot['speed'] = -1
-                    self.readyRelays.add(dotbot['ID']) # FIXME: this is linear in the number of dotbots
+                    self.readyRelays.add(dotbot['ID'])
                     self.relayPositions.append(centreCellcentre)
                     return
 
-                path2target             = self.path_planner.computePath(centreCellcentre,target)
+                path2target = self.path_planner.computePath(centreCellcentre, target)
 
-            elif (dotbot["ID"] in self.relayBots):
+            elif dotbot["ID"] in self.relayBots and dotbot["ID"] not in self.positionedRelays:
                 target = self._getRelayPosition(dotbot)
                 if not target:
                     self.relayBots.discard(dotbot["ID"])
@@ -622,12 +636,9 @@ class NavigationAtlas(Navigation):
                     continue
                 else:
                     self.positionedRelays.add(dotbot["ID"])
-                    #print("positioned",self.positionedRelays)
-                    path2target = self.path_planner.computePath(centreCellcentre, target) # NOTE: just go directly to the target in a line - not anymore, just runs path planner
+                    path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
-
                 target = self.target_selector.allocateTarget(centreCellcentre)
-
                 if not target:
                     dotbot['ID']     = dotBotId
                     dotbot['target'] = centreCellcentre
@@ -649,7 +660,7 @@ class NavigationAtlas(Navigation):
                 break
 
         #Find headings and time to reach next step, for every step in path2target
-
+        # FIXME: the heading calculation process should be a seperate function that is only called here
         pathHeadings=[]
 
         for (idx,nextCell) in enumerate(path2target):
@@ -688,7 +699,15 @@ class NavigationAtlas(Navigation):
     def scheduleCheckForRelays(self):
         self._getRelayBots(self.dotbotsview)
 
-        self.simEngine.schedule(self.simEngine.currentTime()+1, self.scheduleCheckForRelays) # TODO: chage 1 to variable
+        self.simEngine.schedule(self.simEngine.currentTime()+10, self.scheduleCheckForRelays) # TODO: change 1 to variable
+
+    def _getRelayBots(self, robots_data):
+        new_relays = self.relay_planner.assignRelay(robots_data)
+        if new_relays:
+            self.relayBots.add(new_relays)
+
+    def _getRelayPosition(self, relay):
+        return self.relay_planner.positionRelay(relay)
 
     def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
         # scan horizontally
@@ -737,15 +756,6 @@ class NavigationAtlas(Navigation):
             'height':   MapBuilder.MINFEATURESIZE_M/2,
         }
         return returnVal
-
-    def _getRelayBots(self, robots_data):
-        new_relays = self.relay_planner.assignRelay(robots_data)
-        if new_relays != None:
-            self.relayBots.add(new_relays)
-
-
-    def _getRelayPosition(self, relay):
-        return self.relay_planner.positionRelay(relay)
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -813,8 +823,8 @@ class Orchestrator(Wireless.WirelessDevice):
         allMovements = self.navigation.getMovements()
 
         self.communicationQueue += allMovements
-
-        for i in range(0,int(len(allMovements)/self.COMMANDSIZE)+1):
+        self.num_packets_per_command = int(len(allMovements)/self.COMMANDSIZE)+1
+        for i in range(0,self.num_packets_per_command):
 
                 command = self.communicationQueue[:self.COMMANDSIZE]
                 numOfRemainingElements = (len(self.communicationQueue)-self.COMMANDSIZE)
@@ -823,9 +833,9 @@ class Orchestrator(Wireless.WirelessDevice):
                 # format frame to transmit
                 frameToTx = {
                     'frameType': self.FRAMETYPE_COMMAND,
-                    'movements': command
+                    'movements': command,
+                    'packets per command': self.num_packets_per_command
                 }
-
 
                 # hand over to wireless
                 self.wireless.transmit(

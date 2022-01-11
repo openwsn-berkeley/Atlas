@@ -508,27 +508,27 @@ class Recovery(RelayPlanner):
 
     def assignRelay(self, robots_data):
 
+        relay = None
         for robot in robots_data:
+
+            if robot['heartbeat'] > 0.7:
+                continue
             if robot['ID'] in self.targeted_relays:
                 continue
 
-            hb = robot['heartbeat']
+            relay = robot['ID']
+            break
 
-            if (0 < hb < 0.7):
-                return robot["ID"]
-
-        return None
+        return relay
 
     def positionRelay(self, relay):
         x = None
         y = None
-        num_placed_relays = len(self.targeted_relays)
 
         pdrHistory = relay['pdrHistory']
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
-            if value[0] >= (1 - (num_placed_relays / 10)):
-            #if value[0] >= 0.8:
+            if value[0] >= 0.8:
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]
@@ -536,13 +536,6 @@ class Recovery(RelayPlanner):
 
         if not x and not y:
             return None
-
-        # Enforce safety zone to avoid redundancies
-
-        for p in self.relay_positions:
-            distance_relay_to_relay = u.distance(p, (relay['x'], relay['y']))
-            if distance_relay_to_relay < self.radius:
-                return
 
         if (x, y) not in self.map.obstacles and (x, y) not in self.relay_positions:
             self.relay_positions.add((x, y))

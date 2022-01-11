@@ -62,6 +62,9 @@ class DotBot(Wireless.WirelessDevice):
             return
 
         myMovement = [movement for movement in frame['movements'] if movement['ID'] == self.dotBotId]
+        self.packets_per_command = frame['packets per command']
+
+        self._updatePacketCount()
 
         if not myMovement:
             return
@@ -69,8 +72,6 @@ class DotBot(Wireless.WirelessDevice):
             myMovement = myMovement[0]
 
         now      = self.simEngine.currentTime()
-
-        self._updatePacketCount()
 
         if myMovement['timer']:
             stopTime = now + myMovement['timer']
@@ -183,7 +184,7 @@ class DotBot(Wireless.WirelessDevice):
         if now < self.hbLength:
             return
 
-        self.packetsRxRatio = self.packetsRX/self.hbLength
+        self.packetsRxRatio = self.packetsRX/(self.hbLength*self.packets_per_command)
         self._resetPacketCount()
         #print('->', self.dotBotId,'->',self.packetsRxRatio,'->',self.x,self.y)
 
