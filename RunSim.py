@@ -138,7 +138,10 @@ def main(config):
     start_time = time.time()
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
-    log_file = f'{config.experiment.logging.name}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
+    if config.cleps:
+        log_file = f'{os.environ["SLURM_JOBID"]}_{os.environ["SLURM_NODEID"]}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
+    else:
+        log_file = f'{config.experiment.logging.name}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
 
     # TODO: add timing bindings to relevant classes & functions
     with open(os.path.join(base_dir, log_file), 'a') as f:
@@ -154,7 +157,7 @@ def main(config):
             f.flush()
     
     # block until user closes
-    input('Press Enter to close simulation.')
+    #input('Press Enter to close simulation.')
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
