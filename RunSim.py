@@ -141,7 +141,7 @@ def main(config):
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
     if config.cleps:
-        log_file = f'{os.environ["SLURM_JOBID"]}_{os.environ["SLURM_JOB_NODELIST"]}_{"SLURM_ARRAY_TASK_ID"}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
+        log_file = f'{os.environ["SLURM_JOBID"]}_{os.environ["SLURM_JOB_NODELIST"]}_{os.environ["SLURM_ARRAY_TASK_ID"]}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
     else:
         log_file = f'{config.experiment.logging.name}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
 
