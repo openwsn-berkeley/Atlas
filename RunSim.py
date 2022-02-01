@@ -50,7 +50,7 @@ def runSim(simSetting, simUI):
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
-        simSetting['relayAlg'],
+        simSetting['relaySettings'],
     )
     
     # create the wireless communication medium
@@ -83,7 +83,7 @@ def runSim(simSetting, simUI):
 
     return {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
             'timeToFullMapping': timeToFullMapping,
-            'relayAlg': simSetting['relayAlg'], 'navAlgorithm': simSetting['navAlgorithm'],
+            'relaySettings': simSetting['relaySettings'], 'navAlgorithm': simSetting['navAlgorithm'],
             'mappingProfile': orchestrator.mappingProfile, 'relayProfile': orchestrator.relayProfile,
             'pdrProfile': orchestrator.pdrProfile,
             'timeline': orchestrator.timeline}
@@ -122,15 +122,17 @@ def main(config):
                                                 'initialPosition': tuple(init_pos),
                                                 'navAlgorithm': nav,
                                                 'pathPlanner': path_planner,
-                                                'relayAlg': relay,
                                                 'targetSelector': target_selector,
                                                 'wirelessModel': wireless,
-                                                'propagationModel': propagation
+                                                'propagationModel': propagation,
+                                                'relaySettings': {'relayAlg': relay,
+                                                                  'minPdrThreshold': config.relays.thresholds.min_pdr_threshold,
+                                                                  'bestPdrThreshold': config.relays.thresholds.best_pdr_threshold}
                                             },
                                         )
     
     # log
-    log.debug('simulation starting')
+    log.debug(f'simulation starting')
     
     # create the UI
     simUI          = SimUI.SimUI() if config.ui else None
@@ -139,7 +141,7 @@ def main(config):
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
     if config.cleps:
-        log_file = f'{os.environ["SLURM_JOBID"]}_{os.environ["SLURM_NODEID"]}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
+        log_file = f'{os.environ["SLURM_JOBID"]}_{os.environ["SLURM_JOB_NODELIST"]}_{"SLURM_ARRAY_TASK_ID"}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
     else:
         log_file = f'{config.experiment.logging.name}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
 
@@ -148,14 +150,14 @@ def main(config):
         # run a number of simulations
         for (runNum, simSetting) in enumerate(SIMSETTINGS):
             # log
-            log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting")
+            log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting at {time.strftime('%H:%M:%S' , time.localtime(time.time()))}")
             kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
             time_to_full_mapping = kpis['timeToFullMapping']
-            log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s")
+            log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S' , time.localtime(time.time()))} ")
             kpis['runNums'] = runNum
             f.write(json.dumps(kpis) + '\n')
             f.flush()
-    
+
     # block until user closes
     #input('Press Enter to close simulation.')
 

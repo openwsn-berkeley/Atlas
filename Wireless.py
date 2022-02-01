@@ -286,6 +286,7 @@ class WirelessBase(abc.ABC):
         self.edge_node_pdrs = None
         self.currentPDR = None
         self.propagation = propagation()
+        self.pdrs = []
 
         # TODO: PDR Matrix store
 
@@ -315,20 +316,20 @@ class WirelessBase(abc.ABC):
     def transmit(self, frame, sender: WirelessDevice, receiver_filter: set = None):
 
         assert self.devices  # make sure there are devices
-        self.pdrs = []
+        self.all_robot_pdrs = []
         for receiver in self.devices:
             if receiver == sender or \
                     (receiver_filter is not None and receiver not in receiver_filter):
                 continue  # ensures transmitter doesn't receive
             pdr = self._computePDR(sender, receiver)
-            self.pdrs.append(pdr)
+            self.all_robot_pdrs.append(pdr)
             rand = random.uniform(0, 1)
             if rand < pdr:
                 receiver.receive(frame)
-        self.getPdrAvg()
+        self.pdrs.append(self.all_robot_pdrs)
 
-    def getPdrAvg(self):
-        return sum(self.pdrs)/len(self.pdrs)
+    def getPdr(self):
+        return self.pdrs
 
     # ======================== private =========================================
 

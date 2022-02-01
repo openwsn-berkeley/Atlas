@@ -233,12 +233,13 @@ class RelayPlanner(abc.ABC):
     class Cell(Cell):
         pass
 
-    def __init__(self, map=None, radius=10, start_x=None, start_y=None, map_kwargs={}):
+    def __init__(self, map=None, radius=10, start_x=None, start_y=None, settings={}, map_kwargs={}):
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
         self.assigned_relays = set()   # robots assigned to become relays
         self.targeted_relays = set()   # relay robots that have been given a target position
         self.relay_positions = set()   # all potential positions to be assigned to relays
         self.radius          = radius
+        self.relay_settings  = settings
 
     @abc.abstractmethod
     def assignRelay(self, robots_data):
@@ -511,7 +512,7 @@ class Recovery(RelayPlanner):
         relay = None
         for robot in robots_data:
 
-            if robot['heartbeat'] > 0.7:
+            if robot['heartbeat'] > self.relay_settings['minPdrThreshold'][0]:
                 continue
             if robot['ID'] in self.targeted_relays:
                 continue
@@ -528,7 +529,7 @@ class Recovery(RelayPlanner):
         pdrHistory = relay['pdrHistory']
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
-            if value[0] >= 0.8:
+            if value[0] >= self.relay_settings['bestPdrThreshold'][0]:
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]

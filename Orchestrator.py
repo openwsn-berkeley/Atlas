@@ -487,7 +487,7 @@ class NavigationAtlas(Navigation):
     A* path finding.
     '''
 
-    def __init__(self, *args, relayAlg="recovery", **kwargs):
+    def __init__(self, *args, relaySettings, **kwargs):
 
         # initialize parent
         super().__init__(*args, **kwargs)
@@ -515,8 +515,8 @@ class NavigationAtlas(Navigation):
         self.relayBots         = set()
 
         # SelfHealing, Naive, NoRelay, Recovery
-        relay_algorithm = globals()[str(relayAlg)]
-        self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy)
+        relay_algorithm = globals()[str(relaySettings["relayAlg"])]
+        self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy, settings=relaySettings)
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
 
@@ -764,18 +764,18 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
     # WirelessConcurrentTransmission or WirelessBase
-    def __init__(self, numDotBots, initialPosition, navAlgorithm, relayAlg, wireless=Wireless.WirelessConcurrentTransmission):
+    def __init__(self, numDotBots, initialPosition, navAlgorithm, relaySettings, wireless=Wireless.WirelessConcurrentTransmission):
 
         # store params
         self.numDotBots        = numDotBots
         self.initialPosition   = initialPosition
-        self.relayAlg          = relayAlg
+        self.relaySettings     = relaySettings
 
         # local variables
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = wireless()
         navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
-        self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relayAlg=self.relayAlg)
+        self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relaySettings=self.relaySettings)
         self.communicationQueue = []
 
         #logging
@@ -847,17 +847,15 @@ class Orchestrator(Wireless.WirelessDevice):
     def _collectData(self):
         self.mappingProfile.append(len(self.navigation.map.obstacles)+len(self.navigation.map.explored))
         self.relayProfile.append(len(self.navigation.relayPositions))
-        self.pdrProfile.append(self.wireless.getPdrAvg())
+        self.pdrProfile.append(self.wireless.getPdr())
         self.timeline.append(self.simEngine.currentTime())
 
-    
     def receive(self,frame):
         '''
         Notification received from a DotBot.
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
-        
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
     
