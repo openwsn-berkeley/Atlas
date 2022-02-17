@@ -46,6 +46,7 @@ class DotBot(Wireless.WirelessDevice):
         self.packetsRX            = 0
         self.hbLength             = 10
         self.PDRarray             = []
+        self.relay                = False
 
         self.simEngine.schedule(self.simEngine.currentTime()+self.hbLength, self._updateHeartbeat)
 
@@ -83,6 +84,7 @@ class DotBot(Wireless.WirelessDevice):
             return
 
         if myMovement['speed'] == -1:
+            self.relay = True
             return
 
         self.seqNumMovement       = myMovement['seqNumMovement']

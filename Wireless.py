@@ -316,17 +316,21 @@ class WirelessBase(abc.ABC):
     def transmit(self, frame, sender: WirelessDevice, receiver_filter: set = None):
 
         assert self.devices  # make sure there are devices
-        self.all_robot_pdrs = []
+        self.all_robot_pdrs = set()
         for receiver in self.devices:
             if receiver == sender or \
                     (receiver_filter is not None and receiver not in receiver_filter):
                 continue  # ensures transmitter doesn't receive
             pdr = self._computePDR(sender, receiver)
-            self.all_robot_pdrs.append(pdr)
+            if sender == self.orch:
+                robot = receiver
+            else:
+                robot = sender
+            self.all_robot_pdrs.add((robot.dotBotId,robot.computeCurrentPosition(),pdr, robot.relay))
             rand = random.uniform(0, 1)
             if rand < pdr:
                 receiver.receive(frame)
-        self.pdrs.append(self.all_robot_pdrs)
+        self.pdrs=list(self.all_robot_pdrs)
 
     def getPdr(self):
         return self.pdrs

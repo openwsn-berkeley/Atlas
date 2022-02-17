@@ -16,6 +16,7 @@ from typing import Union, Optional, List
 import SimEngine
 import Wireless
 import Utils as u
+import  Logging
 
 from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
 
@@ -344,6 +345,7 @@ class Navigation(abc.ABC):
             } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots) # TODO: handle initial position List
         ]
         self.mapBuilder       = MapBuilder()
+        self.logger           = Logging.PeriodicFileLogger()
         self.movingDuration   = 0
         self.heatmap          = [(self.initialPosition, 0)] # TODO: handle initial position List
         self.profile          = []
@@ -620,10 +622,19 @@ class NavigationAtlas(Navigation):
 
                 if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
                     # NOTE: Relay DotBot has reached its target and we make it a ready relay
+                    relay_kpis = {"type": "relay kpis", "relayID": None, "relayPosition": None, "placementTime": None}
 
                     dotbot['speed'] = -1
-                    self.readyRelays.add(dotbot['ID'])
-                    self.relayPositions.append(centreCellcentre)
+                    dotbot['seqNumMovement'] += 1
+
+                    if centreCellcentre not in self.positionedRelays:
+                        relay_kpis["relayID"]       = dotbot['ID']
+                        relay_kpis["relayPosition"] = centreCellcentre
+                        relay_kpis["placementTime"] = self.simEngine.currentTime()
+                        self.logger.log(relay_kpis)
+                        self.readyRelays.add(dotbot['ID'])
+                        self.relayPositions.append(centreCellcentre)
+
                     return
 
                 path2target = self.path_planner.computePath(centreCellcentre, target)
@@ -764,19 +775,22 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
     # WirelessConcurrentTransmission or WirelessBase
-    def __init__(self, numDotBots, initialPosition, navAlgorithm, relaySettings, wireless=Wireless.WirelessConcurrentTransmission):
+    def __init__(self, numDotBots, initialPosition, navAlgorithm, relaySettings, config_ID, wireless=Wireless.WirelessConcurrentTransmission):
 
         # store params
         self.numDotBots        = numDotBots
         self.initialPosition   = initialPosition
         self.relaySettings     = relaySettings
+        self.config_ID         = config_ID
 
         # local variables
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = wireless()
+        self.logger             = Logging.PeriodicFileLogger()
         navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
         self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relaySettings=self.relaySettings)
         self.communicationQueue = []
+        self.timeseries_kpis    = {"type": "timeseries_kpi","mappingProfile": [], "pdrProfile": [], "time": []}
 
         #logging
         self.pdrProfile     = []
@@ -845,10 +859,14 @@ class Orchestrator(Wireless.WirelessDevice):
 
 
     def _collectData(self):
-        self.mappingProfile.append(len(self.navigation.map.obstacles)+len(self.navigation.map.explored))
-        self.relayProfile.append(len(self.navigation.relayPositions))
-        self.pdrProfile.append(self.wireless.getPdr())
-        self.timeline.append(self.simEngine.currentTime())
+
+        self.timeseries_kpis['mappingProfile']= len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
+        self.timeseries_kpis['pdrProfile']    = self.wireless.getPdr()
+        self.timeseries_kpis['time']          = self.simEngine.currentTime()
+        self.timeseries_kpis['configID']      = self.config_ID
+
+        self.logger.log(self.timeseries_kpis)
+
 
     def receive(self,frame):
         '''
