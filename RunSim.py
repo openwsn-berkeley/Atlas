@@ -20,6 +20,7 @@ import SimUI
 import time
 import json
 import Logging
+import random
 
 from atlas.config import AtlasConfig
 
@@ -144,8 +145,8 @@ def main(config):
     start_time = time.time()
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
-
-    log_file = f'{config.experiment.logging.name}_{config.experiment.configID}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
+    unique_id = random.random()
+    log_file = f'{config.experiment.logging.name}_{config.experiment.configID}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
 
     # TODO: add timing bindings to relevant classes & functions
 
