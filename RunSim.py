@@ -87,7 +87,7 @@ def runSim(simSetting, simUI):
     return {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
             'timeToFullMapping': timeToFullMapping,
             'relaySettings': simSetting['relaySettings'], 'navAlgorithm': simSetting['navAlgorithm'],
-            'mappingProfile': orchestrator.timeseries_kpis['mappingProfile'], 'relayProfile': orchestrator.relayProfile,
+            'mappingProfile': orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
             'pdrProfile': orchestrator.timeseries_kpis['pdrProfile'],
             'timeline': orchestrator.timeseries_kpis['time']}
 

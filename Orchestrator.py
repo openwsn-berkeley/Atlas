@@ -790,13 +790,13 @@ class Orchestrator(Wireless.WirelessDevice):
         navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
         self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relaySettings=self.relaySettings)
         self.communicationQueue = []
-        self.timeseries_kpis    = {"type": "timeseries_kpi","mappingProfile": [], "pdrProfile": [], "time": []}
+        self.timeseries_kpis    = {"type": "timeseries_kpi","numCells": [], "pdrProfile": [], "time": []}
 
         #logging
         self.pdrProfile     = []
         self.timeline       = []
         self.relayProfile   = []
-        self.mappingProfile = []
+        self.numCells = []
     
     #======================== public ==========================================
 
@@ -860,10 +860,9 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _collectData(self):
 
-        self.timeseries_kpis['mappingProfile']= len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
+        self.timeseries_kpis['numCells']= len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
         self.timeseries_kpis['pdrProfile']    = self.wireless.getPdr()
         self.timeseries_kpis['time']          = self.simEngine.currentTime()
-        self.timeseries_kpis['configID']      = self.config_ID
 
         self.logger.log(self.timeseries_kpis)
 
