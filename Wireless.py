@@ -2,6 +2,8 @@
 import abc
 import sys
 import random
+import time
+from functools import wraps
 import numpy as np
 # local
 import Utils as u
@@ -9,6 +11,17 @@ from Floorplan import Floorplan
 
 from statistics import mode
 from statistics import mean
+
+def timeit(my_func):
+    @wraps(my_func)
+    def timed(*args, **kw):
+        tstart = time.time()
+        output = my_func(*args, **kw)
+        tend = time.time()
+        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart)))
+        return output
+
+    return timed
 
 # TODO: Add timing infrastructure to all these
 
@@ -257,9 +270,9 @@ class WirelessBase(abc.ABC):
             cls._instance = super(WirelessBase, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, propagation=PropagationBase):
+    def __init__(self, propagation=PropagationPister):
 
-        # singleton patterm
+        # singleton pattern
         # if instance of class already exists the return, to restrict to one instance only
         if self._init:
             return
@@ -267,12 +280,13 @@ class WirelessBase(abc.ABC):
 
         # store params
         self.devices = []
-        self.lastLinks = None
-        self.lastLinkPDRs = None
         self.lastTree = None
+        self.last_num_relays = 0
         self.lastNodes = None
+        self.edge_node_pdrs = None
         self.currentPDR = None
         self.propagation = propagation()
+        self.pdrs = []
 
         # TODO: PDR Matrix store
 
@@ -287,6 +301,7 @@ class WirelessBase(abc.ABC):
         self.devices = devices # TODO: make this a set
         #        self.createPDRmatrix(devices)
         self.orch = self.devices[-1]
+        self.dotbots = self.devices[:-1]
 
     def indicateFloorplan(self, floorplan):
         self.propagation.indicateFloorplan(floorplan)
@@ -301,15 +316,24 @@ class WirelessBase(abc.ABC):
     def transmit(self, frame, sender: WirelessDevice, receiver_filter: set = None):
 
         assert self.devices  # make sure there are devices
-
+        self.all_robot_pdrs = set()
         for receiver in self.devices:
             if receiver == sender or \
                     (receiver_filter is not None and receiver not in receiver_filter):
                 continue  # ensures transmitter doesn't receive
             pdr = self._computePDR(sender, receiver)
+            if sender == self.orch:
+                robot = receiver
+            else:
+                robot = sender
+            self.all_robot_pdrs.add((robot.dotBotId,robot.computeCurrentPosition(),pdr, robot.relay))
             rand = random.uniform(0, 1)
             if rand < pdr:
                 receiver.receive(frame)
+        self.pdrs=list(self.all_robot_pdrs)
+
+    def getPdr(self):
+        return self.pdrs
 
     # ======================== private =========================================
 
@@ -345,73 +369,139 @@ class WirelessConcurrentTransmission(WirelessBase):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        raise NotImplementedError("Concurrent transmission not currently implemented.")
+
 
     def _computePDR(self, sender, receiver):
-        links = {}
-        newLinks = {}
-        treeInput = None
+
+        allNodes = [self.orch]
 
         if sender == self.orch:
             movingNode = receiver
         else:
             movingNode = sender
 
-        allDotBots = self.devices.copy()
-        allDotBots.pop()
-        allRelays = [d for d in allDotBots if d.dotBotId in self.orch.navigation.readyRelays.copy()]
-
-        allNodes = [self.orch] + allRelays + [movingNode]
+        allRelays = self.orch.navigation.readyRelays
 
         if not allRelays:
             pdr = self._getPDR(sender, receiver)
             self.currentPDR = pdr
             return pdr
 
-        for node1 in allNodes:
-            for node2 in allNodes:
-                if node2 == node1:
+        # FIXME: can we do this without looping over all robots
+        for db in self.dotbots:
+            if db.dotBotId in allRelays:
+                allNodes.append(db)
+
+        new_relay = allNodes[-1]
+
+        num_relays = len(allRelays) if allRelays else 0
+        allNodes.append("moving node")
+
+        if num_relays > self.last_num_relays:
+            tree = self._updateTree(self.orch, allNodes, self.lastTree, new_relay)
+        else:
+            tree = self.lastTree
+
+        CToutput = self._computeSuccess(tree, movingNode, num_relays)
+        allPDRs = CToutput
+
+        self.lastTree = tree
+        self.last_num_relays = num_relays
+
+        return   allPDRs["moving node"]
+
+    def _computeSuccess(self, tree, moving_node,num_relays, *args, **kwargs):
+
+        if num_relays > self.last_num_relays:
+            recomputed_pdrs = self._recomputeAllPDRs(tree, moving_node)
+            node_pdrs       = recomputed_pdrs[0]
+            self.last_pdrs  = node_pdrs
+            self.edge_node_pdrs  = recomputed_pdrs[1]
+        else:
+            node_pdrs = self._updateNodesPDR(tree, self.last_pdrs, moving_node, self.edge_node_pdrs)
+
+        sp = self._findSuccessProbability(node_pdrs)
+
+        return sp
+
+    def _updateTree(self,root_node, all_nodes, last_tree, new_relay):
+        # need to evaluate how many branches need to branch out from this one
+        # add new branch to branches to be extended if current node != moving node
+        # once all possible extensions have been added pop from branches to be extended
+        # until we no longer have branches to be extended
+
+        if last_tree:
+            current_tree = last_tree
+        else:
+            current_tree = [[root_node, "moving node"]]
+
+        branches_to_extend = [branch[0:-1] + [new_relay] for branch in current_tree]
+
+        idx = 0
+        while branches_to_extend:
+            branch = branches_to_extend[idx]
+            extension_nodes = set(all_nodes) - set(branch)
+            for node in extension_nodes:
+                if node != "moving node":
+                    branches_to_extend.append(branch + [node])
+                else:
+                    current_tree.append(branch + [node])
+                    branches_to_extend.remove(branch)
+
+        return current_tree
+
+    def _updateNodesPDR(self, tree, last_pdrs, moving_node, edge_node_pdrs):
+        # for every edge node, find pdr with moving node then multiply by edge connecting node pdr
+        # remove the final entry from node pdrs and replace with new entry for this moving node
+        # the finding success probability will be done in the same way
+
+        node_pdrs = last_pdrs
+        node_pdrs["moving node"] = []
+        for node in edge_node_pdrs:
+            if node[0] == "moving node" or node[0] == moving_node:
+                continue
+            link_pdr = self._getPDR(node[0],moving_node)
+            node_pdrs["moving node"].append(link_pdr * node[1])
+
+        return node_pdrs
+
+    def _recomputeAllPDRs(self, tree, moving_node):
+
+        root = tree[0][0]
+        node_pdrs = {root: [1]}
+        edge_nodes = []
+
+        for branch in tree:
+            pdr_of_previous_node = 1
+            for i in range(len(branch) - 1):
+                if branch[i+1] == "moving node":
+                    next_node = moving_node
+                else:
+                    next_node = branch[i+1]
+                if branch[i] == next_node:
                     continue
+                link_pdr = self._getPDR(branch[i], next_node)
+                if str(branch[i + 1]) not in node_pdrs.keys():
+                    node_pdrs[str(branch[i + 1])] = []
+                node_pdr = round(link_pdr * pdr_of_previous_node, 4)
+                node_pdrs[str(branch[i + 1])] += [node_pdr]
+                if branch[i] == branch[-2]:
+                    edge_nodes.append((branch[i],pdr_of_previous_node))
+                pdr_of_previous_node = node_pdr
 
-                linkPDR = self._getPDR(node1, node2)
+        return node_pdrs, edge_nodes
 
-                # if linkPDR == 0:
-                #     continue
+    def _findSuccessProbability(self, node_pdrs):
+        nodes = node_pdrs.keys()
+        final_pdrs = {}
 
-                links[(node1, node2)] = linkPDR
+        for node in nodes:
+            failure_probability = round(np.prod([1 - node_pdr for node_pdr in list(set(node_pdrs[node]))]), 4)
+            success_probability = 1 - failure_probability
+            final_pdrs[node] = success_probability
 
-        if self.lastTree:
-            treeInput = self.lastTree
+        return final_pdrs
 
-        if not self.lastTree:
-            newLinks = None
-        else:
-            for link in links.items():
-                if link[0][0] in self.lastNodes:
-                    newLinks[link[0]] = link[1]
-
-        if self.lastLinks == links:
-            allPDRs = self.lastLinkPDRs
-        else:
-            CToutput = self._computeSuccess(links, treeInput, newLinks)
-            allPDRs = CToutput[0]
-            self.lastTree = CToutput[1]
-
-        self.lastLinks = links
-        self.lastLinkPDRs = allPDRs
-        self.lastNodes = allNodes
-
-        pdr = [sp[1] for sp in allPDRs.items() if sp[0] == movingNode]
-
-        if pdr:
-            self.currentPDR = pdr[0]
-            return pdr[0]
-
-        else:
-            return 1
-
-    def _computeSuccess(self, *args, **kwargs):
-        raise NotImplementedError()
 
 
 

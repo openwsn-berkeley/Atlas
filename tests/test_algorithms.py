@@ -115,4 +115,3 @@ def test_some_obstacles_A_star_offset():
     path = planner.computePath((0, 0), (1, 0))
 
     assert len(path) == 4
-

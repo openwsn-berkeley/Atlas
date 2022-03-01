@@ -1,5 +1,6 @@
 [atlas]
     ui = true
+    cleps = false
 
     [atlas.experiment]
         runs = 1
@@ -25,6 +26,12 @@
                 algorithms = ["frontier"]
             [atlas.orchestrator.navigation.custom]
                 args = {}
+
+    [atlas.relays]
+        [atlas.relays.thresholds]
+            min_pdr_threshold = [0.7]
+            best_pdr_threshold = [0.8]
+
 
     [atlas.world]
         floorplans = ["scattered_obstacles.txt"]
