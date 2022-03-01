@@ -19,5 +19,6 @@ Each major release contains the source code, the log file captured after a long 
 [Thomas Watteyne](http://www.thomaswatteyne.com),
 [Francesco Bronzino](https://www.bell-labs.com/usr/francesco.bronzino),
 [Myriana Rifai](https://www.linkedin.com/in/myriana-rifai-5b6b40b1/),
+[Felipe Campos](https://www.linkedin.com/in/felipe-rocha-campos/),
 [Brian Kilberg](https://www.linkedin.com/in/brian-kilberg/),
 [Kris Pister](https://bamlab.berkeley.edu/).
