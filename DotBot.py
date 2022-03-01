@@ -10,15 +10,13 @@ import Orchestrator
 import Wireless
 import Utils as u
 
-# logging
-log = logging.getLogger('DotBot')
 
 class DotBot(Wireless.WirelessDevice):
     '''
     A single DotBot.
     '''
 
-    def __init__(self, dotBotId, x, y, floorplan):
+    def __init__(self, dotBotId, x, y, floorplan, wireless=Wireless.WirelessConcurrentTransmission):
 
         # store params
         self.dotBotId             = dotBotId
@@ -29,7 +27,7 @@ class DotBot(Wireless.WirelessDevice):
         #=== local variables
         # singletons
         self.simEngine            = SimEngine.SimEngine()
-        self.wireless             = Wireless.Wireless()
+        self.wireless             = wireless()
         # sequence numbers (to filter out duplicate commands and notifications)
         self.seqNumMovement       = None
         self.seqNumNotification   = 0
@@ -43,6 +41,14 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
+        self.bump                 = False
+        self.packetsRxRatio       = 1
+        self.packetsRX            = 0
+        self.hbLength             = 10
+        self.PDRarray             = []
+        self.relay                = False
+
+        self.simEngine.schedule(self.simEngine.currentTime()+self.hbLength, self._updateHeartbeat)
 
     # ======================== public ==========================================
 
@@ -55,23 +61,32 @@ class DotBot(Wireless.WirelessDevice):
         # drop any frame that is NOT a FRAMETYPE_COMMAND
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
-        
-        # parse frame, extract myMovement
-        myMovement = frame['movements'][self.dotBotId]
+
+        myMovement = [movement for movement in frame['movements'] if movement['ID'] == self.dotBotId]
+        self.packets_per_command = frame['packets per command']
+
+        self._updatePacketCount()
+
+        if not myMovement:
+            return
+        else:
+            myMovement = myMovement[0]
 
         now      = self.simEngine.currentTime()
+
         if myMovement['timer']:
             stopTime = now + myMovement['timer']
         else:
             stopTime = math.inf
 
-        # log
-        log.debug('[%10.3f]    --> RX command %s',now,myMovement['seqNumMovement'])
-        
         # filter out duplicates
         if myMovement['seqNumMovement'] == self.seqNumMovement:
             return
-        
+
+        if myMovement['speed'] == -1:
+            self.relay = True
+            return
+
         self.seqNumMovement       = myMovement['seqNumMovement']
 
         # if I get here I have received a NEW movement
@@ -141,8 +156,6 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
 
-        # log
-        log.debug('[%10.3f] ================== bump',self.simEngine.currentTime())
         self.bump = True
         self._stopAndTransmit()
 
@@ -154,15 +167,43 @@ class DotBot(Wireless.WirelessDevice):
         self.bump = False
         self._stopAndTransmit()
 
+    def _updatePacketCount(self):
+        self.packetsRX += 1
+        #print(self.packetsRX)
+
+    def _resetPacketCount(self):
+        self.packetsRX = 0
+
+    def _updateHeartbeat(self):
+        '''
+        send heartbeat with percentage of packets recieved since last heartbeat
+        '''
+
+        now = self.simEngine.currentTime()
+
+        self.simEngine.schedule(now + self.hbLength, self._updateHeartbeat)
+
+        if now < self.hbLength:
+            return
+
+        self.packetsRxRatio = self.packetsRX/(self.hbLength*self.packets_per_command)
+        self._resetPacketCount()
+        #print('->', self.dotBotId,'->',self.packetsRxRatio,'->',self.x,self.y)
+
+        self.bump = False
+        self._transmit()
+
+
     def _stopAndTransmit(self):
         '''
         transmit a packet to the orchestrator to request a new heading and to notify of obstacle
         '''
-
+        self.packetsRxRatio = None
         # update my position
-        (self.x,self.y)      = self.computeCurrentPosition()
+        (self.x, self.y) = self.computeCurrentPosition()
 
         if self.bump == True:
+
             assert self.x == self.next_bump_x
             assert self.y == self.next_bump_y
 
@@ -190,12 +231,11 @@ class DotBot(Wireless.WirelessDevice):
             'seqNumNotification': self.seqNumNotification,
             'tsMovementStart':    self.tsMovementStart,
             'tsMovementStop':     self.tsMovementStop,
-            'bump':               self.bump
+            'bump':               self.bump,
+            'heartbeat':          self.packetsRxRatio,
         }
 
-        # log
-        log.debug('[%10.3f]    <-- TX notif %s',self.simEngine.currentTime(),self.seqNumNotification)
-        
+
         # hand over to wireless
         self.wireless.transmit(
             frame       = frameToTx,
@@ -208,6 +248,8 @@ class DotBot(Wireless.WirelessDevice):
             cb  = self._transmit,
             tag = "retransmission_DotBot_{}".format(self.dotBotId),
         )
+
+        self.NewPacket = 0
 
     #=== motor control
     

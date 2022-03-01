@@ -1,4 +1,8 @@
 # logging (do first)
+import os
+import argparse
+
+import pkg_resources
 import AtlasLogging
 import logging
 import logging.config
@@ -15,136 +19,14 @@ import SimEngine
 import SimUI
 import time
 import json
+import Logging
+import random
 
-
-#============================ defines =========================================
-
-UI_ACTIVE     = False
-
-FLOORPLANS    = [
-# '''
-# ################################################################################
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# ################################################################################
-# ''',
-#
-# '''
-# ################################################################################
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..........##....................##################################............#
-# #..........##....................##################################............#
-# #..........##..................................................................#
-# #..........##..................................................................#
-# #..........##..................................................................#
-# #..........##..................................................................#
-# #..........##..................................................................#
-# #..........##..................................................................#
-# #..........##..................................................................#
-# #..........##..................................................................#
-# #..........##....................##################################............#
-# #..........##....................##################################............#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# #..............................................................................#
-# ################################################################################
-# ''',
-
-'''
-################################################################################
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-#.....##..###...##########..############..###################...##########..####
-#######........................................................................#
-#.....#........................................................................#
-#..............................................................................#
-#.....#........................................................................#
-#######...........#########..#############..#################..................#
-#.....#........................................................................#
-#..............................................................................#
-#.....#........................................................................#
-#######........................................................................#
-#.....##..###...##########..############..###################...##########..####
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-#..........#............#............#.....................#............#......#
-################################################################################
-'''
-]
-
-# FLOORPLANS   = [
-#
-# '''
-# ##################
-# #................#
-# #................#
-# #................#
-# #................#
-# ##################
-# ''',
-#
-# '''
-# ##################
-# #................#
-# #...##...###.....#
-# #...##...........#
-# #.............####
-# ##################
-# ''',
-#
-#
-# ]
-
-#PDRS          = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
-
-SIMSETTINGS   = []
-
-for (idx,floorplan) in enumerate(FLOORPLANS):
-    #for pdr in PDRS:
-
-        SIMSETTINGS   += [
-            {
-                'numDotBots'         : 50,
-                'floorplanType'       : idx ,
-                'floorplanDrawing'   : floorplan,
-                'initialPosition'    :  (79,11),
-                'navAlgorithm'       :  'Atlas',
-                #'pdr'                :  pdr,
-            },
-        ]
+from atlas.config import AtlasConfig
 
 #============================ helpers =========================================
 
-def oneSim(simSetting,simUI):
+def runSim(simSetting, simUI):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
@@ -170,11 +52,17 @@ def oneSim(simSetting,simUI):
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
+        simSetting['relaySettings'],
+        simSetting['config ID'],
     )
     
     # create the wireless communication medium
-    wireless       = Wireless.Wireless()
-    wireless.indicateDevices(devices = dotBots+[orchestrator])
+    wireless_model = getattr(Wireless, f"Wireless{simSetting['wirelessModel']}")
+    propagation_model = getattr(Wireless, f"Propagation{simSetting['propagationModel']}")
+
+    wireless       = wireless_model(propagation=propagation_model)
+    wireless.indicateDevices(devices=dotBots+[orchestrator])
+    wireless.indicateFloorplan(floorplan=floorplan)
     #wireless.overridePDR(simSetting['pdr'])
     
     #======================== run
@@ -196,42 +84,91 @@ def oneSim(simSetting,simUI):
     simEngine.destroy()
     wireless.destroy()
 
-    return {'numDotBots': simSetting['numDotBots'],'navAlgorithm': simSetting['navAlgorithm'],
-            'pdr': None, 'timeToFullMapping': timeToFullMapping,
-            'floorplanType': simSetting['floorplanType'], 'floorplanDrawing': orchestrator.navigation.getHeatmap()[1],
-            'heatmap': orchestrator.navigation.getHeatmap()[0], 'profile': orchestrator.navigation.getProfile()}
+    return {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
+            'timeToFullMapping': timeToFullMapping,
+            'relaySettings': simSetting['relaySettings'], 'navAlgorithm': simSetting['navAlgorithm'],
+            'mappingProfile': orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
+            'pdrProfile': orchestrator.timeseries_kpis['pdrProfile'],
+            'timeline': orchestrator.timeseries_kpis['time']}
+
+
+
 
 #============================ main ============================================
 
 # logging
 log = logging.getLogger('RunSim')
 
-def main():
+def main(config):
+    # ============================ defines =========================================
+    SIMSETTINGS = []
+
+    nav_config = config.orchestrator.navigation
+
+    # TODO: SimSettings should handle lack of certain parameters given a different configuration and maintains parameter cross product functionality
+    # TODO: Have a validate configuration script that does an import dry run of all the configuration settings
+    for idx, floorplan in enumerate(config.world.floorplans):
+        for numrobot in config.world.robots.counts:
+            for init_pos in config.world.robots.initial_positions:
+                for wireless in config.wireless.models:
+                    for propagation in config.wireless.propagation.models:
+                        for nav in nav_config.models:
+                            for relay in nav_config.relay.algorithms:
+                                for path_planner in nav_config.path_planning.algorithms:
+                                    for target_selector in nav_config.target_selector.algorithms:
+                                        SIMSETTINGS.append(
+                                            {
+                                                'config ID': config.experiment.configID ,
+                                                'numDotBots': numrobot,
+                                                'floorplanType': idx,
+                                                'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
+                                                                                               floorplan).decode('utf-8'),
+                                                'initialPosition': tuple(init_pos),
+                                                'navAlgorithm': nav,
+                                                'pathPlanner': path_planner,
+                                                'targetSelector': target_selector,
+                                                'wirelessModel': wireless,
+                                                'propagationModel': propagation,
+                                                'relaySettings': {'relayAlg': relay,
+                                                                  'minPdrThreshold': config.relays.thresholds.min_pdr_threshold,
+                                                                  'bestPdrThreshold': config.relays.thresholds.best_pdr_threshold}
+                                            },
+                                        )
     
     # log
-    log.debug('simulation starting')
+    log.debug(f'simulation starting')
+    logger = Logging.PeriodicFileLogger()
     
     # create the UI
-    if UI_ACTIVE:
-        simUI          = SimUI.SimUI()
-    else:
-        simUI          = None
+    simUI          = SimUI.SimUI() if config.ui else None
 
-    startTime = time.time()
-    with open('Atlas_kpi_Log_{0}.json'.format(time.strftime("%y%m%d%H%M%S", time.localtime(startTime))).format(), 'a') as f:
-        # run a number of simulations
-        for (runNum,simSetting) in enumerate(SIMSETTINGS):
-            # log
-            log.info('run %d/%d starting',runNum+1,len(SIMSETTINGS))
-            kpis = oneSim(simSetting,simUI)
-            timeToFullMapping = kpis['timeToFullMapping']
-            log.info('    run %d/%d completed in %d s',runNum+1,len(SIMSETTINGS),timeToFullMapping)
-            kpis['runNums'] = runNum
-            f.write(json.dumps(kpis) + '\n')
-            f.flush()
-    
-    # block until user closes
-    input('Press Enter to close simulation.')
+    start_time = time.time()
+    base_dir = "./logs"
+    os.makedirs(base_dir, exist_ok=True)
+    unique_id = random.random()
+    log_file = f'{config.experiment.logging.name}_{config.experiment.configID}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
+
+    # TODO: add timing bindings to relevant classes & functions
+
+    # run a number of simulations
+    for (runNum, simSetting) in enumerate(SIMSETTINGS):
+        # log
+        config_data = simSetting
+        config_data["type"] = "sim configuration"
+        logger.setFileName(os.path.join(base_dir, log_file))
+        logger.log(config_data)
+        log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting at {time.strftime('%H:%M:%S' , time.localtime(time.time()))}")
+        kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
+        time_to_full_mapping = kpis['timeToFullMapping']
+        log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S' , time.localtime(time.time()))} ")
+        kpis['runNums'] = runNum
 
 if __name__=='__main__':
-    main()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--config", type=str, default="default", help="Atlas configuration file name to use (must be TOML)")
+
+    args = parser.parse_args()
+
+    config = AtlasConfig(args.config)
+    main(config.atlas)

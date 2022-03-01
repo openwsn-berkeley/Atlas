@@ -1,18 +1,35 @@
 # built-in
+import abc
 import random
 import threading
 import copy
 import sys
 import math
 import logging
+from functools import wraps
+import time
+
+from typing import Union, Optional, List
+
 # third-party
 # local
 import SimEngine
 import Wireless
 import Utils as u
+import  Logging
 
-# logging
-log = logging.getLogger('Orchestrator')
+from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
+
+def timeit(my_func):
+    @wraps(my_func)
+    def timed(*args, **kw):
+        tstart = time.time()
+        output = my_func(*args, **kw)
+        tend = time.time()
+        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart)))
+        return output
+
+    return timed
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -24,7 +41,7 @@ class MapBuilder(object):
     It declares when the map is complete.
     '''
 
-    HOUSEKEEPING_PERIOD_S    = 1    # in simulated time
+    HOUSEKEEPING_PERIOD_S    = 60    # in simulated time
     MINFEATURESIZE_M         = 1.00 # shortest wall, narrowest opening
 
     def __init__(self):
@@ -43,6 +60,8 @@ class MapBuilder(object):
         # schedule first housekeeping activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
         self.exploredCells = []
+        self.numRelayBots  = 0
+        self.numDotBots    = 0
 
     #======================== public ==========================================
 
@@ -210,6 +229,10 @@ class MapBuilder(object):
 
     def _isMapComplete(self):
 
+        #print(self.numDotBots, self.numRelayBots)
+        # if (self.numRelayBots >= self.numDotBots) and self.numRelayBots > 0:
+        #     return True
+
         while True: # "loop" only once
 
             # map is not complete if mapping hasn't started
@@ -287,10 +310,13 @@ class MapBuilder(object):
 
         return returnVal
 
-class Navigation(object):
+class Navigation(abc.ABC):
+    '''
+    Navigation algorithm .
+    '''
 
-    def __init__(self, numDotBots, initialPosition):
-    
+    def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
+
         # store params
         self.numDotBots      = numDotBots
         self.initialPosition = initialPosition
@@ -298,6 +324,7 @@ class Navigation(object):
         # local variables
         self.dotbotsview     = [
             {
+                'ID':                       id,
                 # evaluated position of the DotBot when it last stopped
                 'x':                        x,
                 'y':                        y,
@@ -310,31 +337,44 @@ class Navigation(object):
                 'target':                   None,
                 'timer':                    None,
                 'previousPath':             [],
+                'heartbeat':                1,
+                'pdrHistory':               [],
+                'pdrStatus':                None,
 
-            } for (x,y) in [self.initialPosition]*self.numDotBots
+
+            } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots) # TODO: handle initial position List
         ]
         self.mapBuilder       = MapBuilder()
+        self.logger           = Logging.PeriodicFileLogger()
         self.movingDuration   = 0
-        self.heatmap          = [(self.initialPosition, 0)]
+        self.heatmap          = [(self.initialPosition, 0)] # TODO: handle initial position List
         self.profile          = []
+        self.relayProfile     = []
+        self.pdrProfile       = []
+        self.timeLine         = []
+        self.heartbeat        = 1
+        self.pdrStatus        = None
 
-    
     #======================== public ==========================================
     
     def receiveNotification(self,frame):
         '''
-        We just received a notification for a DotBot.
+        We just received a notification from a DotBot.
         '''
         
         # shorthand
         dotbot      = self.dotbotsview[frame['dotBotId']]
         self.bump   = frame['bump']
 
+        if frame['heartbeat']:
+            self.heartbeat = frame['heartbeat']
+
         # filter out duplicates
         if frame['seqNumNotification'] == dotbot['seqNumNotification']:
             return
         dotbot['seqNumNotification'] = frame['seqNumNotification']
-        
+
+
         # update DotBot's position
         (newX,newY)  = u.computeCurrentPosition(
             currentX = dotbot['x'],
@@ -355,7 +395,7 @@ class Navigation(object):
 
         # compute new DotBot movement
         self._updateMovement(frame['dotBotId'])
-    
+
     def getEvaluatedPositions(self):
         '''
         Retrieve the evaluated positions of each DotBot.
@@ -367,19 +407,20 @@ class Navigation(object):
             } for dotbot in self.dotbotsview
         ]
         return returnVal
-    
+
     def getMovements(self):
         '''
         Retrieve the movement of all DotBots.
         '''
         returnVal = [
             {
+                'ID':                        dotbot['ID'],
                 'heading':                   dotbot['heading'],
                 'speed':                     dotbot['speed'],
                 'seqNumMovement':            dotbot['seqNumMovement'],
-                'target':                    dotbot['target'],
                 'timer':                     dotbot['timer'],
-                'previousPath':              dotbot['previousPath']
+
+
             } for dotbot in self.dotbotsview
         ]
         return returnVal
@@ -393,35 +434,42 @@ class Navigation(object):
     def getProfile(self):
         raise SystemError('abstract method')
 
+    def getRelayProfile(self):
+        raise SystemError('abstract method')
+
+    def getPDRprofile(self):
+        raise SystemError('abstract method')
+
     #======================== private =========================================
-    
+
     def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
         raise SystemError('abstract method')
-    
+
     def _updateMovement(self,dotBotId):
         raise SystemError('abstract method')
 
-class Navigation_Ballistic(Navigation):
+class NavigationBallistic(Navigation):
+    '''
+    Robots move in randomly selected heading until next bump.
+    '''
 
-    def __init__(self, numDotBots, initialPosition):
-    
-        # initialize parent
-        super().__init__(numDotBots, initialPosition)
-        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         # initial movements are random
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
     #======================== public ==========================================
-    
+
     def getExploredCells(self):
         return {} # Ballistic doesn't keep track of explored areas
-    
+
     #======================== private =========================================
-    
+
     def _notifyDotBotMoved(self,oldX,oldY,newX,newY):
         pass # Ballistic doesn't act on DotBot movement
-    
+
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
@@ -429,115 +477,90 @@ class Navigation_Ballistic(Navigation):
 
         # shorthand
         dotbot = self.dotbotsview[dotBotId]
-        
+
         # pick new movement
         dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
-class Navigation_Atlas(Navigation):
+class NavigationAtlas(Navigation):
+    '''
+    Frontier based target selection.
+    A* path finding.
+    '''
 
-    def __init__(self, numDotBots, initialPosition):
-    
+    def __init__(self, *args, relaySettings, **kwargs):
+
         # initialize parent
-        super().__init__(numDotBots, initialPosition)
-        
-        # (additional) local variables
-        # shorthands for initial x,y position
-        self.ix                = initialPosition[0]
-        self.iy                = initialPosition[1]
-        # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
-        self.hCellsOpen        = []
-        self.hCellsObstacle    = []
-        self.hCellsUnreachable = []
-        # the hCell the DotBot start is in, by definition, open
-        self.hCellsOpen       += [initialPosition]
+        super().__init__(*args, **kwargs)
 
-        # initial movements
+        self.map = Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=AStar.Cell)
+        self.path_planner  = AStar(self.map)
+
+        # (additional) local variables
+        self.simEngine = SimEngine.SimEngine()
+        # shorthands for initial x,y position
+        self.ix                = self.initialPosition[0]
+        self.iy                = self.initialPosition[1]
+        # a "half-cell" is identified by its center, and has side MINFEATURESIZE_M/2
+        # the hCell the DotBot start is in, by definition, open
+        self.relayBots         = [] # have not been given destinations
+        self.positionedRelays  = set() # have been given destinations, but have not reached them
+        self.relayPositions    = [] # desired positions to fill?
+        self.readyRelays       = set() # relays that have reached their position
+        #self.algorithm         = relayAlg
+        self.targetBotsAndData = []
+        self.frontiers         = []
+        self.allTargets        = []
+        self.initialPositions  = []
+        self.end               = False
+        self.relayBots         = set()
+
+        # SelfHealing, Naive, NoRelay, Recovery
+        relay_algorithm = globals()[str(relaySettings["relayAlg"])]
+        self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy, settings=relaySettings)
+
+        self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
+
+        self.scheduleCheckForRelays()
+
         for (dotBotId,_) in enumerate(self.dotbotsview):
+
             self._updateMovement(dotBotId)
 
+
     #======================== public ==========================================
-    
+
     def getExploredCells(self):
+        # TODO: store svg rects lazily in cells as their created
         returnVal = {
-            'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
-            'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
+            'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.path_planner.map.explored],
+            'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.path_planner.map.obstacles],
         }
         return returnVal
 
-    def getHeatmap(self):
-        heatMapXMax   = sorted(self.heatmap, key=lambda item: item[0][0])[-1][0][0] + 1
-        heatMapYMax   = sorted(self.heatmap, key=lambda item: item[0][1])[-1][0][1] + 1
-        heatMapXMin   = sorted(self.heatmap, key=lambda item: item[0][0])[0][0][0]
-        heatMapYMin   = sorted(self.heatmap, key=lambda item: item[0][1])[0][0][1]
-
-        heatmapValues = []
-        overlayGrid    = []
-
-        for r in range(int(heatMapYMax)*2):
-            heatmapValues += [[]]
-            overlayGrid    += [[]]
-            for c in range(int(heatMapXMax)*2):
-                heatmapValues[r] += [0]
-                overlayGrid[r]    += '-'
-
-        for h in self.heatmap:
-            x     = h[0][0]
-            y     = h[0][1]
-            value = h[1]
-
-            if x >= heatMapXMax or y >= heatMapYMax:
-                continue
-
-            heatmapValues[int(y*2)][int(x*2)] = value
-            if (x,y) in self.hCellsObstacle:
-                overlayGrid[int(y * 2)][int(x * 2)] = '#'
-            if (x,y) in self.hCellsOpen:
-                overlayGrid[int(y * 2)][int(x * 2)] = '.'
-            if (x,y) == self.initialPosition:
-                overlayGrid[int(y * 2)][int(x * 2)] = 'S'
-
-        overlayGridJoint = []
-
-        for (i,r) in enumerate(overlayGrid):
-            overlayGridJoint += ''.join('\n')
-            overlayGridJoint += ''.join(r)
-
-        overlayGridJoint = ''.join(i for i in overlayGridJoint)
-        return (heatmapValues,overlayGridJoint)
-
-    def getProfile(self):
-        return self.profile
     #======================== private =========================================
-    
+
     def _notifyDotBotMoved(self,startX,startY,stopX,stopY):
-        
+
         # intermediate cells are open
 
-        traversedCells   = self._cellsTraversed(startX,startY,stopX,stopY)
-        self.hCellsOpen += traversedCells
+        self.markTraversedCells(startX, startY, stopX, stopY)
 
         if self.bump == True:
             # stop cell is obstacle
             (x,y) = self._xy2hCell(stopX,stopY)
-            self.hCellsObstacle += [(x, y)]
-            traversedCells += [(x,y)]
-
-        self._buildHeatmap(traversedCells)
-
-        # if a cell is obstacle, remove from open cells
-        for c in self.hCellsObstacle:
-            try:
-                self.hCellsOpen.remove(c)
-            except ValueError:
-                pass
-        
-        # filter duplicates in either list
-        self.hCellsOpen      = list(set(self.hCellsOpen))
-        self.hCellsObstacle  = list(set(self.hCellsObstacle))
+            self.map.add_obstacle(x, y)
+            self.map.unexplore_cell(x, y)
 
     def _buildHeatmap(self, cells):
+        '''
+        builds array with tuples representing (cell position, number of times traversed)
+        '''
+
+        # if traversed cell is already in heatmap array just increase number of times cell has been traversed
+        # otherwise, add cell to heatmap array then increase number of times cell has been traversed.
+
         for cell in cells:
 
             if cell in [h[0] for h in self.heatmap] :
@@ -559,61 +582,98 @@ class Navigation_Atlas(Navigation):
         \post modifies the movement directly in dotbotsview
         '''
 
-        dotbot                 = self.dotbotsview[dotBotId]               # shorthand
-        centreCellcentre       = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in
-        target                 = dotbot['target']                         # set target as las allocated target until updated
-        self.skip              = False
+        dotbot                  = self.dotbotsview[dotBotId]               # shorthand
+        centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in #TODO: change var name
+        target                  = dotbot['target']                         # set target as las allocated target until updated
+
+        self.mapBuilder.numDotBots   = self.numDotBots
+        self.mapBuilder.numRelayBots = len(self.positionedRelays)
+
+        if centreCellcentre in self.allTargets:
+            try:
+                self.allTargets.remove(target)
+            except ValueError:
+                pass
+
         while True:
             # keep going towards same target if target hasn't been explored yet
+            # FIXME
+            neighbours = self.map.neighbors(self.map.cell(*centreCellcentre, local=False))
+            random.shuffle(neighbours)
+            if centreCellcentre in self.path_planner.map.obstacles:
+                for cell in neighbours:
+                    if not cell.obstacle and cell.explored:
+                        path2target = [cell.position(_local=False)]
+                        break
+                break
 
-            if (target                                                               and
-               (target not in self.hCellsOpen and target not in self.hCellsObstacle) and
-                self.skip == False):
+            if (target                                 and
+               (target not in self.map.explored        and
+                target not in self.map.obstacles       and
+                target not in self.map.unreachable)     or
+               (dotbot['ID'] in self.positionedRelays) and
+                dotbot['speed'] != -1):
 
-                if self.movingDuration == 0:
-                    # avoid these cells when finding new path to target
-                    self.hCellsUnreachable += [dotbot['previousPath'][0]]
+                # TODO: this should read like plain English
+                # TODO: relay status should be a dotbot attribute (e.g. dotbot.relay_status() -> Enum: None, Unpositioned, Positioned, Ready)
+                #       so we're not always ensuring clean popping out of and insertion into sets
+                # TODO: cell object (i.e. target) should also probably be an object that you can check status of
+                #       e.g. target.open and target.obstacle are valid --> target = self.cell(*coordinates)
 
+                if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
+                    # NOTE: Relay DotBot has reached its target and we make it a ready relay
+                    relay_kpis = {"type": "relay kpis", "relayID": None, "relayPosition": None, "placementTime": None}
 
-                path2target               = self._path2Target(centreCellcentre,target)
+                    dotbot['speed'] = -1
+                    dotbot['seqNumMovement'] += 1
 
-            else:
-                # if target explored or no paths to target, find a new target
+                    if centreCellcentre not in self.positionedRelays:
+                        relay_kpis["relayID"]       = dotbot['ID']
+                        relay_kpis["relayPosition"] = centreCellcentre
+                        relay_kpis["placementTime"] = self.simEngine.currentTime()
+                        self.logger.log(relay_kpis)
+                        self.readyRelays.add(dotbot['ID'])
+                        self.relayPositions.append(centreCellcentre)
 
-                # frontier cell is an open cell with at least 1 unexplored cell in its 1-hop neighbourhood
-                # find closest frontier to robot and out of those, closest to the initial position cell
-
-                frontierCellsAndDistances = self.frontierCellsAndDistances(centreCellcentre)
-                if not frontierCellsAndDistances:   # no more available frontier cells
                     return
 
-                closestFrontier2Start     = sorted(frontierCellsAndDistances, key=lambda item: item[1])[0][1]
-                frontierCells             = [c for (c,d) in frontierCellsAndDistances if d==closestFrontier2Start]
+                path2target = self.path_planner.computePath(centreCellcentre, target)
 
-                # chose frontier cell
-                frontierCell  = random.choice(frontierCells)
+            elif dotbot["ID"] in self.relayBots and dotbot["ID"] not in self.positionedRelays:
+                target = self._getRelayPosition(dotbot)
+                if not target:
+                    self.relayBots.discard(dotbot["ID"])
+                    target = dotbot['target']
+                    continue
+                else:
+                    self.positionedRelays.add(dotbot["ID"])
+                    path2target = self.path_planner.computePath(centreCellcentre, target)
+            else:
+                target = self.target_selector.allocateTarget(centreCellcentre)
+                if not target:
+                    dotbot['ID']     = dotBotId
+                    dotbot['target'] = centreCellcentre
+                    dotbot['timer']  = None
+                    dotbot['speed']  = 1
+                    dotbot['seqNumMovement'] += 1
 
-                # chose target
-                for n in self._oneHopNeighborsShuffled(*frontierCell):
-                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                        target = n
-                        break
+                    return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
-                assert target
+                if self.end:
+                    return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
-                self.hCellsUnreachable = []   # clear out unreachable cells associated with path to previous target
-
-                path2target            = self._path2Target(centreCellcentre, target)
+                if self.initialPositions:
+                    path2target = [target]
+                else:
+                    path2target = self.path_planner.computePath(centreCellcentre, target)
 
             if path2target:
                 break
-            else:
-                if self.skip == False:
-                    self.hCellsObstacle += [target]
-                continue
 
-        # Find headings and time to reach next step, for every step in path2target
+        #Find headings and time to reach next step, for every step in path2target
+        # FIXME: the heading calculation process should be a seperate function that is only called here
         pathHeadings=[]
+
         for (idx,nextCell) in enumerate(path2target):
             if idx == 0:
                 (x,y)    = (dotbot['x'], dotbot['y'])
@@ -626,7 +686,6 @@ class Navigation_Atlas(Navigation):
             timeStep      = u.distance((x,y),(tx,ty))
             pathHeadings += [(heading,timeStep)]
 
-
         # Find duration of movement in the same direction
 
         timeTillStop    = 0
@@ -638,207 +697,68 @@ class Navigation_Atlas(Navigation):
                 break
 
         # store new movement
+        dotbot['ID']              = dotBotId
         dotbot['target']          = target
         dotbot['heading']         = pathHeadings[0][0]
         dotbot['timer']           = timeTillStop
-        dotbot['previousPath']    = path2target
+        dotbot['previousPath']    = [centreCellcentre, path2target]
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
+        dotbot['heartbeat']       = self.heartbeat
+        dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
 
-    def _rankHopNeighbourhood(self, c0, distanceRank):
+    def scheduleCheckForRelays(self):
+        self._getRelayBots(self.dotbotsview)
 
-        rankHopNeighbours = []
+        self.simEngine.schedule(self.simEngine.currentTime()+10, self.scheduleCheckForRelays) # TODO: change 1 to variable
 
-        # shorthand
-        (c0x,c0y) = c0
+    def _getRelayBots(self, robots_data):
+        new_relays = self.relay_planner.assignRelay(robots_data)
+        if new_relays:
+            self.relayBots.add(new_relays)
 
-        # 8 cells surround c0, as we expand, distance rank increases, number of surrounding cells increase by 8
-        numberOfSurroundingCells = 8 * distanceRank
+    def _getRelayPosition(self, relay):
+        return self.relay_planner.positionRelay(relay)
 
-        # Use angle between center cell and every surrounding cell if cell centres were to be connected by a line
-        # find centres of surrounding cells based on DotBot speed and angle
-        # assuming it takes 0.5 second to move from half-cell centre to half-cell centre.
-        for idx in range(numberOfSurroundingCells):
-            (x, y) = u.computeCurrentPosition(c0x, c0y,
-                                              ((360 / numberOfSurroundingCells) * (idx + 1)),
-                                              1,  # assume speed to be 1 meter per second
-                                              0.5*distanceRank)  # duration to move from hcell to hcell = 0.5 seconds
-
-            (scx,scy) = self._xy2hCell(x, y)
-            rankHopNeighbours += [(scx,scy)]
-
-        return rankHopNeighbours
-
-    def frontierCellsAndDistances(self, c0):
-
-        start                     = (self.ix,self.iy)  # shorthand
-        distanceRank              = 0                  # distance rank between DotBot position and surrounding cell set
-        openCells                 = []
-        frontierCellsAndDistances = []
-
-        # if cell, dotbot is on (c0), is an open cell and has at least 1 unexplored 1 hop neighbour, take c0 as frontier
-        if c0 in self.hCellsOpen and self.hCellsOpen:
-            for n in self._oneHopNeighborsShuffled(*c0):
-                if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                    f2startDistance = u.distance(c0, start)
-                    frontierCellsAndDistances += [(c0, f2startDistance)]
-                    return frontierCellsAndDistances
-
-        # if c0 is an obstacle cell, or c0 is an open cell with no unexplored 1 hop neighbours
-        # find closest open cells at least 1 unexplored 1-hop neighbours and take them as frontiers
-        while not frontierCellsAndDistances:
-
-            distanceRank += 1
-            openCells = []
-
-            rankHopNeighbourhood = self._rankHopNeighbourhood(c0, distanceRank)
-
-            for n in rankHopNeighbourhood:
-                if n in self.hCellsOpen:
-                    openCells += [n]
-
-            # no more frontiers or valid targets
-            if not openCells and c0 != start:
-                return None
-
-            for (ocx,ocy) in openCells:
-                for n in self._oneHopNeighborsShuffled(ocx,ocy):
-                    if (n not in self.hCellsOpen) and (n not in self.hCellsObstacle):
-                        f2startDistance = u.distance((ocx,ocy), start)
-                        frontierCellsAndDistances += [((ocx,ocy),f2startDistance)]
-                        break
-
-        return frontierCellsAndDistances
-
-    def _path2Target(self, start, target):
-        '''
-        A* Algorithm for finding shortest path to target
-        '''
-
-        targetBlocked        = None
-        openCells            = [{'cellCentre': start, 'gCost': 0, 'hCost': 0, 'fCost':0}]
-        closedCells          = []
-        parentAndChildCells  = [(None,start)]
-
-        while openCells:
-
-            # if target has no open cells connected to it directly, there is no valid path to target
-
-            for n in self._oneHopNeighborsShuffled(*target):
-                if n in self.hCellsOpen:
-                    targetBlocked = False
-                    break
-
-            if targetBlocked != False and self.hCellsOpen:
-                self.skip = True
-                return None
-
-            openCells            = sorted(openCells, key=lambda item: item['fCost']) # find open cell with lowest F cost
-            parent               = openCells[0]
-            currentCell          = parent['cellCentre']
-            openCells.pop(0)
-            closedCells         += [parent]
-
-            if currentCell == target:              # we have reached target, backtrack direct path
-                directPathCells              = []
-
-                while currentCell is not None:
-                    directPathCells         += [currentCell]
-                    currentCell              = [p[0] for p in parentAndChildCells
-                                               if (p[1] == currentCell and p[1] != None)][0]
-
-                directPathCells.reverse()
-
-                if directPathCells[0] == start:     # remove cell robot is in from path
-                    directPathCells.pop(0)
-
-                return directPathCells
-
-            for child in self._oneHopNeighborsShuffled(*currentCell):
-
-                # skip neighbour if obstacle or already evaluated (closed)
-                if (child in self.hCellsObstacle or
-                   (child in self.hCellsUnreachable and child != target)):
-                    continue
-
-                gCost  = parent['gCost'] + 1
-                hCost  = u.distance(child,target)
-                fCost  = gCost + hCost
-
-                # add penalty to avoid choosing target as first step if it was unreachable last time
-                if (child == target and target in self.hCellsUnreachable and  gCost == 1 and self.movingDuration == 0):
-                    fCost = fCost + 0.5
-                    continue
-
-                # don't consider cell if same cell with lower fcost  is already in closed cells
-                if (child in [cell['cellCentre'] for cell in closedCells
-                    if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
-                    continue
-
-                # don't consider cell if same cell with lower fcost  is already in open cells
-                if (child in [cell['cellCentre'] for cell in openCells
-                    if (cell['cellCentre'] == child and cell['fCost'] <= fCost)]):
-                    continue
-
-                openCells += [{'cellCentre': child, 'gCost': gCost, 'hCost': hCost, 'fCost': fCost}]
-                parentAndChildCells += [(currentCell, child)]
-
-    def _cellsTraversed(self,startX,startY,stopX,stopY):
-        returnVal = []
-        
+    def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
         # scan horizontally
-        x         = startX
+        x_sign = 2 * int(startX < stopX) - 1
+        y_sign = 2 * int(startY < stopY) - 1
+
+        step_size = MapBuilder.MINFEATURESIZE_M/2
+
+        x = startX
         while True:
-            
-            if startX<stopX:
-                # going right
-                x += MapBuilder.MINFEATURESIZE_M/2
-                if x>stopX:
-                    break
-            else:
-                # going left
-                x -= MapBuilder.MINFEATURESIZE_M/2
-                if x<stopX:
-                    break
-            
-            y  = startY+(((stopY-startY)*(x-startX))/(stopX-startX))
-            
+            x += x_sign * step_size
+            if (x > stopX if x_sign == 1 else x < stopX):
+                break
+
+            y = startY + (((stopY-startY) * (x-startX)) / (stopX-startX))
+
             (cx,cy) = self._xy2hCell(x,y)
-            returnVal += [(cx,cy)]
-        
+            self.map.explore_cell(cx, cy)
+
         # scan vertically
-        y         = startY
+        y = startY
         while True:
-            
-            if startY<stopY:
-                # going down
-                y += MapBuilder.MINFEATURESIZE_M/2
-                if y>stopY:
-                    break
-            else:
-                y -= MapBuilder.MINFEATURESIZE_M/2
-                if y<stopY:
-                    break
-            
-            x  = startX+(((stopX-startX)*(y-startY))/(stopY-startY))
-            
+            y += y_sign * step_size
+            if (y > stopY if y_sign == 1 else y < stopY):
+                break
+
+            x  = startX + (((stopX-startX) * (y-startY)) / (stopY-startY))
+
             (cx,cy) = self._xy2hCell(x,y)
-            returnVal += [(cx,cy)]
-        
-        # filter duplicates
-        returnVal = list(set(returnVal))
-        
-        return returnVal
-    
+            self.map.explore_cell(cx, cy)
+
     def _xy2hCell(self,x,y):
-        
+
         xsteps = int(round((x-self.ix)/ (MapBuilder.MINFEATURESIZE_M/2),0))
         cx     = self.ix+xsteps*(MapBuilder.MINFEATURESIZE_M/2)
         ysteps = int(round((y-self.iy)/ (MapBuilder.MINFEATURESIZE_M/2),0))
         cy     = self.iy+ysteps*(MapBuilder.MINFEATURESIZE_M/2)
-        
+
         return (cx,cy)
-    
+
     def _hCell2SvgRect(self,cx,cy):
         returnVal = {
             'x':        cx-MapBuilder.MINFEATURESIZE_M/4,
@@ -847,16 +767,6 @@ class Navigation_Atlas(Navigation):
             'height':   MapBuilder.MINFEATURESIZE_M/2,
         }
         return returnVal
-    
-    def _oneHopNeighborsShuffled(self,cx,cy):
-        s = MapBuilder.MINFEATURESIZE_M/2 # shorthand
-        returnVal = [
-            (cx-s,cy-s),(cx,cy-s),(cx+s,cy-s),
-            (cx-s,cy  )          ,(cx+s,cy  ),
-            (cx-s,cy+s),(cx,cy+s),(cx+s,cy+s),
-        ]
-        random.shuffle(returnVal)
-        return returnVal
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
@@ -864,18 +774,29 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
-
-    def __init__(self,numDotBots,initialPosition,navAlgorithm):
+    # WirelessConcurrentTransmission or WirelessBase
+    def __init__(self, numDotBots, initialPosition, navAlgorithm, relaySettings, config_ID, wireless=Wireless.WirelessConcurrentTransmission):
 
         # store params
         self.numDotBots        = numDotBots
         self.initialPosition   = initialPosition
+        self.relaySettings     = relaySettings
+        self.config_ID         = config_ID
 
         # local variables
-        self.simEngine         = SimEngine.SimEngine()
-        self.wireless          = Wireless.Wireless()
-        navigationclass        = getattr(sys.modules[__name__],'Navigation_{}'.format(navAlgorithm))
-        self.navigation        = navigationclass(self.numDotBots, self.initialPosition)
+        self.simEngine          = SimEngine.SimEngine()
+        self.wireless           = wireless()
+        self.logger             = Logging.PeriodicFileLogger()
+        navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
+        self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relaySettings=self.relaySettings)
+        self.communicationQueue = []
+        self.timeseries_kpis    = {"type": "timeseries_kpi","numCells": [], "pdrProfile": [], "time": []}
+
+        #logging
+        self.pdrProfile     = []
+        self.timeline       = []
+        self.relayProfile   = []
+        self.numCells = []
     
     #======================== public ==========================================
 
@@ -898,42 +819,60 @@ class Orchestrator(Wireless.WirelessDevice):
         
         # send downstream command
         self._sendDownstreamCommands()
-        
+
+        # collect data for logging purposes
+        self._collectData()
+
         # arm next downstream communication
         self.simEngine.schedule(
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-        self.navigation.profile += [len(self.navigation.hCellsOpen + self.navigation.hCellsObstacle)]
+
     def _sendDownstreamCommands(self):
         '''
         Send the next heading and speed commands to the robots
         '''
 
-        # format frame to transmit
-        frameToTx = {
-            'frameType': self.FRAMETYPE_COMMAND,
-            'movements': self.navigation.getMovements(),
-        }
-        
-        # log
-        log.debug('[%10.3f] --> TX command %s',self.simEngine.currentTime(),frameToTx['movements'])
+        allMovements = self.navigation.getMovements()
 
-        # hand over to wireless
-        self.wireless.transmit(
-            frame  = frameToTx,
-            sender = self,
-        )
-    
+        self.communicationQueue += allMovements
+        self.num_packets_per_command = int(len(allMovements)/self.COMMANDSIZE)+1
+        for i in range(0,self.num_packets_per_command):
+
+                command = self.communicationQueue[:self.COMMANDSIZE]
+                numOfRemainingElements = (len(self.communicationQueue)-self.COMMANDSIZE)
+                self.communicationQueue = self.communicationQueue[-numOfRemainingElements:]
+
+                # format frame to transmit
+                frameToTx = {
+                    'frameType': self.FRAMETYPE_COMMAND,
+                    'movements': command,
+                    'packets per command': self.num_packets_per_command
+                }
+
+                # hand over to wireless
+                self.wireless.transmit(
+                    frame  = frameToTx,
+                    sender = self,
+                )
+
+
+    def _collectData(self):
+
+        self.timeseries_kpis['numCells']= len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
+        self.timeseries_kpis['pdrProfile']    = self.wireless.getPdr()
+        self.timeseries_kpis['time']          = self.simEngine.currentTime()
+
+        self.logger.log(self.timeseries_kpis)
+
+
     def receive(self,frame):
         '''
         Notification received from a DotBot.
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
 
-        # log
-        log.debug('[%10.3f] <-- RX notif %s',self.simEngine.currentTime(),frame)
-        
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
     
