@@ -19,6 +19,8 @@ import SimEngine
 import SimUI
 import time
 import json
+import Logging
+import random
 
 from atlas.config import AtlasConfig
 
@@ -50,7 +52,8 @@ def runSim(simSetting, simUI):
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
-        simSetting['relayAlg'],
+        simSetting['relaySettings'],
+        simSetting['config ID'],
     )
     
     # create the wireless communication medium
@@ -81,9 +84,12 @@ def runSim(simSetting, simUI):
     simEngine.destroy()
     wireless.destroy()
 
-    return {'numDotBots': simSetting['numDotBots'], 'navAlgorithm': simSetting['navAlgorithm'],
-            'pdr': None, 'timeToFullMapping': timeToFullMapping,
-            'relayAlg': simSetting['relayAlg']}
+    return {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
+            'timeToFullMapping': timeToFullMapping,
+            'relaySettings': simSetting['relaySettings'], 'navAlgorithm': simSetting['navAlgorithm'],
+            'mappingProfile': orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
+            'pdrProfile': orchestrator.timeseries_kpis['pdrProfile'],
+            'timeline': orchestrator.timeseries_kpis['time']}
 
 
 
@@ -112,6 +118,7 @@ def main(config):
                                     for target_selector in nav_config.target_selector.algorithms:
                                         SIMSETTINGS.append(
                                             {
+                                                'config ID': config.experiment.configID ,
                                                 'numDotBots': numrobot,
                                                 'floorplanType': idx,
                                                 'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
@@ -119,15 +126,18 @@ def main(config):
                                                 'initialPosition': tuple(init_pos),
                                                 'navAlgorithm': nav,
                                                 'pathPlanner': path_planner,
-                                                'relayAlg': relay,
                                                 'targetSelector': target_selector,
                                                 'wirelessModel': wireless,
-                                                'propagationModel': propagation
+                                                'propagationModel': propagation,
+                                                'relaySettings': {'relayAlg': relay,
+                                                                  'minPdrThreshold': config.relays.thresholds.min_pdr_threshold,
+                                                                  'bestPdrThreshold': config.relays.thresholds.best_pdr_threshold}
                                             },
                                         )
     
     # log
-    log.debug('simulation starting')
+    log.debug(f'simulation starting')
+    logger = Logging.PeriodicFileLogger()
     
     # create the UI
     simUI          = SimUI.SimUI() if config.ui else None
@@ -135,23 +145,23 @@ def main(config):
     start_time = time.time()
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
-    log_file = f'{config.experiment.logging.name}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}.json'
+    unique_id = random.random()
+    log_file = f'{config.experiment.logging.name}_{config.experiment.configID}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
 
     # TODO: add timing bindings to relevant classes & functions
-    with open(os.path.join(base_dir, log_file), 'a') as f:
-        # run a number of simulations
-        for (runNum, simSetting) in enumerate(SIMSETTINGS):
-            # log
-            log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting")
-            kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
-            time_to_full_mapping = kpis['timeToFullMapping']
-            log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s")
-            kpis['runNums'] = runNum
-            f.write(json.dumps(kpis) + '\n')
-            f.flush()
-    
-    # block until user closes
-    input('Press Enter to close simulation.')
+
+    # run a number of simulations
+    for (runNum, simSetting) in enumerate(SIMSETTINGS):
+        # log
+        config_data = simSetting
+        config_data["type"] = "sim configuration"
+        logger.setFileName(os.path.join(base_dir, log_file))
+        logger.log(config_data)
+        log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting at {time.strftime('%H:%M:%S' , time.localtime(time.time()))}")
+        kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
+        time_to_full_mapping = kpis['timeToFullMapping']
+        log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S' , time.localtime(time.time()))} ")
+        kpis['runNums'] = runNum
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
