@@ -1,0 +1,40 @@
+[atlas]
+    ui = true
+    cleps = false
+
+    [atlas.experiment]
+        runs = 1
+        description = "Running a default config experiment"
+        [atlas.experiment.logging]
+            name = "default_log" # semantic prefix to date-time-hash format
+
+    [atlas.wireless]
+        models = ["Base"]
+        [atlas.wireless.propagation]
+            models = ["Pister"]
+        [atlas.wireless.propagation.custom]
+            args = {}
+
+    [atlas.orchestrator]
+        [atlas.orchestrator.navigation]
+            models = ["Atlas"]
+            [atlas.orchestrator.navigation.relay]
+                algorithms = ["recovery"]
+            [atlas.orchestrator.navigation.path_planning]
+                algorithms = ["A*"] # ["Djikstras", "A*", "D*", "RRT"]
+            [atlas.orchestrator.navigation.target_selector]
+                algorithms = ["frontier"]
+            [atlas.orchestrator.navigation.custom]
+                args = {}
+
+    [atlas.relays]
+        [atlas.relays.thresholds]
+            min_pdr_threshold = [0.7]
+            best_pdr_threshold = [0.8]
+
+
+    [atlas.world]
+        floorplans = ["scattered_obstacles.txt"]
+        [atlas.world.robots]
+            counts = [5, 10, 20]
+            initial_positions = [[1, 1]]
