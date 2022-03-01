@@ -493,7 +493,8 @@ class AtlasTargets(TargetSelector):
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
-
+        if not targetsAndDistances2db:
+            return None
         min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
         closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
         closest_targets = closest_targets_to_dotbot
