@@ -595,13 +595,15 @@ class SelfHealing(RelayPlanner):
             if robot['heartbeat'] <= CRITICAL_PDR:
                 lost_bot = robot
                 break
-        if lost_bot == None:
-            return []
+
         relay = random.choice([r for r in robots_data if (r != lost_bot and (r['x'], r['y']) not in self.relay_positions)])
         self.assigned_relays.add(relay["ID"])
 
         if self.next_relay_chain_positions != []:
             return relay["ID"]
+
+        if lost_bot == None:
+            return []
 
         start_to_lostBot_distance         = [u.distance((lost_bot['x'], lost_bot['y']), (self.ix, self.iy))]
         if self.relay_positions:
@@ -616,15 +618,22 @@ class SelfHealing(RelayPlanner):
             closest_relay_to_lostBot_distance = start_to_lostBot_distance[0]
 
         distances_ratio                   = RANGE_DISTANCE/closest_relay_to_lostBot_distance
+        num_relays                        = int(closest_relay_to_lostBot_distance/RANGE_DISTANCE)
+
+        if num_relays == 0:
+            return  []
 
         # equations bellow from https://math.stackexchange.com/a/1630886
 
         previous_relay_in_chain = closest_relay
-        x0 , y0   = previous_relay_in_chain
-        x1 , y1   = (lost_bot['x'],lost_bot['y'])
-        t         = distances_ratio
-        next_pos = (int(((1-t)*x0 + t*x1)),int(((1-t)*y0+ t+ y1)))
-        self.next_relay_chain_positions += [next_pos]
+        for idx in range(num_relays):
+            x0 , y0   = previous_relay_in_chain
+            x1 , y1   = (lost_bot['x'],lost_bot['y'])
+            t         = distances_ratio
+            next_pos = (int(((1-t)*x0 + t*x1)),int(((1-t)*y0+ t*y1)))
+            self.next_relay_chain_positions += [next_pos]
+            previous_relay_in_chain = next_pos
+
         return relay["ID"]
 
     def positionRelay(self, relay):
@@ -644,17 +653,11 @@ class SelfHealing(RelayPlanner):
                 if n.explored is True and n.obstacle is False:
                     x, y = n.position(_local=False)
                     return x, y
-                elif n not in closed_cells:
+                elif n not in closed_cells and n not in open_cells:
                     open_cells.append(n)
             closed_cells.append(c)
 
         return None
-
-
-
-
-
-
 
 
 
