@@ -495,6 +495,7 @@ class AtlasTargets(TargetSelector):
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
         if not targetsAndDistances2db:
             return None
+
         min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
         closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
         closest_targets = closest_targets_to_dotbot
@@ -581,57 +582,80 @@ class SelfHealing(RelayPlanner):
 
         self.ix = start_x
         self.iy = start_y
-        self.lostBots_and_data = []
+        self.next_relay_chain_positions = []
+
 
     def assignRelay(self, robots_data):
-
-        distances  = []
-        need_relay = False
+        RANGE_DISTANCE = 20   # FIXME: replace 20 with a variable and add logic behind it
+        CRITICAL_PDR   = 0.2
+        relay_chain    = set()
+        lost_bot       = None  #  A robot that has lost connection, we want to build a relay chain to to restore connectivity
 
         for robot in robots_data:
-            start_to_robot_distance = u.distance((robot['x'], robot['y']), (self.ix, self.iy))
-            # FIXME: replace 30 with a variable and add logic behind it
-            if start_to_robot_distance >= 30:
-                need_relay = True
-            else:
-                continue
+            if robot['heartbeat'] <= CRITICAL_PDR:
+                lost_bot = robot
+                break
+        if lost_bot == None:
+            return []
+        relay = random.choice([r for r in robots_data if (r != lost_bot and (r['x'], r['y']) not in self.relay_positions)])
+        self.assigned_relays.add(relay["ID"])
 
-            if self.relay_positions:
-                distances += [u.distance((robot['x'], robot['y']), robot_pos) for robot_pos in self.relay_positions]
-                for distance in distances:
-                    if distance <= 30:
-                        need_relay = False
-                        break
+        if self.next_relay_chain_positions != []:
+            return relay["ID"]
 
-            if need_relay == True:
-                if self.lostBots_and_data and robot in [lb['targetBot'] for lb in self.lostBots_and_data]:
-                    # FIXME: do this in a smarter way
-                    bot_to_save = [lostBot for lostBot in self.lostBots_and_data if lostBot['targetBot'] == robot][0]
-                    x = ((robot['x'] + bot_to_save['relayPositions'][-1][0]) / 2)
-                    y = ((robot['y'] + bot_to_save['relayPositions'][-1][1]) / 2)
+        start_to_lostBot_distance         = [u.distance((lost_bot['x'], lost_bot['y']), (self.ix, self.iy))]
+        if self.relay_positions:
+            relays_to_lostBot_distances       = [u.distance((lost_bot['x'], lost_bot['y']), robot_pos) for robot_pos in self.relay_positions]
+            all_distances                     = start_to_lostBot_distance + relays_to_lostBot_distances
+            min_distance                      = min([d for d,r in all_distances])
+            closest_relay                     = [r for d,r in all_distances if d==min_distance][0]
+            closest_relay                     = (closest_relay['x'], closest_relay['y'])
+            closest_relay_to_lostBot_distance = u.distance(closest_relay,(lost_bot['x'], lost_bot['y'])) #d
+        else:
+            closest_relay                     = (self.ix, self.iy)
+            closest_relay_to_lostBot_distance = start_to_lostBot_distance[0]
 
-                    relay_position = (x, y)
-                    bot_to_save['relayPositions'] += [relay_position]
+        distances_ratio                   = RANGE_DISTANCE/closest_relay_to_lostBot_distance
 
-                else:
-                    x = ((robot['x'] + self.ix) / 2)
-                    y = ((robot['y'] + self.iy) / 2)
-                    self.lostBots_and_data += [{'targetBot': robot, 'relayPositions': [(x, y)]}]
+        # equations bellow from https://math.stackexchange.com/a/1630886
 
-                relay = random.choice([r for r in robots_data if (r != robot)])
-                self.assigned_relays.add(relay["ID"])
-                return relay["ID"]
-
+        previous_relay_in_chain = closest_relay
+        x0 , y0   = previous_relay_in_chain
+        x1 , y1   = (lost_bot['x'],lost_bot['y'])
+        t         = distances_ratio
+        next_pos = (int(((1-t)*x0 + t*x1)),int(((1-t)*y0+ t+ y1)))
+        self.next_relay_chain_positions += [next_pos]
+        return relay["ID"]
 
     def positionRelay(self, relay):
-        targetChosen = random.choice(self.lostBots_and_data)
+        x,y = self.next_relay_chain_positions.pop()
+        self.targeted_relays.add(relay['ID'])
+        cell = self.map.cell(*(x,y), local=False)
 
-        (xp, yp) = targetChosen['relayPositions'][-1]
-        (x, y) = self.map.xy2hCell(xp, yp)
-        if (x, y) not in self.relay_positions and (x, y) not in self.map.obstacles:
-            self.relay_positions.add(targetChosen['relayPositions'][-1])
-            self.targeted_relays.add(relay['ID'])
-            return (x, y)
+        if cell.explored is True and cell.obstacle is False:
+            return x, y
+
+        open_cells = [cell]
+        closed_cells = []
+
+        for c in open_cells:
+            open_cells.pop(0)
+            for n in self.map.neighbors(self.map.cell(*c.position(_local=False), local=False), explored_ok=True):
+                if n.explored is True and n.obstacle is False:
+                    x, y = n.position(_local=False)
+                    return x, y
+                elif n not in closed_cells:
+                    open_cells.append(n)
+            closed_cells.append(c)
+
+        return None
+
+
+
+
+
+
+
 
 
 """ No Relay Placement"""
