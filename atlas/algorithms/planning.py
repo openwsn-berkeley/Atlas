@@ -553,9 +553,10 @@ class Naive(RelayPlanner):
     '''
 
     def assignRelay(self, robots_data):
+        NUM_CELLS_PER_RELAY = 400   #(20x20m)^2 if we assume 20m the max range of acceptable communication
         num_cells_explored = len(self.map.explored) + len(self.map.obstacles)
-        # FIXME: add logic to number of cells that define when this happens
-        if (num_cells_explored % 200 == 0) and (len(self.assigned_relays) < (num_cells_explored / 200)):
+
+        if (num_cells_explored % NUM_CELLS_PER_RELAY) < 10 and num_cells_explored>len(robots_data):
             relay = random.choice(robots_data)
             self.assigned_relays.add(relay["ID"])
             return relay["ID"]
@@ -588,7 +589,6 @@ class SelfHealing(RelayPlanner):
     def assignRelay(self, robots_data):
         RANGE_DISTANCE = 20   # FIXME: replace 20 with a variable and add logic behind it
         CRITICAL_PDR   = 0.2
-        relay_chain    = set()
         lost_bot       = None  #  A robot that has lost connection, we want to build a relay chain to to restore connectivity
 
         for robot in robots_data:
@@ -637,7 +637,11 @@ class SelfHealing(RelayPlanner):
         return relay["ID"]
 
     def positionRelay(self, relay):
-        x,y = self.next_relay_chain_positions.pop()
+        if self.next_relay_chain_positions:
+            x,y = self.next_relay_chain_positions.pop()
+        else:
+            return None
+
         self.targeted_relays.add(relay['ID'])
         cell = self.map.cell(*(x,y), local=False)
 
