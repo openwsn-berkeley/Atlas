@@ -157,10 +157,10 @@ def main(config):
         config_data["type"] = "sim configuration"
         logger.setFileName(os.path.join(base_dir, log_file))
         logger.log(config_data)
-        log.info(f"run {runNum+1}/{len(SIMSETTINGS)} starting at {time.strftime('%H:%M:%S' , time.localtime(time.time()))}")
+        log.info(f"run {config.experiment.configID} starting at {time.strftime('%H:%M:%S' , time.localtime(time.time()))}")
         kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
         time_to_full_mapping = kpis['timeToFullMapping']
-        log.info(f"    run {runNum+1}/{len(SIMSETTINGS)} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S' , time.localtime(time.time()))} ")
+        log.info(f"    run {config.experiment.configID} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S' , time.localtime(time.time()))} ")
         kpis['runNums'] = runNum
 
 if __name__=='__main__':
