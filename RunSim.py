@@ -156,7 +156,9 @@ def main(config):
         config_data = simSetting
         config_data["type"] = "sim configuration"
         logger.setFileName(os.path.join(base_dir, log_file))
+        state_data = {"type": "random_seed_state", "sate_data": random.getstate()}
         logger.log(config_data)
+        logger.log(state_data)
         log.info(f"run {config.experiment.configID} starting at {time.strftime('%H:%M:%S' , time.localtime(time.time()))}")
         kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
         time_to_full_mapping = kpis['timeToFullMapping']
