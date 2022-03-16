@@ -21,6 +21,7 @@ import time
 import json
 import Logging
 import random
+import ControlledRandom
 
 from atlas.config import AtlasConfig
 
@@ -101,8 +102,9 @@ log = logging.getLogger('RunSim')
 
 def main(config):
     # ============================ defines =========================================
-    SIMSETTINGS = []
 
+    SIMSETTINGS = []
+    controlledRandomness = ControlledRandom.ControlledRandom()
     nav_config = config.orchestrator.navigation
 
     # TODO: SimSettings should handle lack of certain parameters given a different configuration and maintains parameter cross product functionality
@@ -145,20 +147,21 @@ def main(config):
     start_time = time.time()
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
-    unique_id = random.random()
+
+    unique_id = controlledRandomness.random()
     log_file = f'{config.experiment.logging.name}_{config.experiment.configID}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
 
     # TODO: add timing bindings to relevant classes & functions
 
     # run a number of simulations
     for (runNum, simSetting) in enumerate(SIMSETTINGS):
+
+        # for debugging
         # log
         config_data = simSetting
         config_data["type"] = "sim configuration"
         logger.setFileName(os.path.join(base_dir, log_file))
-        state_data = {"type": "random_seed_state", "sate_data": random.getstate()}
         logger.log(config_data)
-        logger.log(state_data)
         log.info(f"run {config.experiment.configID} starting at {time.strftime('%H:%M:%S' , time.localtime(time.time()))}")
         kpis = runSim(simSetting,simUI) # TODO: dump sim settings object alongside log (should be in results format)
         time_to_full_mapping = kpis['timeToFullMapping']
@@ -166,6 +169,8 @@ def main(config):
         kpis['runNums'] = runNum
 
 if __name__=='__main__':
+    controlledRandomness = ControlledRandom.ControlledRandom()
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--config", type=str, default="default", help="Atlas configuration file name to use (must be TOML)")

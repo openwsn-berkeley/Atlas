@@ -2,6 +2,7 @@
 import abc
 import sys
 import random
+import ControlledRandom
 import time
 from functools import wraps
 import numpy as np
@@ -11,6 +12,7 @@ from Floorplan import Floorplan
 
 from statistics import mode
 from statistics import mean
+
 
 def timeit(my_func):
     @wraps(my_func)
@@ -239,6 +241,7 @@ class PropagationPister(PropagationFriis):
     '''
 
     PISTER_HACK_LOWER_SHIFT = 40  # dB
+    controlledRandomness = ControlledRandom.ControlledRandom()
 
     def getPDR(self, sender_loc, receiver_loc, **kwargs):
         '''
@@ -248,7 +251,9 @@ class PropagationPister(PropagationFriis):
         if distance == 0:
             return 1
 
-        rssi = self._friisModel(distance) - random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+        shift_value = self.controlledRandomness.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+
+        rssi = self._friisModel(distance) - shift_value
         pdr = self._rssi_to_pdr(rssi)
 
         return pdr
@@ -287,8 +292,8 @@ class WirelessBase(abc.ABC):
         self.currentPDR = None
         self.propagation = propagation()
         self.pdrs = []
+        self.controlledRandomness = ControlledRandom.ControlledRandom()
 
-        # TODO: PDR Matrix store
 
         # local variables
 
@@ -327,7 +332,8 @@ class WirelessBase(abc.ABC):
             else:
                 robot = sender
             self.all_robot_pdrs.add((robot.dotBotId,robot.computeCurrentPosition(),pdr, robot.relay))
-            rand = random.uniform(0, 1)
+            rand = self.controlledRandomness.uniform(0, 1)
+
             if rand < pdr:
                 receiver.receive(frame)
         self.pdrs=list(self.all_robot_pdrs)
