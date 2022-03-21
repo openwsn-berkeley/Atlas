@@ -29,40 +29,41 @@ def main(config, mode):
     nav_config   = config.orchestrator.navigation
     seed_counter = 0
 
-    # TODO: SimSettings should handle lack of certain parameters given a different configuration and maintains parameter cross product functionality
-    # TODO: Have a validate configuration script that does an import dry run of all the configuration settings
-    for idx, floorplan in enumerate(config.world.floorplans):
-        for numrobot in config.world.robots.counts:
-            for init_pos in config.world.robots.initial_positions:
-                for wireless in config.wireless.models:
-                    for propagation in config.wireless.propagation.models:
-                        for nav in nav_config.models:
-                            for relay in nav_config.relay.algorithms:
-                                for path_planner in nav_config.path_planning.algorithms:
-                                    for target_selector in nav_config.target_selector.algorithms:
-                                        for lower_threshold in config.relays.thresholds.min_pdr_threshold:
-                                            for upper_threshold in config.relays.thresholds.best_pdr_threshold:
-                                                seed_counter += 1
-                                                SIMSETTINGS.append(
-                                                    {
-                                                        'seed': seed_counter,
-                                                        'config ID': config.experiment.configID ,
-                                                        'numDotBots': numrobot,
-                                                        'floorplanType': idx,
-                                                        'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
-                                                                                                       floorplan).decode('utf-8'),
-                                                        'initialPosition': tuple(init_pos),
-                                                        'navAlgorithm': nav,
-                                                        'pathPlanner': path_planner,
-                                                        'targetSelector': target_selector,
-                                                        'wirelessModel': wireless,
-                                                        'propagationModel': propagation,
-                                                        'relaySettings': {'relayAlg': relay,
-                                                                          'minPdrThreshold': lower_threshold,
-                                                                          'bestPdrThreshold': upper_threshold}
-                                                    },
-                                                )
-    
+    for run in range(config.experiment.runs):
+        # TODO: SimSettings should handle lack of certain parameters given a different configuration and maintains parameter cross product functionality
+        # TODO: Have a validate configuration script that does an import dry run of all the configuration settings
+        for idx, floorplan in enumerate(config.world.floorplans):
+            for numrobot in config.world.robots.counts:
+                for init_pos in config.world.robots.initial_positions:
+                    for wireless in config.wireless.models:
+                        for propagation in config.wireless.propagation.models:
+                            for nav in nav_config.models:
+                                for relay in nav_config.relay.algorithms:
+                                    for path_planner in nav_config.path_planning.algorithms:
+                                        for target_selector in nav_config.target_selector.algorithms:
+                                            for lower_threshold in config.relays.thresholds.min_pdr_threshold:
+                                                for upper_threshold in config.relays.thresholds.best_pdr_threshold:
+                                                    seed_counter += 1
+                                                    SIMSETTINGS.append(
+                                                        {
+                                                            'seed': seed_counter,
+                                                            'config ID': config.experiment.configID ,
+                                                            'numDotBots': numrobot,
+                                                            'floorplanType': idx,
+                                                            'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
+                                                                                                           floorplan).decode('utf-8'),
+                                                            'initialPosition': tuple(init_pos),
+                                                            'navAlgorithm': nav,
+                                                            'pathPlanner': path_planner,
+                                                            'targetSelector': target_selector,
+                                                            'wirelessModel': wireless,
+                                                            'propagationModel': propagation,
+                                                            'relaySettings': {'relayAlg': relay,
+                                                                              'minPdrThreshold': lower_threshold,
+                                                                              'bestPdrThreshold': upper_threshold}
+                                                        },
+                                                    )
+
 
     print(SIMSETTINGS)
     # create the UI
