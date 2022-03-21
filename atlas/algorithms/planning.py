@@ -12,8 +12,6 @@ import collections
 
 import random
 
-import ControlledRandom
-
 from functools import wraps
 
 import time
@@ -216,7 +214,6 @@ class TargetSelector(abc.ABC):
 
     def __init__(self, map=None, map_kwargs={}):
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
-        self.controlledRandomness = ControlledRandom.ControlledRandom()
 
     @abc.abstractmethod
     def allocateTarget(self, *args, **kwargs):
@@ -244,7 +241,6 @@ class RelayPlanner(abc.ABC):
         self.relay_positions = set()   # all potential positions to be assigned to relays
         self.radius          = radius
         self.relay_settings  = settings
-        self.controlledRandomness = ControlledRandom.ControlledRandom()
 
     @abc.abstractmethod
     def assignRelay(self, robots_data):
@@ -442,10 +438,9 @@ class AtlasTargets(TargetSelector):
 
         self.numDotBots = num_bots
 
-        self.frontier_cells = [] # all frontier boundary cells
+        self.frontier_cells = set() # all frontier boundary cells
 
         self.not_frontiers = set()
-        self.allocated_frontiers = set()
 
 
     def allocateTarget(self, dotbot_position):
@@ -462,33 +457,19 @@ class AtlasTargets(TargetSelector):
             self.updateFrontierBoundary(dotbot_position)
 
             if not self.frontier_cells and dotbot_position != (self.ix,self.iy):
-                print("NO MORE FRONTIERS!")
                 return
 
             closest_frontiers_to_robot = self.findClosestTargetsToRobot(dotbot_position)
-            if not closest_frontiers_to_robot:
-                return
-            if len(closest_frontiers_to_robot) == 1:
-                alloc_frontier = closest_frontiers_to_robot[0]
-            else:
-                closest_frontiers_to_start =  self.findDistanceToStart(closest_frontiers_to_robot)
-                alloc_frontier = self.controlledRandomness.choice(closest_frontiers_to_start)
+            alloc_frontier = self.findDistanceToStart(closest_frontiers_to_robot)
             alloc_target = alloc_frontier.position(_local=False)
-            self.frontier_cells.remove(alloc_frontier)
-            self.allocated_frontiers.add(alloc_frontier)
+
+        self.frontier_cells.discard(alloc_frontier)
 
         return alloc_target
 
     def updateFrontierBoundary(self, current_cell):
-
-        neighbours = self.map.neighbors(self.map.cell(*current_cell, local=False), explored_ok=False)
-
-        self.controlledRandomness.shuffle(neighbours)
-
-        for cell in neighbours:
-            self.frontier_cells.append(cell)
-
-        return
+        for cell in self.map.neighbors(self.map.cell(*current_cell, local=False), explored_ok=False):
+            self.frontier_cells.add(cell)
 
     def findDistanceToStart(self, targets):
         '''
@@ -496,15 +477,13 @@ class AtlasTargets(TargetSelector):
         '''
         targetsAndDistances2start = []
         for t in targets:
-            if t in self.allocated_frontiers:
-                continue
             t_position = t.position(_local=False)
             targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
 
         min_target_distance = sorted(targetsAndDistances2start, key=lambda item: item[1])[0][1]
         closest_targets_to_start = [c for (c, d) in targetsAndDistances2start if d == min_target_distance]
-        closest_targets = closest_targets_to_start
-        return closest_targets
+        closest_target = closest_targets_to_start[0]
+        return closest_target
 
     def findClosestTargetsToRobot(self, dotbot_position):
         '''
@@ -512,8 +491,6 @@ class AtlasTargets(TargetSelector):
         '''
         targetsAndDistances2db = []
         for t in self.frontier_cells:
-            if t in self.allocated_frontiers:
-                continue
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
@@ -538,7 +515,7 @@ class Recovery(RelayPlanner):
         relay = None
         for robot in robots_data:
 
-            if robot['heartbeat'] > self.relay_settings['minPdrThreshold'][0]:
+            if robot['heartbeat'] > self.relay_settings['minPdrThreshold']:
                 continue
             if robot['ID'] in self.targeted_relays:
                 continue
@@ -555,7 +532,7 @@ class Recovery(RelayPlanner):
         pdrHistory = relay['pdrHistory']
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
-            if value[0] >= self.relay_settings['bestPdrThreshold'][0]:
+            if value[0] >= self.relay_settings['bestPdrThreshold']:
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]
@@ -581,7 +558,7 @@ class Naive(RelayPlanner):
         num_cells_explored = len(self.map.explored) + len(self.map.obstacles)
 
         if (num_cells_explored % NUM_CELLS_PER_RELAY) < 10 and num_cells_explored>len(robots_data):
-            relay = self.controlledRandomness.choice(robots_data)
+            relay = random.choice(robots_data)
             self.assigned_relays.add(relay["ID"])
             return relay["ID"]
 
@@ -620,7 +597,7 @@ class SelfHealing(RelayPlanner):
                 lost_bot = robot
                 break
 
-        relay = self.controlledRandomness.choice([r for r in robots_data if (r != lost_bot and (r['x'], r['y']) not in self.relay_positions)])
+        relay = random.choice([r for r in robots_data if (r != lost_bot and (r['x'], r['y']) not in self.relay_positions)])
         self.assigned_relays.add(relay["ID"])
 
         if self.next_relay_chain_positions != []:

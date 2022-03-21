@@ -1,7 +1,6 @@
 # built-in
 import abc
 import random
-import ControlledRandom
 import threading
 import copy
 import sys
@@ -321,7 +320,6 @@ class Navigation(abc.ABC):
         # store params
         self.numDotBots      = numDotBots
         self.initialPosition = initialPosition
-        self.controlledRandomness = ControlledRandom.ControlledRandom()
         
         # local variables
         self.dotbotsview     = [
@@ -481,7 +479,7 @@ class NavigationBallistic(Navigation):
         dotbot = self.dotbotsview[dotBotId]
 
         # pick new movement
-        dotbot['heading']         = self.controlledRandomness.randint(0, 359)
+        dotbot['heading']         = random.randint(0, 359)
         dotbot['speed']           = 1
         dotbot['seqNumMovement'] += 1
 
@@ -602,7 +600,7 @@ class NavigationAtlas(Navigation):
             # FIXME
             neighbours = self.map.neighbors(self.map.cell(*centreCellcentre, local=False))
 
-            self.controlledRandomness.shuffle(neighbours)
+            random.shuffle(neighbours)
 
             if centreCellcentre in self.path_planner.map.obstacles:
                 for cell in neighbours:
