@@ -65,7 +65,6 @@ def main(config, mode):
                                                     )
 
 
-    print(SIMSETTINGS)
     # create the UI
     simUI          = SimUI.SimUI() if config.ui else None
 
