@@ -113,6 +113,7 @@ def main(simSetting, simUI):
     # for debugging
     # log
     config_data = simSetting
+    print(config_data)
     config_data["type"] = "sim configuration"
     logger.setFileName(os.path.join(base_dir, log_file))
     logger.log(config_data)
