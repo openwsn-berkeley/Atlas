@@ -106,7 +106,7 @@ def main(simSetting, simUI):
     start_time = time.time()
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
-    print(simSetting)
+    print(type(simSetting))
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
     log_file = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
