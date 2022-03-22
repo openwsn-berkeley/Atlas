@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    config = AtlasConfig(args.config)
-    mode = args.mode
+    simSetting = args.simSetting
+    simUI = args.simUI
 
-    main(config.atlas, mode)
+    main(simSetting, simUI)
