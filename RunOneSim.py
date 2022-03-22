@@ -106,9 +106,6 @@ def main(simSetting, simUI):
     start_time = time.time()
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
-
-    if type(simSetting) == str:
-        simSetting = json.loads(simSetting)
     print(type(simSetting))
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
