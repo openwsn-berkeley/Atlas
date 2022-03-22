@@ -74,7 +74,7 @@ def main(config, mode):
             RunOneSim.main(simSetting, simUI)
         elif mode == "parallel processing":
             cmd = ["sbatch", "--cpus-per-task=1", "--ntasks=1", "../scripts/atlas_submit_RunOneSim.sbatch", simSetting, simUI]
-            p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 if __name__=='__main__':
