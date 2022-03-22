@@ -137,8 +137,8 @@ def main(simSetting, simUI):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--simSetting", type=str, help="simulation configuration settings as dictionary")
-    parser.add_argument("--simUI", type=str, help="UI configurations")
+    parser.add_argument("--simSetting", help="simulation configuration settings as dictionary")
+    parser.add_argument("--simUI", help="UI configurations")
 
     args = parser.parse_args()
 
