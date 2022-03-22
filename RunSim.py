@@ -73,9 +73,8 @@ def main(config, mode):
         if mode == "sequential processing":
             RunOneSim.main(simSetting, simUI)
         elif mode == "parallel processing":
-            cmd = f'sbatch --cpus-per-task=1 --ntasks=1 ../scripts/atlas_submit_RunOneSim.sbatch {simSetting} {simUI}'
-            args = cmd.split(' ')
-            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cmd = ["sbatch", "--cpus-per-task=1", "--ntasks=1", "../scripts/atlas_submit_RunOneSim.sbatch", f'{simSetting}', f'{simUI}']
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 if __name__=='__main__':

@@ -114,6 +114,8 @@ def main(simSetting, simUI):
     if type(simUI) == str:
         simUI = eval(simUI)
 
+    print(type(simSetting))
+    print(type(simUI))
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
     log_file = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
@@ -124,7 +126,7 @@ def main(simSetting, simUI):
     logger.setFileName(os.path.join(base_dir, log_file))
     logger.log(config_data)
     log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))}")
-    
+
     return
     kpis = runSim(simSetting, simUI)
     time_to_full_mapping = kpis['timeToFullMapping']
