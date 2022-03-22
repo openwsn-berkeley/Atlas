@@ -21,6 +21,7 @@ import time
 import json
 import Logging
 import random
+import ast
 
 from atlas.config import AtlasConfig
 
@@ -107,6 +108,12 @@ def main(simSetting, simUI):
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
     print(type(simSetting))
+
+    if type(simSetting) == str:
+        simSetting = ast.literal_eval(simSetting)
+    if type(simUI) == str:
+        simUI = eval(simUI)
+
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
     log_file = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
@@ -117,7 +124,7 @@ def main(simSetting, simUI):
     logger.setFileName(os.path.join(base_dir, log_file))
     logger.log(config_data)
     log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))}")
-    print(simUI)
+    
     return
     kpis = runSim(simSetting, simUI)
     time_to_full_mapping = kpis['timeToFullMapping']
