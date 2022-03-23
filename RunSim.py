@@ -73,8 +73,8 @@ def main(config, mode):
         if mode == "sequential processing":
             RunOneSim.main(simSetting, simUI)
         elif mode == "parallel processing":
-            #cmd = ["sbatch", "--cpus-per-task=1", "--ntasks=1", "../scripts/atlas_submit_RunOneSim.sbatch", str(simSetting)]
-            cmd = ["python", "C:/Users/abuaishe/Desktop/main/Bell Labs/Atlas/Networking/DotBot/Atlas/RunOneSim.py", "--simSettings", str(simSetting)]
+            cmd = ["sbatch", "--partition=cpu_homogen", "../scripts/atlas_submit_RunOneSim.sbatch", str(simSetting)]
+            #cmd = ["python", "C:/Users/abuaishe/Desktop/main/Bell Labs/Atlas/Networking/DotBot/Atlas/RunOneSim.py", "--simSettings", str(simSetting)]
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
