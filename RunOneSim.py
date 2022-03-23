@@ -31,6 +31,7 @@ def runSim(simSetting, simUI):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
+    print("simulation started")
     random.seed(simSetting['seed'])
     # ======================== setup
 
