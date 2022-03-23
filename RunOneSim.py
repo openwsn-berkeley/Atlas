@@ -125,6 +125,8 @@ def main(simSetting, simUI):
     logger.log(config_data)
     log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))}")
     print("starting simulation")
+    time.sleep(60)
+    print("....")
     return
     kpis = runSim(simSetting, simUI)
     time_to_full_mapping = kpis['timeToFullMapping']
