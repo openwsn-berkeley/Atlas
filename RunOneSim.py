@@ -107,27 +107,22 @@ def main(simSetting, simUI):
     start_time = time.time()
     base_dir = "./logs"
     os.makedirs(base_dir, exist_ok=True)
-    print(type(simSetting))
 
     if type(simSetting) == str:
         simSetting = ast.literal_eval(simSetting)
     if type(simUI) == str:
         simUI = eval(simUI)
 
-    print(type(simSetting))
-    print(type(simUI))
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
     log_file = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
-    # for debugging
+
     # log
     config_data = simSetting
     config_data["type"] = "sim configuration"
     logger.setFileName(os.path.join(base_dir, log_file))
     logger.log(config_data)
     log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))}")
-    print(simUI)
-    return
     kpis = runSim(simSetting, simUI)
     time_to_full_mapping = kpis['timeToFullMapping']
     log.info(
@@ -141,7 +136,6 @@ if __name__ == '__main__':
     parser.add_argument("--simUI", default=None, help="UI configurations")
 
     args = parser.parse_args()
-
     simSetting = args.simSetting
     simUI = args.simUI
 
