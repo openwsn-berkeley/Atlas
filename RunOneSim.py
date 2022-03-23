@@ -127,7 +127,7 @@ def main(simSetting, simUI):
     print("starting simulation")
     time.sleep(60)
     print("....")
-    return
+    
     kpis = runSim(simSetting, simUI)
     time_to_full_mapping = kpis['timeToFullMapping']
     log.info(
