@@ -31,10 +31,11 @@ def runSim(simSetting, simUI):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
-    print("simulation started")
-    random.seed(simSetting['seed'])
-    # ======================== setup
 
+    random.seed(simSetting['seed'])
+
+    # ======================== setup
+    print("simulation started")
     # create the SimEngine
     simEngine = SimEngine.SimEngine()
 
@@ -121,13 +122,12 @@ def main(simSetting, simUI):
     # log
     config_data = simSetting
     config_data["type"] = "sim configuration"
+    seed = simSetting["seed"]
     logger.setFileName(os.path.join(base_dir, log_file))
     logger.log(config_data)
-    log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))}")
+    log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed}")
     print("starting simulation")
-    time.sleep(60)
-    print("....")
-    
+
     kpis = runSim(simSetting, simUI)
     time_to_full_mapping = kpis['timeToFullMapping']
     log.info(
