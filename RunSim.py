@@ -74,7 +74,6 @@ def main(config, mode):
             RunOneSim.main(simSetting, simUI)
         elif mode == "parallel processing":
             cmd = ["sbatch", "--partition=cpu_homogen", "../scripts/atlas_submit_RunOneSim.sbatch", str(simSetting)]
-            #cmd = ["python", "C:/Users/abuaishe/Desktop/main/Bell Labs/Atlas/Networking/DotBot/Atlas/RunOneSim.py", "--simSettings", str(simSetting)]
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 

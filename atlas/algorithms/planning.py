@@ -438,7 +438,7 @@ class AtlasTargets(TargetSelector):
 
         self.numDotBots = num_bots
 
-        self.frontier_cells = set() # all frontier boundary cells
+        self.frontier_cells = [] # all frontier boundary cells
 
         self.not_frontiers = set()
 
@@ -463,13 +463,14 @@ class AtlasTargets(TargetSelector):
             alloc_frontier = self.findDistanceToStart(closest_frontiers_to_robot)
             alloc_target = alloc_frontier.position(_local=False)
 
-        self.frontier_cells.discard(alloc_frontier)
+        self.frontier_cells.remove(alloc_frontier)
 
         return alloc_target
 
     def updateFrontierBoundary(self, current_cell):
         for cell in self.map.neighbors(self.map.cell(*current_cell, local=False), explored_ok=False):
-            self.frontier_cells.add(cell)
+            if cell not in self.frontier_cells:
+                self.frontier_cells.append(cell)
 
     def findDistanceToStart(self, targets):
         '''
