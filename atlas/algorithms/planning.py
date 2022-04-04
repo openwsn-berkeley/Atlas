@@ -458,9 +458,12 @@ class AtlasTargets(TargetSelector):
 
             if not self.frontier_cells and dotbot_position != (self.ix,self.iy):
                 return
+            closest_frontiers_to_start = self.findDistanceToStart(dotbot_position, self.frontier_cells)
+            if closest_frontiers_to_start:
+                alloc_frontier = self.findClosestTargetsToRobot(dotbot_position, closest_frontiers_to_start)
+            else:
+                alloc_frontier = self.findClosestTargetsToRobot(dotbot_position, self.frontier_cells)
 
-            closest_frontiers_to_robot = self.findClosestTargetsToRobot(dotbot_position)
-            alloc_frontier = self.findDistanceToStart(closest_frontiers_to_robot)
             alloc_target = alloc_frontier.position(_local=False)
 
         self.frontier_cells.remove(alloc_frontier)
@@ -472,26 +475,28 @@ class AtlasTargets(TargetSelector):
             if cell not in self.frontier_cells:
                 self.frontier_cells.append(cell)
 
-    def findDistanceToStart(self, targets):
+    def findDistanceToStart(self, dotbot_position, targets):
         '''
         take input and assign each cell and distance to start rank
         '''
         targetsAndDistances2start = []
         for t in targets:
             t_position = t.position(_local=False)
-            targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
-
+            if t_position != dotbot_position:
+                targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
+        if not targetsAndDistances2start:
+            return  None
         min_target_distance = sorted(targetsAndDistances2start, key=lambda item: item[1])[0][1]
         closest_targets_to_start = [c for (c, d) in targetsAndDistances2start if d == min_target_distance]
-        closest_target = closest_targets_to_start[0]
-        return closest_target
+        closest_targets = closest_targets_to_start
+        return closest_targets
 
-    def findClosestTargetsToRobot(self, dotbot_position):
+    def findClosestTargetsToRobot(self, dotbot_position, targets):
         '''
         find closest 5 targets to robot
         '''
         targetsAndDistances2db = []
-        for t in self.frontier_cells:
+        for t in targets:
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
@@ -500,8 +505,8 @@ class AtlasTargets(TargetSelector):
 
         min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
         closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
-        closest_targets = closest_targets_to_dotbot
-        return closest_targets
+        closest_target = closest_targets_to_dotbot[0]
+        return closest_target
 
 
 """ Relay Recovery Placement"""
