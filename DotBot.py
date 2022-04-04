@@ -83,11 +83,13 @@ class DotBot(Wireless.WirelessDevice):
         if myMovement['seqNumMovement'] == self.seqNumMovement:
             return
 
+        self.seqNumMovement       = myMovement['seqNumMovement']
+
         if myMovement['speed'] == -1:
             self.relay = True
             return
 
-        self.seqNumMovement       = myMovement['seqNumMovement']
+
 
         # if I get here I have received a NEW movement
 
@@ -191,6 +193,7 @@ class DotBot(Wireless.WirelessDevice):
         #print('->', self.dotBotId,'->',self.packetsRxRatio,'->',self.x,self.y)
 
         self.bump = False
+
         self._transmit()
 
 

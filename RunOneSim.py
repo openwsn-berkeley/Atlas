@@ -33,7 +33,7 @@ def runSim(simSetting, simUI):
     '''
 
     random.seed(simSetting['seed'])
-
+    #random.seed(66)
     # ======================== setup
     print("simulation started")
     # create the SimEngine
@@ -129,9 +129,10 @@ def main(simSetting, simUI):
     print("starting simulation")
 
     kpis = runSim(simSetting, simUI)
+    logger.log({"type": "completion notification"})
     time_to_full_mapping = kpis['timeToFullMapping']
     log.info(
-        f"    run {config_id} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S', time.localtime(time.time()))} ")
+        f"    run {config_id} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
 
 
 if __name__ == '__main__':
