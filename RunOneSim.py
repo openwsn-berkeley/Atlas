@@ -130,6 +130,7 @@ def main(simSetting, simUI):
 
     kpis = runSim(simSetting, simUI)
     logger.log({"type": "completion notification"})
+    time.sleep(10)
     time_to_full_mapping = kpis['timeToFullMapping']
     log.info(
         f"    run {config_id} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
