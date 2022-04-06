@@ -33,7 +33,7 @@ def runSim(simSetting, simUI):
     '''
 
     random.seed(simSetting['seed'])
-
+    #random.seed(66)
     # ======================== setup
     print("simulation started")
     # create the SimEngine
