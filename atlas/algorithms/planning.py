@@ -241,6 +241,7 @@ class RelayPlanner(abc.ABC):
         self.relay_positions = set()   # all potential positions to be assigned to relays
         self.radius          = radius
         self.relay_settings  = settings
+        self.last_num_explored_cells = 0
 
     @abc.abstractmethod
     def assignRelay(self, robots_data):
@@ -562,8 +563,7 @@ class Naive(RelayPlanner):
     def assignRelay(self, robots_data):
         NUM_CELLS_PER_RELAY = 400   #(20x20m)^2 if we assume 20m the max range of acceptable communication
         num_cells_explored = len(self.map.explored) + len(self.map.obstacles)
-
-        if (num_cells_explored % NUM_CELLS_PER_RELAY) < 10 and num_cells_explored>len(robots_data):
+        if (self.last_num_explored_cells - num_cells_explored) >= NUM_CELLS_PER_RELAY:
             relay = random.choice(robots_data)
             self.assigned_relays.add(relay["ID"])
             return relay["ID"]
