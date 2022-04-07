@@ -457,11 +457,9 @@ class AtlasTargets(TargetSelector):
             # end of mission if no frontier cells left
 
             self.updateFrontierBoundary(dotbot_position)
-
+            assert self.frontier_cells
             if not self.frontier_cells:
                 return
-
-            assert self.frontier_cells
 
             closest_frontiers_to_start = self.findDistanceToStart(dotbot_position, self.frontier_cells)
 
@@ -473,6 +471,8 @@ class AtlasTargets(TargetSelector):
             assert alloc_frontier
 
             alloc_target = alloc_frontier.position(_local=False)
+
+            assert alloc_target
 
         self.frontier_cells.remove(alloc_frontier)
 
@@ -492,8 +492,9 @@ class AtlasTargets(TargetSelector):
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
-        if not targetsAndDistances2start:
-            return  None
+        assert targetsAndDistances2start
+        # if not targetsAndDistances2start:
+        #     return  None
         min_target_distance = sorted(targetsAndDistances2start, key=lambda item: item[1])[0][1]
         closest_targets_to_start = [c for (c, d) in targetsAndDistances2start if d == min_target_distance]
         closest_targets = closest_targets_to_start
@@ -508,8 +509,9 @@ class AtlasTargets(TargetSelector):
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
-        if not targetsAndDistances2db:
-            return None
+        assert  targetsAndDistances2db
+        # if not targetsAndDistances2db:
+        #     return None
 
         min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
         closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
