@@ -518,6 +518,7 @@ class NavigationAtlas(Navigation):
 
         # SelfHealing, Naive, NoRelay, Recovery
         relay_algorithm = globals()[str(relaySettings["relayAlg"])]
+
         self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy, settings=relaySettings)
 
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
@@ -584,7 +585,8 @@ class NavigationAtlas(Navigation):
 
         dotbot                  = self.dotbotsview[dotBotId]               # shorthand
         centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in #TODO: change var name
-        target                  = dotbot['target']                         # set target as las allocated target until updated
+        target                  = dotbot['target']       # set target as las allocated target until updated
+        path2target             = None
 
         self.mapBuilder.numDotBots   = self.numDotBots
         self.mapBuilder.numRelayBots = len(self.positionedRelays)
@@ -672,6 +674,7 @@ class NavigationAtlas(Navigation):
             if path2target:
                 break
 
+        assert path2target
         #Find headings and time to reach next step, for every step in path2target
         # FIXME: the heading calculation process should be a seperate function that is only called here
         pathHeadings=[]

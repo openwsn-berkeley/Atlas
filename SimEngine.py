@@ -32,6 +32,7 @@ class SimEngine(threading.Thread):
         
         # local variables
         self._currentTime         = 0    # what time is it for the DotBots
+        self.last_ts              = 0
         self._mode                = self.MODE_PAUSE
         self._startTsSim          = None
         self._startTsReal         = None
@@ -64,7 +65,11 @@ class SimEngine(threading.Thread):
             # handle next event
             (ts,cb,tag) = self.events.pop(0)
 
-            assert self._currentTime<=ts
+            if ts != self._currentTime:
+                self.last_ts = time.time()
+            if self.last_ts - time.time() > 300:
+                print(self.last_ts, time.time())
+                assert  ts != self._currentTime
             self._currentTime = ts
 
             if tag == 'selfDestruct':

@@ -449,7 +449,8 @@ class AtlasTargets(TargetSelector):
         Allocates a target to a dotBot based on distance to robot and distance to starting point.
         '''
 
-        alloc_target = None
+        alloc_target   = None
+        alloc_frontier = None
 
         while not alloc_target:
 
@@ -457,13 +458,19 @@ class AtlasTargets(TargetSelector):
 
             self.updateFrontierBoundary(dotbot_position)
 
-            if not self.frontier_cells and dotbot_position != (self.ix,self.iy):
+            if not self.frontier_cells:
                 return
+
+            assert self.frontier_cells
+
             closest_frontiers_to_start = self.findDistanceToStart(dotbot_position, self.frontier_cells)
+
             if closest_frontiers_to_start:
                 alloc_frontier = self.findClosestTargetsToRobot(dotbot_position, closest_frontiers_to_start)
             else:
                 alloc_frontier = self.findClosestTargetsToRobot(dotbot_position, self.frontier_cells)
+
+            assert alloc_frontier
 
             alloc_target = alloc_frontier.position(_local=False)
 
@@ -563,7 +570,10 @@ class Naive(RelayPlanner):
     def assignRelay(self, robots_data):
         NUM_CELLS_PER_RELAY = 400   #(20x20m)^2 if we assume 20m the max range of acceptable communication
         num_cells_explored = len(self.map.explored) + len(self.map.obstacles)
-        if (self.last_num_explored_cells - num_cells_explored) >= NUM_CELLS_PER_RELAY:
+        last_num_cells_explored = self.last_num_explored_cells
+
+        if (num_cells_explored - last_num_cells_explored) >= NUM_CELLS_PER_RELAY:
+            self.last_num_explored_cells = num_cells_explored
             relay = random.choice(robots_data)
             self.assigned_relays.add(relay["ID"])
             return relay["ID"]
@@ -605,13 +615,15 @@ class SelfHealing(RelayPlanner):
 
         if not lost_bot:
             return []
+        assert lost_bot
 
-        relay = random.choice([r for r in robots_data if (r != lost_bot and r["ID"] not in self.assigned_relays)])
+        available_relays = [r for r in robots_data if (r != lost_bot and r["ID"] not in self.assigned_relays)]
+        assert available_relays
+        relay = random.choice(available_relays)
         self.assigned_relays.add(relay["ID"])
 
         if self.next_relay_chain_positions:
             return relay["ID"]
-
 
         start_to_lostBot_distance         = [(u.distance((lost_bot['x'], lost_bot['y']), (self.ix, self.iy)), (self.ix, self.iy))]
         if self.relay_positions:
@@ -660,7 +672,7 @@ class SelfHealing(RelayPlanner):
         open_cells = [cell]
         closed_cells = []
 
-        for c in open_cells:
+        for idx, c in enumerate(open_cells):
             open_cells.pop(0)
             for n in self.map.neighbors(self.map.cell(*c.position(_local=False), local=False), explored_ok=True):
                 if n.explored is True and n.obstacle is False:
@@ -669,6 +681,7 @@ class SelfHealing(RelayPlanner):
                 elif n not in closed_cells and n not in open_cells:
                     open_cells.append(n)
             closed_cells.append(c)
+            assert idx < len(self.map.explored)
 
         return None
 
