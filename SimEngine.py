@@ -65,11 +65,6 @@ class SimEngine(threading.Thread):
             # handle next event
             (ts,cb,tag) = self.events.pop(0)
 
-            if ts != self._currentTime:
-                self.last_ts = time.time()
-            if self.last_ts - time.time() > 300:
-                print(self.last_ts, time.time())
-                assert  ts != self._currentTime
             self._currentTime = ts
 
             if tag == 'selfDestruct':

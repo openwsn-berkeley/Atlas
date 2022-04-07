@@ -654,6 +654,7 @@ class NavigationAtlas(Navigation):
                     path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
                 target = self.target_selector.allocateTarget(centreCellcentre)
+                assert target
                 if not target:
                     dotbot['ID']     = dotBotId
                     dotbot['target'] = centreCellcentre
@@ -714,6 +715,7 @@ class NavigationAtlas(Navigation):
 
     def scheduleCheckForRelays(self):
         self._getRelayBots(self.dotbotsview)
+        assert len(self.relayBots) < len(self.dotbotsview)
 
         self.simEngine.schedule(self.simEngine.currentTime()+10, self.scheduleCheckForRelays) # TODO: change 1 to variable
 
@@ -801,7 +803,9 @@ class Orchestrator(Wireless.WirelessDevice):
         self.pdrProfile     = []
         self.timeline       = []
         self.relayProfile   = []
-        self.numCells = []
+        self.numCells       = []
+        self.last_cmd_tx_time = 0
+        self.last_cmd_tx_real_time = time.time()
     
     #======================== public ==========================================
 
@@ -821,7 +825,8 @@ class Orchestrator(Wireless.WirelessDevice):
     #=== communication
 
     def _downstreamTimeoutCb(self):
-        
+        if self.simEngine.currentTime() > 0:
+            assert (self.simEngine.currentTime()-self.last_cmd_tx_time) == 1
         # send downstream command
         self._sendDownstreamCommands()
 
@@ -833,6 +838,9 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
+
+        self.last_cmd_tx_real_time = time.time()
+        self.last_cmd_tx_time = self.simEngine.currentTime()
 
     def _sendDownstreamCommands(self):
         '''

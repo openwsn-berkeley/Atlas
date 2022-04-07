@@ -618,6 +618,7 @@ class SelfHealing(RelayPlanner):
         assert lost_bot
 
         available_relays = [r for r in robots_data if (r != lost_bot and r["ID"] not in self.assigned_relays)]
+
         assert available_relays
         relay = random.choice(available_relays)
         self.assigned_relays.add(relay["ID"])
