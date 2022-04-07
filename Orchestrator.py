@@ -654,8 +654,9 @@ class NavigationAtlas(Navigation):
                     path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
                 target = self.target_selector.allocateTarget(centreCellcentre)
-                assert target
+
                 if not target:
+                    print("NO TARGET!")
                     dotbot['ID']     = dotBotId
                     dotbot['target'] = centreCellcentre
                     dotbot['timer']  = None
