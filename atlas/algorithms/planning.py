@@ -457,8 +457,9 @@ class AtlasTargets(TargetSelector):
             # end of mission if no frontier cells left
 
             self.updateFrontierBoundary(dotbot_position)
-            assert self.frontier_cells
+
             if not self.frontier_cells:
+                print("NO FRONTIERS!")
                 return
 
             closest_frontiers_to_start = self.findDistanceToStart(dotbot_position, self.frontier_cells)
