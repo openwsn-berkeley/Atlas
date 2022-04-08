@@ -784,7 +784,7 @@ class Orchestrator(Wireless.WirelessDevice):
     COMM_DOWNSTREAM_PERIOD_S   = 1
     # WirelessConcurrentTransmission or WirelessBase
     def __init__(self, numDotBots, initialPosition, navAlgorithm, relaySettings, config_ID, wireless=Wireless.WirelessConcurrentTransmission):
-
+        # TODO: change initial position to orchestrator position and turn initial positions into array
         # store params
         self.numDotBots        = numDotBots
         self.initialPosition   = initialPosition

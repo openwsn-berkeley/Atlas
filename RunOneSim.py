@@ -97,7 +97,7 @@ def runSim(simSetting, simUI):
 #========================= MAIN ==========================================
 
 def main(simSetting, simUI):
-
+    kpis = None
     # logging
     log = logging.getLogger('RunSim')
 
@@ -129,14 +129,18 @@ def main(simSetting, simUI):
     print("starting simulation")
     try:
         kpis = runSim(simSetting, simUI)
+    except:
+        pass
+
+    if kpis:
         logger.log({"type": "completion notification"})
         time.sleep(10)
         time_to_full_mapping = kpis['timeToFullMapping']
         log.info(
             f"    run {config_id} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
-    except:
+    else:
         log.info(
-            f"    run {config_id} failed after {time_to_full_mapping}s at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
+            f"    run {config_id} failed at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
         logger.log({"type": "non-completion notification"})
         time.sleep(10)
 
