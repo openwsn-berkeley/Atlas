@@ -24,6 +24,8 @@ from typing import Optional, Tuple, List, Any
 
 from atlas.datastructures import PriorityQueue
 
+import SimEngine
+
 
 '''
 NOTES:
@@ -443,7 +445,6 @@ class AtlasTargets(TargetSelector):
 
         self.not_frontiers = set()
 
-
     def allocateTarget(self, dotbot_position):
         '''
         Allocates a target to a dotBot based on distance to robot and distance to starting point.
@@ -493,6 +494,9 @@ class AtlasTargets(TargetSelector):
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
+
+        if not targetsAndDistances2start:
+            print("targets are", targets, "dotbot position is", dotbot_position)
         assert targetsAndDistances2start
         # if not targetsAndDistances2start:
         #     return  None
@@ -624,7 +628,8 @@ class SelfHealing(RelayPlanner):
 
         assert available_relays
         relay = random.choice(available_relays)
-        self.assigned_relays.add(relay["ID"])
+        if relay["ID"] not in self.assigned_relays:
+            self.assigned_relays.add(relay["ID"])
 
         if self.next_relay_chain_positions:
             return relay["ID"]

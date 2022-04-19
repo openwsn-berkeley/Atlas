@@ -874,9 +874,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _collectData(self):
 
-        self.timeseries_kpis['numCells']= len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
+        self.timeseries_kpis['numCells']      = len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
         self.timeseries_kpis['pdrProfile']    = self.wireless.getPdr()
         self.timeseries_kpis['time']          = self.simEngine.currentTime()
+        self.timeseries_kpis['realTime']      = time.time()
 
         self.logger.log(self.timeseries_kpis)
 

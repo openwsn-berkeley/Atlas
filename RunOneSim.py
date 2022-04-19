@@ -33,7 +33,7 @@ def runSim(simSetting, simUI):
     '''
 
     random.seed(simSetting['seed'])
-    #random.seed(4)
+
     # ======================== setup
     print("simulation started")
     # create the SimEngine
@@ -92,7 +92,7 @@ def runSim(simSetting, simUI):
             'relaySettings': simSetting['relaySettings'], 'navAlgorithm': simSetting['navAlgorithm'],
             'mappingProfile': orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
             'pdrProfile': orchestrator.timeseries_kpis['pdrProfile'],
-            'timeline': orchestrator.timeseries_kpis['time']}
+            'timeline': orchestrator.timeseries_kpis['time'], 'completion': simEngine.simComplete}
 
 #========================= MAIN ==========================================
 
@@ -132,8 +132,8 @@ def main(simSetting, simUI):
     except:
         pass
 
-    if kpis:
-        logger.log({"type": "completion notification"})
+    if kpis['completion'] is True:
+        logger.log({"type": "completion status", "mapCompletion": True})
         time.sleep(10)
         time_to_full_mapping = kpis['timeToFullMapping']
         log.info(
@@ -141,7 +141,7 @@ def main(simSetting, simUI):
     else:
         log.info(
             f"    run {config_id} failed at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
-        logger.log({"type": "non-completion notification"})
+        logger.log({"type": "completion status", "mapCompletion": False})
         time.sleep(10)
 
 

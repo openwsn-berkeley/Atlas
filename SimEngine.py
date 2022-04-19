@@ -41,7 +41,9 @@ class SimEngine(threading.Thread):
         self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
+        self.simComplete          = False
         self.semIsRunning.acquire()
+
 
         # start thread
         threading.Thread.__init__(self)
@@ -117,6 +119,7 @@ class SimEngine(threading.Thread):
 
 
     def completeRun(self):
+        self.simComplete = True
         self.schedule(self._currentTime,None,tag='selfDestruct')
     
     #=== helper functions
