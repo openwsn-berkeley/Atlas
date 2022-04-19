@@ -461,7 +461,7 @@ class AtlasTargets(TargetSelector):
             self.updateFrontierBoundary(dotbot_position)
 
             if not self.frontier_cells:
-                self.simEngine.schedule(self.simEngine.currentTime()+120,self.simEngine.simComplete)
+                self.simEngine.schedule(self.simEngine.currentTime()+120,self.simEngine.completeRun)
                 print("NO FRONTIERS!")
                 return
 
