@@ -444,6 +444,7 @@ class AtlasTargets(TargetSelector):
         self.frontier_cells = [] # all frontier boundary cells
 
         self.not_frontiers = set()
+        self.simEngine     = SimEngine.SimEngine()
 
     def allocateTarget(self, dotbot_position):
         '''
@@ -460,6 +461,7 @@ class AtlasTargets(TargetSelector):
             self.updateFrontierBoundary(dotbot_position)
 
             if not self.frontier_cells:
+                self.simEngine.schedule(self.simEngine.currentTime()+120,self.simEngine.simComplete)
                 print("NO FRONTIERS!")
                 return
 

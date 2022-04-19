@@ -91,7 +91,7 @@ class MapBuilder(object):
 
         # stop the simulation run if mapping has completed
         if self.discoMap['complete']:
-            self.simEngine.completeRun()
+            self.simEngine.completeRun(complete=True)
 
     def get_explored(self, exploredCells):
         self.exploredCells = exploredCells
