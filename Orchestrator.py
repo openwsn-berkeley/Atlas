@@ -648,9 +648,17 @@ class NavigationAtlas(Navigation):
                     self.positionedRelays.add(dotbot["ID"])
                     path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
-                if target not in self.map.explored and target not in self.map.obstacles:
-                    pass
                 target = self.target_selector.allocateTarget(centreCellcentre)
+
+                if not target:
+                    print("NO TARGET!")
+                    dotbot['ID']     = dotBotId
+                    dotbot['target'] = centreCellcentre
+                    dotbot['timer']  = None
+                    dotbot['speed']  = 1
+                    dotbot['seqNumMovement'] += 1
+
+                    return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
                 if self.end:
                     return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
@@ -659,7 +667,6 @@ class NavigationAtlas(Navigation):
                     path2target = [target]
                 else:
                     path2target = self.path_planner.computePath(centreCellcentre, target)
-
             if path2target:
                 break
 
