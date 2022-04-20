@@ -591,12 +591,6 @@ class NavigationAtlas(Navigation):
         self.mapBuilder.numDotBots   = self.numDotBots
         self.mapBuilder.numRelayBots = len(self.positionedRelays)
 
-        if centreCellcentre in self.allTargets:
-            try:
-                self.allTargets.remove(target)
-            except ValueError:
-                pass
-
         while True:
             # keep going towards same target if target hasn't been explored yet
             # FIXME
@@ -631,7 +625,7 @@ class NavigationAtlas(Navigation):
                     dotbot['speed'] = -1
                     dotbot['seqNumMovement'] += 1
 
-                    if centreCellcentre not in self.positionedRelays:
+                    if centreCellcentre not in self.relayPositions:
                         relay_kpis["relayID"]       = dotbot['ID']
                         relay_kpis["relayPosition"] = centreCellcentre
                         relay_kpis["placementTime"] = self.simEngine.currentTime()
@@ -644,26 +638,14 @@ class NavigationAtlas(Navigation):
                 path2target = self.path_planner.computePath(centreCellcentre, target)
 
             elif dotbot["ID"] in self.relayBots and dotbot["ID"] not in self.positionedRelays:
+                self.target_selector.frontier_cells.append(self.map.cell(*target, local=False))
                 target = self._getRelayPosition(dotbot)
-                if not target:
-                    self.relayBots.discard(dotbot["ID"])
-                    target = dotbot['target']
-                    continue
-                else:
-                    self.positionedRelays.add(dotbot["ID"])
-                    path2target = self.path_planner.computePath(centreCellcentre, target)
+                self.positionedRelays.add(dotbot["ID"])
+                path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
+                if target not in self.map.explored and target not in self.map.obstacles:
+                    pass
                 target = self.target_selector.allocateTarget(centreCellcentre)
-
-                if not target:
-                    print("NO TARGET!")
-                    dotbot['ID']     = dotBotId
-                    dotbot['target'] = centreCellcentre
-                    dotbot['timer']  = None
-                    dotbot['speed']  = 1
-                    dotbot['seqNumMovement'] += 1
-
-                    return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
 
                 if self.end:
                     return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
