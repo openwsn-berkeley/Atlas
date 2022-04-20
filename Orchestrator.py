@@ -640,8 +640,13 @@ class NavigationAtlas(Navigation):
             elif dotbot["ID"] in self.relayBots and dotbot["ID"] not in self.positionedRelays:
                 self.target_selector.frontier_cells.append(self.map.cell(*target, local=False))
                 target = self._getRelayPosition(dotbot)
-                self.positionedRelays.add(dotbot["ID"])
-                path2target = self.path_planner.computePath(centreCellcentre, target)
+                if not target:
+                    self.relayBots.discard(dotbot["ID"])
+                    target = dotbot['target']
+                    continue
+                else:
+                    self.positionedRelays.add(dotbot["ID"])
+                    path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
                 if target not in self.map.explored and target not in self.map.obstacles:
                     pass
