@@ -820,8 +820,7 @@ class Orchestrator(Wireless.WirelessDevice):
     #=== communication
 
     def _downstreamTimeoutCb(self):
-        if self.simEngine.currentTime() > 0:
-            assert (self.simEngine.currentTime()-self.last_cmd_tx_time) == 1
+
         # send downstream command
         self._sendDownstreamCommands()
 
@@ -871,6 +870,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.timeseries_kpis['numCells']      = len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
         self.timeseries_kpis['pdrProfile']    = self.wireless.getPdr()
         self.timeseries_kpis['time']          = self.simEngine.currentTime()
+        #TODO: add assert here for if sim engine is just stuck
         self.timeseries_kpis['realTime']      = time.time()
 
         self.logger.log(self.timeseries_kpis)
