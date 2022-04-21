@@ -22,6 +22,7 @@ import json
 import Logging
 import random
 import ast
+import traceback
 
 from atlas.config import AtlasConfig
 
@@ -81,18 +82,22 @@ def runSim(simSetting, simUI):
     # start a simulaion (blocks until done)
     timeToFullMapping = simEngine.runToCompletion(orchestrator.startExploration)
 
+
+
     # ======================== teardown
 
     # destroy singletons
     simEngine.destroy()
     wireless.destroy()
 
-    return {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
+    kpis = {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
             'timeToFullMapping': timeToFullMapping,
             'relaySettings': simSetting['relaySettings'], 'navAlgorithm': simSetting['navAlgorithm'],
             'mappingProfile': orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
             'pdrProfile': orchestrator.timeseries_kpis['pdrProfile'],
-            'timeline': orchestrator.timeseries_kpis['time'], 'completion': simEngine.simComplete}
+            'timeline': orchestrator.timeseries_kpis['time'], 'completion': simEngine.simComplete, }
+
+    return kpis
 
 #========================= MAIN ==========================================
 
@@ -129,8 +134,11 @@ def main(simSetting, simUI):
     print("starting simulation")
     try:
         kpis = runSim(simSetting, simUI)
-    except:
-        pass
+    except Exception as e:
+        print("FAIL")
+        tb = traceback.print_exc()
+        error_message = {"type": "ErrorMessage", "Error": e, "tb": tb}
+        logger.log(error_message)
 
     if kpis['completion'] is True:
         logger.log({"type": "completion status", "mapCompletion": True})

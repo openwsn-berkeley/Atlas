@@ -89,8 +89,6 @@ class DotBot(Wireless.WirelessDevice):
             self.relay = True
             return
 
-
-
         # if I get here I have received a NEW movement
 
         # cancel notification retransmission

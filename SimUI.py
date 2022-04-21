@@ -35,6 +35,7 @@ class SimUI(object):
         self.websrv.route('/play',                    'POST',   self._webhandle_play_POST)
         self.websrv.route('/fastforward',             'POST',   self._webhandle_fastforward_POST)
         self.websrv.route('/pause',                   'POST',   self._webhandle_pause_POST)
+        self.websrv.route('/threads',                  'GET',   self._webhandle_threads_GET)
         webthread = threading.Thread(
             target = self._bottle_try_running_forever,
             args   = (self.websrv.run,),
@@ -79,7 +80,11 @@ class SimUI(object):
         except AttributeError:
             returnVal = ''
         return returnVal
-    
+
+    def _webhandle_threads_GET(self):
+
+        return "Hello World!"
+
     def _webhandle_dotbots_GET(self):
         simulatedTime = self.simEngine.currentTime()
         
