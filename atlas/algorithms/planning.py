@@ -480,7 +480,7 @@ class AtlasTargets(TargetSelector):
 
             alloc_target = alloc_frontier.position(_local=False)
 
-        self.frontier_cells.remove(alloc_frontier)
+        #self.frontier_cells.remove(alloc_frontier)
 
         return alloc_target
 
@@ -522,7 +522,7 @@ class AtlasTargets(TargetSelector):
         assert targetsAndDistances2db
         min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
         closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
-        closest_target = closest_targets_to_dotbot[0]
+        closest_target = random.choice(closest_targets_to_dotbot)
 
         return closest_target
 

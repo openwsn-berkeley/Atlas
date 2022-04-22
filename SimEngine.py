@@ -97,6 +97,7 @@ class SimEngine(threading.Thread):
             message = {"type": "Simulation Completion", "Success": True}
         finally:
             self.logger.log(message)
+            time.sleep(10)
 
     #======================== public ==========================================
     

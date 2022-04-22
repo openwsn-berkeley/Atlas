@@ -229,10 +229,6 @@ class MapBuilder(object):
 
     def _isMapComplete(self):
 
-        #print(self.numDotBots, self.numRelayBots)
-        # if (self.numRelayBots >= self.numDotBots) and self.numRelayBots > 0:
-        #     return True
-
         while True: # "loop" only once
 
             # map is not complete if mapping hasn't started
@@ -560,27 +556,17 @@ class NavigationAtlas(Navigation):
         '''
 
         dotbot                  = self.dotbotsview[dotBotId]               # shorthand
-        centreCellcentre        = self._xy2hCell(dotbot['x'],dotbot['y'])  # centre point of cell dotbot is in #TODO: change var name
-        target                  = dotbot['target']       # set target as las allocated target until updated
+        dotbot_position         = self._xy2hCell(dotbot['x'],dotbot['y'])
+        target                  = dotbot['target']       # set target as last allocated target until updated
         path2target             = None
-
-        self.mapBuilder.numDotBots   = self.numDotBots
-        self.mapBuilder.numRelayBots = len(self.positionedRelays)
-
-        # if target in self.map.explored or target in self.map.obstacles or target in self.map.unreachable:
-        #     try:
-        #         self.target_selector.frontier_cells.remove(self.map.cell(*target, local=False))
-        #     except:
-        #         pass
 
         while True:
             # keep going towards same target if target hasn't been explored yet
-            # FIXME
-            neighbours = self.map.neighbors(self.map.cell(*centreCellcentre, local=False))
+            neighbours = self.map.neighbors(self.map.cell(*dotbot_position, local=False))
 
             random.shuffle(neighbours)
 
-            if centreCellcentre in self.path_planner.map.obstacles:
+            if dotbot_position in self.path_planner.map.obstacles:
                 for cell in neighbours:
                     if not cell.obstacle and cell.explored:
                         path2target = [cell.position(_local=False)]
@@ -592,7 +578,7 @@ class NavigationAtlas(Navigation):
                 target not in self.map.obstacles       and
                 target not in self.map.unreachable)     or
                (dotbot['ID'] in self.positionedRelays) and
-                dotbot['speed'] != -1):
+                dotbot['ID'] not in self.readyRelays):
 
                 # TODO: this should read like plain English
                 # TODO: relay status should be a dotbot attribute (e.g. dotbot.relay_status() -> Enum: None, Unpositioned, Positioned, Ready)
@@ -600,62 +586,72 @@ class NavigationAtlas(Navigation):
                 # TODO: cell object (i.e. target) should also probably be an object that you can check status of
                 #       e.g. target.open and target.obstacle are valid --> target = self.cell(*coordinates)
 
-                if centreCellcentre == target and dotbot['ID'] in self.positionedRelays:
+                if dotbot_position == target and dotbot['ID'] in self.positionedRelays:
                     # NOTE: Relay DotBot has reached its target and we make it a ready relay
                     relay_kpis = {"type": "relay kpis", "relayID": None, "relayPosition": None, "placementTime": None}
 
-                    dotbot['speed'] = -1
-                    dotbot['seqNumMovement'] += 1
+                    if dotbot["ID"] in self.readyRelays:
+                        return
 
-                    if centreCellcentre not in self.relayPositions:
-                        relay_kpis["relayID"]       = dotbot['ID']
-                        relay_kpis["relayPosition"] = centreCellcentre
-                        relay_kpis["placementTime"] = self.simEngine.currentTime()
-                        self.logger.log(relay_kpis)
-                        self.readyRelays.add(dotbot['ID'])
-                        self.relayPositions.append(centreCellcentre)
-
-                    return
-
-                path2target = self.path_planner.computePath(centreCellcentre, target)
+                    relay_kpis["relayID"]       = dotbot['ID']
+                    relay_kpis["relayPosition"] = dotbot_position
+                    relay_kpis["placementTime"] = self.simEngine.currentTime()
+                    self.logger.log(relay_kpis)
+                    self.readyRelays.add(dotbot['ID'])
+                    self.relayPositions.append(dotbot_position)
 
             elif dotbot["ID"] in self.relayBots and dotbot["ID"] not in self.positionedRelays:
-                self.target_selector.frontier_cells.append(self.map.cell(*target, local=False))
                 target = self._getRelayPosition(dotbot)
-                if not target:
+                if target:
+                    self.positionedRelays.add(dotbot["ID"])
+                else:
                     self.relayBots.discard(dotbot["ID"])
                     target = dotbot['target']
-                    continue
-                else:
-                    self.positionedRelays.add(dotbot["ID"])
-                    path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
+                try:
+                    self.target_selector.frontier_cells.remove(self.map.cell(*target, local=False))
+                except:
+                    pass
 
-                target = self.target_selector.allocateTarget(centreCellcentre)
+                target = self.target_selector.allocateTarget(dotbot_position)
 
-                if not target:
-                    dotbot['ID']     = dotBotId
-                    dotbot['target'] = centreCellcentre
-                    dotbot['timer']  = None
-                    dotbot['speed']  = 1
-                    dotbot['seqNumMovement'] += 1
+                if not self.target_selector.frontier_cells:
+                    return
 
-                    return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
+            if not target:
+                continue
+            # find path to target
+            if self.initialPositions:
+                path2target = [target]
+            else:
+                path2target = self.path_planner.computePath(dotbot_position, target)
 
-                if self.end:
-                    return # TODO: define expected behavior, better to break than just randomly return, prone to bugs
-
-                if self.initialPositions:
-                    path2target = [target]
-                else:
-                    path2target = self.path_planner.computePath(centreCellcentre, target)
             if path2target:
                 break
 
-        assert path2target
-        #Find headings and time to reach next step, for every step in path2target
-        # FIXME: the heading calculation process should be a seperate function that is only called here
-        pathHeadings=[]
+        # find headings and time to reach next step, for every step in path2target
+        (pathHeadings, timeTillStop) = self.calculateHeadingAndMovingDuration(path2target, dotbot)
+
+        # set speed
+        if dotbot["ID"] in self.readyRelays:
+            dotbot_speed = -1
+        else:
+            dotbot_speed = 1
+
+        # store new movement
+        dotbot['ID']              = dotBotId
+        dotbot['target']          = target
+        dotbot['heading']         = pathHeadings[0][0]
+        dotbot['timer']           = timeTillStop
+        dotbot['previousPath']    = [dotbot_position, path2target]
+        dotbot['speed']           = dotbot_speed
+        dotbot['seqNumMovement'] += 1
+        dotbot['heartbeat']       = self.heartbeat
+        dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
+
+    def calculateHeadingAndMovingDuration(self, path2target, dotbot):
+
+        pathHeadings = []
 
         for (idx,nextCell) in enumerate(path2target):
             if idx == 0:
@@ -679,22 +675,13 @@ class NavigationAtlas(Navigation):
             else:
                 break
 
-        # store new movement
-        dotbot['ID']              = dotBotId
-        dotbot['target']          = target
-        dotbot['heading']         = pathHeadings[0][0]
-        dotbot['timer']           = timeTillStop
-        dotbot['previousPath']    = [centreCellcentre, path2target]
-        dotbot['speed']           = 1
-        dotbot['seqNumMovement'] += 1
-        dotbot['heartbeat']       = self.heartbeat
-        dotbot['pdrHistory']      += [(self.heartbeat,(dotbot['x'],dotbot['y']))]
+        return pathHeadings, timeTillStop
 
     def scheduleCheckForRelays(self):
         self._getRelayBots(self.dotbotsview)
         assert len(self.relayBots) < len(self.dotbotsview)
 
-        self.simEngine.schedule(self.simEngine.currentTime()+10, self.scheduleCheckForRelays) # TODO: change 1 to variable
+        self.simEngine.schedule(self.simEngine.currentTime()+10, self.scheduleCheckForRelays) # TODO: change 10 to variable
 
     def _getRelayBots(self, robots_data):
         new_relays = self.relay_planner.assignRelay(robots_data)
