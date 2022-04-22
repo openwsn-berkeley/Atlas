@@ -554,30 +554,6 @@ class NavigationAtlas(Navigation):
             self.map.add_obstacle(x, y)
             self.map.unexplore_cell(x, y)
 
-    def _buildHeatmap(self, cells):
-        '''
-        builds array with tuples representing (cell position, number of times traversed)
-        '''
-
-        # if traversed cell is already in heatmap array just increase number of times cell has been traversed
-        # otherwise, add cell to heatmap array then increase number of times cell has been traversed.
-
-        for cell in cells:
-
-            if cell in [h[0] for h in self.heatmap] :
-
-                maxTimesCellTraversed = [h[1] for h in self.heatmap
-                 if (h[0] == cell)]
-                index = self.heatmap.index((cell, maxTimesCellTraversed[0]))
-                self.heatmap[index] = (cell, self.heatmap[index][1]+1)
-
-            else:
-                self.heatmap += [((cell[0], cell[1]), 0)]
-                maxTimesCellTraversed = [h[1] for h in self.heatmap
-                 if (h[0] == cell)]
-                index = self.heatmap.index((cell, maxTimesCellTraversed[0]))
-                self.heatmap[index] = (cell, self.heatmap[index][1]+1)
-
     def _updateMovement(self, dotBotId):
         '''
         \post modifies the movement directly in dotbotsview
@@ -590,6 +566,12 @@ class NavigationAtlas(Navigation):
 
         self.mapBuilder.numDotBots   = self.numDotBots
         self.mapBuilder.numRelayBots = len(self.positionedRelays)
+
+        # if target in self.map.explored or target in self.map.obstacles or target in self.map.unreachable:
+        #     try:
+        #         self.target_selector.frontier_cells.remove(self.map.cell(*target, local=False))
+        #     except:
+        #         pass
 
         while True:
             # keep going towards same target if target hasn't been explored yet
@@ -648,10 +630,10 @@ class NavigationAtlas(Navigation):
                     self.positionedRelays.add(dotbot["ID"])
                     path2target = self.path_planner.computePath(centreCellcentre, target)
             else:
+
                 target = self.target_selector.allocateTarget(centreCellcentre)
 
                 if not target:
-                    print("NO TARGET!")
                     dotbot['ID']     = dotBotId
                     dotbot['target'] = centreCellcentre
                     dotbot['timer']  = None
@@ -799,8 +781,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.timeline       = []
         self.relayProfile   = []
         self.numCells       = []
-        self.last_cmd_tx_time = 0
-        self.last_cmd_tx_real_time = time.time()
+        self.last_sim_time  = 0
+        self.last_real_time = time.time()
     
     #======================== public ==========================================
 
@@ -833,8 +815,6 @@ class Orchestrator(Wireless.WirelessDevice):
             self._downstreamTimeoutCb,
         )
 
-        self.last_cmd_tx_real_time = time.time()
-        self.last_cmd_tx_time = self.simEngine.currentTime()
 
     def _sendDownstreamCommands(self):
         '''
@@ -870,8 +850,9 @@ class Orchestrator(Wireless.WirelessDevice):
         self.timeseries_kpis['numCells']      = len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
         self.timeseries_kpis['pdrProfile']    = self.wireless.getPdr()
         self.timeseries_kpis['time']          = self.simEngine.currentTime()
-        #TODO: add assert here for if sim engine is just stuck
         self.timeseries_kpis['realTime']      = time.time()
+
+        #TODO: add assert here for if sim engine is just stuck
 
         self.logger.log(self.timeseries_kpis)
 
@@ -884,6 +865,15 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
+
+        if self.last_sim_time == self.simEngine.currentTime():
+            self.last_real_time = time.time()
+
+        if self.last_real_time - time.time() > 60:
+            raise TimeoutError
+
+        self.last_sim_time = self.simEngine.currentTime()
+
     
     #=== UI
     

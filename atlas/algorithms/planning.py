@@ -464,10 +464,9 @@ class AtlasTargets(TargetSelector):
             # end of mission if no frontier cells left
 
             self.updateFrontierBoundary(dotbot_position)
-
+            random.shuffle(self.frontier_cells)
             if not self.frontier_cells:
-                self.simEngine.schedule(self.simEngine.currentTime()+120,self.simEngine.completeRun)
-                print("NO FRONTIERS!")
+                #self.simEngine.schedule(self.simEngine.currentTime()+120,self.simEngine.completeRun)
                 return
 
             closest_frontiers_to_start = self.findDistanceToStart(dotbot_position, self.frontier_cells)
@@ -477,12 +476,9 @@ class AtlasTargets(TargetSelector):
             else:
                 alloc_frontier = self.findClosestTargetsToRobot(dotbot_position, self.frontier_cells)
 
-            try:
-                alloc_target = alloc_frontier.position(_local=False)
-            except Exception as e:
-                error_message = {"type": "ErrorMessage", "Error": e}
-                self.logger.log(error_message)
-                self.simEngine.completeRun()
+            assert alloc_frontier
+
+            alloc_target = alloc_frontier.position(_local=False)
 
         self.frontier_cells.remove(alloc_frontier)
 
@@ -497,7 +493,7 @@ class AtlasTargets(TargetSelector):
         '''
         take input and assign each cell and distance to start rank
         '''
-        closest_targets = []
+
         targetsAndDistances2start = []
 
         for t in targets:
@@ -505,14 +501,10 @@ class AtlasTargets(TargetSelector):
             if t_position != dotbot_position:
                 targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
 
-        try:
-            min_target_distance = sorted(targetsAndDistances2start, key=lambda item: item[1])[0][1]
-            closest_targets_to_start = [c for (c, d) in targetsAndDistances2start if d == min_target_distance]
-            closest_targets = closest_targets_to_start
-        except Exception as e:
-            error_message = {"type": "ErrorMessage", "Error": e}
-            self.logger.log(error_message)
-            self.simEngine.completeRun()
+        assert  targetsAndDistances2start
+        min_target_distance = sorted(targetsAndDistances2start, key=lambda item: item[1])[0][1]
+        closest_targets_to_start = [c for (c, d) in targetsAndDistances2start if d == min_target_distance]
+        closest_targets = closest_targets_to_start
 
         return closest_targets
 
@@ -521,21 +513,16 @@ class AtlasTargets(TargetSelector):
         find closest 5 targets to robot
         '''
         targetsAndDistances2db = []
-        closest_target         = None
 
         for t in targets:
             t_position = t.position(_local=False)
             if t_position != dotbot_position:
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
 
-        try:
-            min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
-            closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
-            closest_target = closest_targets_to_dotbot[0]
-        except Exception as e:
-            error_message = {"type": "ErrorMessage", "Error": e}
-            self.logger.log(error_message)
-            self.simEngine.completeRun()
+        assert targetsAndDistances2db
+        min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
+        closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
+        closest_target = closest_targets_to_dotbot[0]
 
         return closest_target
 
@@ -639,12 +626,8 @@ class SelfHealing(RelayPlanner):
         if not lost_bot:
             return []
 
-        try:
-            available_relays = [r for r in robots_data if (r != lost_bot and r["ID"] not in self.assigned_relays)]
-        except Exception as e:
-            error_message = {"type": "ErrorMessage", "Error": e}
-            self.logger.log(error_message)
-            self.simEngine.completeRun()
+        assert available_relays
+        available_relays = [r for r in robots_data if (r != lost_bot and r["ID"] not in self.assigned_relays)]
 
         relay = random.choice(available_relays)
         if relay["ID"] not in self.assigned_relays:

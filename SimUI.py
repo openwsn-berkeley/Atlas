@@ -83,7 +83,7 @@ class SimUI(object):
 
     def _webhandle_threads_GET(self):
 
-        return "Hello World!"
+        return ' '.join([t.name for t in threading.enumerate()])
 
     def _webhandle_dotbots_GET(self):
         simulatedTime = self.simEngine.currentTime()

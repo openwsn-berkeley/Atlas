@@ -132,25 +132,16 @@ def main(simSetting, simUI):
     logger.log(config_data)
     log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed}")
     print("starting simulation")
-    try:
-        kpis = runSim(simSetting, simUI)
-    except Exception as e:
-        print("FAIL")
-        tb = traceback.print_exc()
-        error_message = {"type": "ErrorMessage", "Error": e, "tb": tb}
-        logger.log(error_message)
+    kpis = runSim(simSetting, simUI)
 
+    #TODO: remove below, move to SimEngine
     if kpis['completion'] is True:
-        logger.log({"type": "completion status", "mapCompletion": True})
-        time.sleep(10)
         time_to_full_mapping = kpis['timeToFullMapping']
         log.info(
             f"    run {config_id} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
     else:
         log.info(
             f"    run {config_id} failed at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
-        logger.log({"type": "completion status", "mapCompletion": False})
-        time.sleep(10)
 
 
 if __name__ == '__main__':

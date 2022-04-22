@@ -4,6 +4,8 @@ import time
 import datetime
 # third-party
 # local
+import Logging
+import traceback
 
 class SimEngine(threading.Thread):
     '''
@@ -42,7 +44,9 @@ class SimEngine(threading.Thread):
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
         self.simComplete          = False
+        self.logger = Logging.PeriodicFileLogger()
         self.semIsRunning.acquire()
+
 
 
         # start thread
@@ -54,37 +58,45 @@ class SimEngine(threading.Thread):
     #======================== thread ==========================================
     
     def run(self):
-        
-        while True:
-            
-            # wait for simulator to be running
-            self.semIsRunning.acquire()
-            self.semIsRunning.release()
-            
-            # wait for at least one event
-            self.semNumEvents.acquire()
 
-            # handle next event
-            (ts,cb,tag) = self.events.pop(0)
+        try:
+            while True:
 
-            self._currentTime = ts
-
-            if tag == 'selfDestruct':
-                break
-
-            cb()
-
-            # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
-            if self._mode==self.MODE_FRAMEFORWARD:
-                self._mode=self.MODE_PAUSE
+                # wait for simulator to be running
                 self.semIsRunning.acquire()
-            
-            # wait if in MODE_PLAY
-            if self._mode==self.MODE_PLAY:
-                durSim  = self._currentTime-self._startTsSim
-                durReal = time.time()-self._startTsReal
-                if durReal*self._playSpeed<durSim:
-                    time.sleep( durSim - (durReal*self._playSpeed) )
+                self.semIsRunning.release()
+
+                # wait for at least one event
+                self.semNumEvents.acquire()
+
+                # handle next event
+                (ts,cb,tag) = self.events.pop(0)
+
+                self._currentTime = ts
+
+                if tag == 'selfDestruct':
+                    break
+
+                cb()
+
+                # switch to MODE_PAUSE if in MODE_FRAMEFORWARD
+                if self._mode==self.MODE_FRAMEFORWARD:
+                    self._mode=self.MODE_PAUSE
+                    self.semIsRunning.acquire()
+
+                # wait if in MODE_PLAY
+                if self._mode==self.MODE_PLAY:
+                    durSim  = self._currentTime-self._startTsSim
+                    durReal = time.time()-self._startTsReal
+                    if durReal*self._playSpeed<durSim:
+                        time.sleep( durSim - (durReal*self._playSpeed) )
+
+        except Exception as e:
+            message = {"type": "Simulation Completion", "Success": False, "Exception": traceback.format_exc().splitlines()}
+        else:
+            message = {"type": "Simulation Completion", "Success": True}
+        finally:
+            self.logger.log(message)
 
     #======================== public ==========================================
     
