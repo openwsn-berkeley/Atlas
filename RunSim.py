@@ -21,7 +21,7 @@ from atlas.config import AtlasConfig
 #============================ main ============================================
 
 
-def main(config, mode):
+def main(config, cleps):
     # ============================ defines =========================================
 
     SIMSETTINGS = []
@@ -70,23 +70,22 @@ def main(config, mode):
 
     # run a number of simulations
     for (runNum, simSetting) in enumerate(SIMSETTINGS):
-        if mode == "sequential processing":
-            RunOneSim.main(simSetting, simUI)
-        elif mode == "parallel processing":
+        if cleps:
             cmd = ["sbatch", "--partition=cpu_homogen", "../scripts/atlas_submit_RunOneSim.sbatch", str(simSetting)]
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            RunOneSim.main(simSetting, simUI)
 
 
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--config", type=str, default="default", help="Atlas configuration file name to use (must be TOML)")
-    parser.add_argument("--mode"  , type=str, default="sequential processing", help="sequential processing for single node or parallel processing for cluster")
+    parser.add_argument("--configfile", type=str, default="default", help="TOML configuration file")
+    parser.add_argument("--cleps"     , help="running on the Inria CLEPS cluster")
 
     args = parser.parse_args()
 
-    config = AtlasConfig(args.config)
-    mode   = args.mode
+    config = AtlasConfig(args.configfile)
 
-    main(config.atlas, mode)
+    main(config.atlas, args.cleps)

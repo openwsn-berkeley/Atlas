@@ -466,7 +466,6 @@ class AtlasTargets(TargetSelector):
             self.updateFrontierBoundary(dotbot_position)
             random.shuffle(self.frontier_cells)
             if not self.frontier_cells:
-                #self.simEngine.schedule(self.simEngine.currentTime()+120,self.simEngine.completeRun)
                 return
 
             closest_frontiers_to_start = self.findDistanceToStart(dotbot_position, self.frontier_cells)
@@ -480,12 +479,12 @@ class AtlasTargets(TargetSelector):
 
             alloc_target = alloc_frontier.position(_local=False)
 
-        #self.frontier_cells.remove(alloc_frontier)
-
         return alloc_target
 
     def updateFrontierBoundary(self, current_cell):
-        for cell in self.map.neighbors(self.map.cell(*current_cell, local=False), explored_ok=False):
+        neighbors = self.map.neighbors(self.map.cell(*current_cell, local=False), explored_ok=False)
+        random.shuffle(neighbors)
+        for cell in neighbors:
             if cell not in self.frontier_cells:
                 self.frontier_cells.append(cell)
 

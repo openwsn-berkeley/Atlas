@@ -30,5 +30,5 @@ class BaseConfig(dict):
 
 class AtlasConfig(BaseConfig):
     def __init__(self, config="default", base=None):
-        path = pkg_resources.resource_filename(__name__, f"resources/configs/{config}.toml")
-        super().__init__(path)
+        configpath = pkg_resources.resource_filename(__name__, f"resources/configs/{config}.toml")
+        super().__init__(configpath)

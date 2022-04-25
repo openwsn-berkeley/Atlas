@@ -1,15 +1,16 @@
 [atlas]
     ui = true
-    cleps = false
+    cleps = true
 
     [atlas.experiment]
-        runs = 1
+        runs = 50
+        configID    = "pp_full"
         description = "Running a default config experiment"
         [atlas.experiment.logging]
-            name = "default_log" # semantic prefix to date-time-hash format
+            name = "Atlas_log" # semantic prefix to date-time-hash format
 
     [atlas.wireless]
-        models = ["Base"]
+        models = ["ConcurrentTransmission"]
         [atlas.wireless.propagation]
             models = ["Pister"]
         [atlas.wireless.propagation.custom]
@@ -19,7 +20,7 @@
         [atlas.orchestrator.navigation]
             models = ["Atlas"]
             [atlas.orchestrator.navigation.relay]
-                algorithms = ["recovery"]
+                algorithms = ["Recovery", "SelfHealing", "Naive"]
             [atlas.orchestrator.navigation.path_planning]
                 algorithms = ["A*"] # ["Djikstras", "A*", "D*", "RRT"]
             [atlas.orchestrator.navigation.target_selector]
@@ -32,9 +33,8 @@
             min_pdr_threshold = [0.7]
             best_pdr_threshold = [0.8]
 
-
     [atlas.world]
-        floorplans = ["scattered_obstacles.txt"]
+        floorplans = ["small_empty.txt"]
         [atlas.world.robots]
-            counts = [5, 10, 20]
-            initial_positions = [[1, 1]]
+            counts = [10]
+            initial_positions = [[1,1]]
