@@ -3,8 +3,8 @@
     cleps = true
 
     [atlas.experiment]
-        runs = 50
-        configID    = "pp_full"
+        runs = 1
+        configID    = "default"
         description = "Running a default config experiment"
         [atlas.experiment.logging]
             name = "Atlas_log" # semantic prefix to date-time-hash format
@@ -20,7 +20,7 @@
         [atlas.orchestrator.navigation]
             models = ["Atlas"]
             [atlas.orchestrator.navigation.relay]
-                algorithms = ["Recovery", "SelfHealing", "Naive"]
+                algorithms = ["Recovery"]
             [atlas.orchestrator.navigation.path_planning]
                 algorithms = ["A*"] # ["Djikstras", "A*", "D*", "RRT"]
             [atlas.orchestrator.navigation.target_selector]
