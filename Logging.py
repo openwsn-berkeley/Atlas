@@ -2,11 +2,11 @@ import threading
 import time
 import json
 
-
 class PeriodicFileLogger(threading.Thread):
+    
     # singleton pattern
     _instance = None
-    _init = False
+    _init     = False
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -24,14 +24,14 @@ class PeriodicFileLogger(threading.Thread):
         self.filewriteperiod_s = filewriteperiod_s
 
         # local variables
-        self.writebuffer = []
-        self.filename = None
-        self.dataLock = threading.RLock()
+        self.writebuffer          = []
+        self.filename             = None
+        self.dataLock             = threading.RLock()
 
         # thread
         threading.Thread.__init__(self)
-        self.name = 'PeriodicFileLogger'
-        self.daemon = True
+        self.name                 = 'PeriodicFileLogger'
+        self.daemon               = True
         self.start()
 
     def run(self):
@@ -95,7 +95,6 @@ def main():
     periodicFileLogger.log({'msg': 23})
     periodicFileLogger.log({'msg': 24})
     time.sleep(3.100)
-
 
 if __name__ == "__main__":
     main()

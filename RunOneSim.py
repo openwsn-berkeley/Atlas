@@ -102,36 +102,33 @@ def runSim(simSetting, simUI):
 #========================= MAIN ==========================================
 
 def main(simSetting, simUI):
-    kpis = None
-    # logging
-    log = logging.getLogger('RunSim')
-
-    logger = Logging.PeriodicFileLogger()
-
-    # log
-    log.debug(f'simulation starting')
-
-    start_time = time.time()
-    base_dir = "./logs"
-    os.makedirs(base_dir, exist_ok=True)
-
+    
+    # setup logging
+    log            = logging.getLogger('RunOneSim')
+    logger         = Logging.PeriodicFileLogger()
+    log_dir        = "./logs"
+    os.makedirs(log_dir, exist_ok=True)
+    log_filename   = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime())}_{unique_id}.json'
+    logger.setFileName(os.path.join(log_dir, log_filename))
+    
+    # log start of simulation
+    log.info(f'simulation starting')
+    
+    if type(simUI) == str: # FIXME remove
+        simUI = eval(simUI)
+    
     if type(simSetting) == str:
         simSetting = ast.literal_eval(simSetting)
-    if type(simUI) == str:
-        simUI = eval(simUI)
-
+    
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
-    log_file = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime(start_time))}_{unique_id}.json'
 
     # log
-    config_data = simSetting
+    config_data         = simSetting
     config_data["type"] = "sim configuration"
     seed = simSetting["seed"]
-    logger.setFileName(os.path.join(base_dir, log_file))
     logger.log(config_data)
-    log.info(f"run {config_id} starting at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed}")
-    print("starting simulation")
+    
     kpis = runSim(simSetting, simUI)
 
     #TODO: remove below, move to SimEngine
