@@ -2,7 +2,10 @@ import threading
 import time
 import json
 
-class PeriodicFileLogger(threading.Thread):
+class AtlasLogger(threading.Thread):
+    '''
+    Singleton, write to file periodically.
+    '''
     
     # singleton pattern
     _instance = None
@@ -10,7 +13,7 @@ class PeriodicFileLogger(threading.Thread):
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(PeriodicFileLogger, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super(AtlasLogger, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self, filewriteperiod_s=10):
@@ -30,7 +33,7 @@ class PeriodicFileLogger(threading.Thread):
 
         # thread
         threading.Thread.__init__(self)
-        self.name                 = 'PeriodicFileLogger'
+        self.name                 = 'AtlasLogger'
         self.daemon               = True
         self.start()
 
@@ -75,25 +78,25 @@ class PeriodicFileLogger(threading.Thread):
 # ============================ main ============================================
 
 def main():
-    periodicFileLogger = PeriodicFileLogger(0.100)
+    atlasLogger = AtlasLogger(0.100)
     time.sleep(0.100)
-    periodicFileLogger.setFileName('log1.txt')
+    atlasLogger.setFileName('log1.txt')
     time.sleep(0.100)
-    periodicFileLogger.log({'msg': 11})
+    atlasLogger.log({'msg': 11})
     time.sleep(0.100)
-    periodicFileLogger.log({'msg': 12})
+    atlasLogger.log({'msg': 12})
     time.sleep(0.100)
-    periodicFileLogger.log({'msg': 13})
-    periodicFileLogger.log({'msg': 14})
+    atlasLogger.log({'msg': 13})
+    atlasLogger.log({'msg': 14})
     time.sleep(0.100)
-    periodicFileLogger.setFileName('log2.txt')
+    atlasLogger.setFileName('log2.txt')
     time.sleep(0.100)
-    periodicFileLogger.log({'msg': 21})
+    atlasLogger.log({'msg': 21})
     time.sleep(0.100)
-    periodicFileLogger.log({'msg': 22})
+    atlasLogger.log({'msg': 22})
     time.sleep(0.100)
-    periodicFileLogger.log({'msg': 23})
-    periodicFileLogger.log({'msg': 24})
+    atlasLogger.log({'msg': 23})
+    atlasLogger.log({'msg': 24})
     time.sleep(3.100)
 
 if __name__ == "__main__":
