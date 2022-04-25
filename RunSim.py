@@ -1,37 +1,27 @@
 # logging (do first)
-import os
-import argparse
-
-import pkg_resources
 import AtlasLogging
 import logging.config
 logging.config.dictConfig(AtlasLogging.LOGGING_CONFIG)
 
 # built-in
+import argparse
+import subprocess
+import pkg_resources
 # third-party
 # local
 import SimUI
-import time
-import random
-import subprocess, os, glob
 import RunOneSim
-
-from atlas.config import AtlasConfig
+from   atlas.config import AtlasConfig
 
 #============================ main ============================================
 
-
 def main(config, cleps):
-    # ============================ defines =========================================
-
-    SIMSETTINGS = []
-
-    nav_config   = config.orchestrator.navigation
+    
+    # create a list of settings, one per simulation run
+    simSettings  = []
+    nav_config   = config.orchestrator.navigation # shorthand
     seed_counter = 0
-
     for run in range(config.experiment.runs):
-        # TODO: SimSettings should handle lack of certain parameters given a different configuration and maintains parameter cross product functionality
-        # TODO: Have a validate configuration script that does an import dry run of all the configuration settings
         for idx, floorplan in enumerate(config.world.floorplans):
             for numrobot in config.world.robots.counts:
                 for init_pos in config.world.robots.initial_positions:
@@ -44,38 +34,37 @@ def main(config, cleps):
                                             for lower_threshold in config.relays.thresholds.min_pdr_threshold:
                                                 for upper_threshold in config.relays.thresholds.best_pdr_threshold:
                                                     seed_counter += 1
-                                                    SIMSETTINGS.append(
-                                                        {
-                                                            'seed': seed_counter,
-                                                            'config ID': config.experiment.configID ,
-                                                            'numDotBots': numrobot,
-                                                            'floorplanType': idx,
-                                                            'floorplanDrawing': pkg_resources.resource_string('atlas.resources.maps',
-                                                                                                           floorplan).decode('utf-8'),
-                                                            'initialPosition': tuple(init_pos),
-                                                            'navAlgorithm': nav,
-                                                            'pathPlanner': path_planner,
-                                                            'targetSelector': target_selector,
-                                                            'wirelessModel': wireless,
-                                                            'propagationModel': propagation,
-                                                            'relaySettings': {'relayAlg': relay,
-                                                                              'minPdrThreshold': lower_threshold,
-                                                                              'bestPdrThreshold': upper_threshold}
-                                                        },
-                                                    )
-
+                                                    simSettings  += [{
+                                                        'seed':                seed_counter,
+                                                        'config ID':           config.experiment.configID ,
+                                                        'numDotBots':          numrobot,
+                                                        'floorplanType':       idx,
+                                                        'floorplanDrawing':    pkg_resources.resource_string(
+                                                            'atlas.resources.maps',
+                                                            floorplan).decode('utf-8'),
+                                                        'initialPosition':     tuple(init_pos),
+                                                        'navAlgorithm':        nav,
+                                                        'pathPlanner':         path_planner,
+                                                        'targetSelector':      target_selector,
+                                                        'wirelessModel':       wireless,
+                                                        'propagationModel':    propagation,
+                                                        'relaySettings': {
+                                                            'relayAlg':             relay,
+                                                            'minPdrThreshold':      lower_threshold,
+                                                            'bestPdrThreshold':     upper_threshold,
+                                                        }
+                                                    }]
 
     # create the UI
     simUI          = SimUI.SimUI() if config.ui else None
 
-    # run a number of simulations
-    for (runNum, simSetting) in enumerate(SIMSETTINGS):
+    # run simulations, one run per simSetting
+    for (runNum, simSetting) in enumerate(simSettings):
         if cleps:
-            cmd = ["sbatch", "--partition=cpu_homogen", "../scripts/atlas_submit_RunOneSim.sbatch", str(simSetting)]
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cmd    = ["sbatch", "--partition=cpu_homogen", "../scripts/atlas_submit_RunOneSim.sbatch", str(simSetting)]
+            p      = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             RunOneSim.main(simSetting, simUI)
-
 
 if __name__=='__main__':
 
