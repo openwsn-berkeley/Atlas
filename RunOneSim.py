@@ -19,7 +19,7 @@ import SimEngine
 import SimUI
 import time
 import json
-import Logging
+import AtlasLogger
 import random
 import ast
 import traceback
@@ -105,11 +105,11 @@ def main(simSetting, simUI):
     
     # setup logging
     log            = logging.getLogger('RunOneSim')
-    logger         = Logging.PeriodicFileLogger()
+    atlasLogger    = AtlasLogger.AtlasLogger()
     log_dir        = "./logs"
     os.makedirs(log_dir, exist_ok=True)
     log_filename   = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime())}_{unique_id}.json'
-    logger.setFileName(os.path.join(log_dir, log_filename))
+    atlasLogger.setFileName(os.path.join(log_dir, log_filename))
     
     # log start of simulation
     log.info(f'simulation starting')
@@ -127,7 +127,7 @@ def main(simSetting, simUI):
     config_data         = simSetting
     config_data["type"] = "sim configuration"
     seed = simSetting["seed"]
-    logger.log(config_data)
+    atlasLogger.log(config_data)
     
     kpis = runSim(simSetting, simUI)
 

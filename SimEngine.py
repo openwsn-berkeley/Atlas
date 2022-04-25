@@ -4,7 +4,7 @@ import time
 import datetime
 # third-party
 # local
-import Logging
+import AtlasLogger
 import traceback
 
 class SimEngine(threading.Thread):
@@ -44,7 +44,7 @@ class SimEngine(threading.Thread):
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
         self.simComplete          = False
-        self.logger = Logging.PeriodicFileLogger()
+        self.atlasLogger          = AtlasLogger.AtlasLogger()
         self.semIsRunning.acquire()
 
 
@@ -96,7 +96,7 @@ class SimEngine(threading.Thread):
         else:
             message = {"type": "Simulation Completion", "Success": True}
         finally:
-            self.logger.log(message)
+            self.atlasLogger.log(message)
             time.sleep(10)
 
     #======================== public ==========================================
