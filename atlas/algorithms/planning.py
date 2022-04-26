@@ -26,7 +26,7 @@ from atlas.datastructures import PriorityQueue
 
 import SimEngine
 
-import Logging
+import DataCollecter
 
 
 '''
@@ -240,14 +240,14 @@ class RelayPlanner(abc.ABC):
 
     def __init__(self, map=None, radius=10, start_x=None, start_y=None, settings={}, map_kwargs={}):
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
-        self.assigned_relays = set()   # robots assigned to become relays
-        self.targeted_relays = set()   # relay robots that have been given a target position
-        self.relay_positions = set()   # all potential positions to be assigned to relays
-        self.radius          = radius
-        self.relay_settings  = settings
+        self.assigned_relays         = set()   # robots assigned to become relays
+        self.targeted_relays         = set()   # relay robots that have been given a target position
+        self.relay_positions         = set()   # all potential positions to be assigned to relays
+        self.radius                  = radius
+        self.relay_settings          = settings
         self.last_num_explored_cells = 0
-        self.simEngine     = SimEngine.SimEngine()
-        self.logger        = Logging.PeriodicFileLogger()
+        self.simEngine               = SimEngine.SimEngine()
+        self.datacollecter           = DataCollecter.DataCollecter()
 
     @abc.abstractmethod
     def assignRelay(self, robots_data):
@@ -449,7 +449,7 @@ class AtlasTargets(TargetSelector):
 
         self.not_frontiers = set()
         self.simEngine     = SimEngine.SimEngine()
-        self.logger        = Logging.PeriodicFileLogger()
+        self.datacollecter        = DataCollecter.DataCollecter()
 
     def allocateTarget(self, dotbot_position):
         '''

@@ -2,7 +2,7 @@ import threading
 import time
 import json
 
-class AtlasLogger(threading.Thread):
+class DataCollecter(threading.Thread):
     '''
     Singleton, write to file periodically.
     '''
@@ -13,7 +13,7 @@ class AtlasLogger(threading.Thread):
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(AtlasLogger, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super(DataCollecter, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self, filewriteperiod_s=10):
@@ -78,7 +78,7 @@ class AtlasLogger(threading.Thread):
 # ============================ main ============================================
 
 def main():
-    atlasLogger = AtlasLogger(0.100)
+    atlasLogger = DataCollecter(0.100)
     time.sleep(0.100)
     atlasLogger.setFileName('log1.txt')
     time.sleep(0.100)

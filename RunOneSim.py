@@ -16,15 +16,10 @@ import DotBot
 import Orchestrator
 import Wireless
 import SimEngine
-import SimUI
 import time
-import json
-import AtlasLogger
+import DataCollecter
 import random
 import ast
-import traceback
-
-from atlas.config import AtlasConfig
 
 #====================================== HELPER =================================================
 
@@ -105,11 +100,9 @@ def main(simSetting, simUI):
     
     # setup logging
     log            = logging.getLogger('RunOneSim')
-    atlasLogger    = AtlasLogger.AtlasLogger()
+    datacollecter    = DataCollecter.DataCollecter()
     log_dir        = "./logs"
     os.makedirs(log_dir, exist_ok=True)
-    log_filename   = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime())}_{unique_id}.json'
-    atlasLogger.setFileName(os.path.join(log_dir, log_filename))
     
     # log start of simulation
     log.info(f'simulation starting')
@@ -122,12 +115,14 @@ def main(simSetting, simUI):
     
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
+    log_filename   = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime())}_{unique_id}.json'
+    datacollecter.setFileName(os.path.join(log_dir, log_filename))
 
     # log
     config_data         = simSetting
     config_data["type"] = "sim configuration"
     seed = simSetting["seed"]
-    atlasLogger.log(config_data)
+    datacollecter.log(config_data)
     
     kpis = runSim(simSetting, simUI)
 
@@ -139,6 +134,7 @@ def main(simSetting, simUI):
     else:
         log.info(
             f"    run {config_id} failed at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
+
 
 
 if __name__ == '__main__':
