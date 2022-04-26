@@ -15,10 +15,9 @@ from   atlas.config import AtlasConfig
 
 #============================ main ============================================
 
-def main(configFile, cleps, simUI):
+def main(configFile, cleps, noUI):
     configFileName = configFile
     config = AtlasConfig(configFile).atlas
-    #config = config.atlas
     
     # create a list of settings, one per simulation run
     simSettings  = []
@@ -50,7 +49,7 @@ def main(configFile, cleps, simUI):
                                         }]
 
     # create the UI
-    simUI          = SimUI.SimUI() if not simUI else None
+    simUI          = None if noUI else SimUI.SimUI()
 
     # run simulations, one run per simSetting
     for (runNum, simSetting) in enumerate(simSettings):
@@ -66,8 +65,8 @@ if __name__=='__main__':
 
     parser.add_argument("--configfile", type=str, default="default", help="TOML configuration file")
     parser.add_argument("--cleps"     , help="running on the Inria CLEPS cluster")
-    parser.add_argument("--noUI"      , help="deactivate UI")
+    parser.add_argument("--noui"      , help="deactivate UI")
 
     args = parser.parse_args()
 
-    main(args.configfile, args.cleps, args.noUI)
+    main(args.configfile, args.cleps, args.noui)
