@@ -1,14 +1,15 @@
 # logging (do first)
-import os
-import argparse
-
-import pkg_resources
 import LoggingConfig
 import logging
 import logging.config
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # built-in
+import os
+import argparse
+import time
+import random
+import ast
 # third-party
 # local
 import Floorplan
@@ -16,10 +17,7 @@ import DotBot
 import Orchestrator
 import Wireless
 import SimEngine
-import time
 import DataCollector
-import random
-import ast
 
 #====================================== HELPER =================================================
 
@@ -28,26 +26,28 @@ def runSim(simSetting, simUI):
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
 
-    random.seed(simSetting['seed'])
-
     # ======================== setup
     print("simulation started")
+    
+    # setting the seed
+    random.seed(simSetting['seed'])
+    
     # create the SimEngine
-    simEngine = SimEngine.SimEngine()
+    simEngine      = SimEngine.SimEngine()
 
     # create the floorplan
-    floorplan = Floorplan.Floorplan(simSetting['floorplanDrawing'])
+    floorplan      = Floorplan.Floorplan(simSetting['floorplanDrawing'])
 
     # shorthand
     (initx, inity) = simSetting['initialPosition']
 
     # create the DotBots
-    dotBots = []
+    dotBots        = []
     for dotBotId in range(simSetting['numDotBots']):
-        dotBots += [DotBot.DotBot(dotBotId, initx, inity, floorplan)]
+        dotBots   += [DotBot.DotBot(dotBotId, initx, inity, floorplan)]
 
     # create the orchestrator
-    orchestrator = Orchestrator.Orchestrator(
+    orchestrator   = Orchestrator.Orchestrator(
         simSetting['numDotBots'],
         simSetting['initialPosition'],
         simSetting['navAlgorithm'],
@@ -56,13 +56,11 @@ def runSim(simSetting, simUI):
     )
 
     # create the wireless communication medium
-    wireless_model = getattr(Wireless, f"Wireless{simSetting['wirelessModel']}")
-    propagation_model = getattr(Wireless, f"Propagation{simSetting['propagationModel']}")
-
-    wireless = wireless_model(propagation=propagation_model)
+    wireless_model      = getattr(Wireless, f"Wireless{simSetting['wirelessModel']}")
+    propagation_model   = getattr(Wireless, f"Propagation{simSetting['propagationModel']}")
+    wireless            = wireless_model(propagation=propagation_model)
     wireless.indicateDevices(devices=dotBots + [orchestrator])
     wireless.indicateFloorplan(floorplan=floorplan)
-    # wireless.overridePDR(simSetting['pdr'])
 
     # ======================== run
 
@@ -77,74 +75,93 @@ def runSim(simSetting, simUI):
     # start a simulaion (blocks until done)
     timeToFullMapping = simEngine.runToCompletion(orchestrator.startExploration)
 
-
-
     # ======================== teardown
 
     # destroy singletons
     simEngine.destroy()
     wireless.destroy()
 
-    kpis = {'numDotBots': simSetting['numDotBots'], 'numRelays': orchestrator.navigation.relayPositions,
-            'timeToFullMapping': timeToFullMapping,
-            'relaySettings': simSetting['relaySettings'], 'navAlgorithm': simSetting['navAlgorithm'],
-            'mappingProfile': orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
-            'pdrProfile': orchestrator.timeseries_kpis['pdrProfile'],
-            'timeline': orchestrator.timeseries_kpis['time'], 'completion': simEngine.simComplete, }
+    kpis = {
+        'numDotBots':        simSetting['numDotBots'],
+        'relaySettings':     simSetting['relaySettings'],
+        'navAlgorithm':      simSetting['navAlgorithm'],
+        'numRelays':         orchestrator.navigation.relayPositions,
+        'timeToFullMapping': timeToFullMapping,
+        'mappingProfile':    orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
+        'pdrProfile':        orchestrator.timeseries_kpis['pdrProfile'],
+        'timeline':          orchestrator.timeseries_kpis['time'], 'completion': simEngine.simComplete,
+    }
 
     return kpis
 
-#========================= MAIN ==========================================
+#========================= main ==========================================
 
-def main(simSetting, simUI):
+def main(simSetting, simUI=None):
+    '''
+    This function is called directly by RunSim when running standalone,
+    and by the code below when running from CLEPS.
+    '''
     
     # setup logging
     log            = logging.getLogger('RunOneSim')
-    datacollector    = DataCollector.DataCollector()
-    log_dir        = "./logs"
-    os.makedirs(log_dir, exist_ok=True)
     
     # log start of simulation
     log.info(f'simulation starting')
     
-    if type(simUI) == str: # FIXME remove
-        simUI = eval(simUI)
+    # setup data collection
+    dataCollector  = DataCollector.DataCollector()
+    log_dir        = "./logs"
+    os.makedirs(log_dir, exist_ok=True)
+    dataCollector.setFileName(
+        os.path.join(
+            log_dir,
+            '{}_{}_{}.json'.format(
+                simSetting['config ID'],
+                time.strftime("%y%m%d%H%M%S", time.localtime()),
+                simSetting['seed'],
+            )
+        )
+    )
     
-    if type(simSetting) == str:
-        simSetting = ast.literal_eval(simSetting)
+    # collect simSettings
+    dataCollector.log(
+        {
+            'type':       'simSetting',
+            'simSetting': simSetting,
+        },
+    )
     
-    unique_id = simSetting['seed']
-    config_id = simSetting['config ID']
-    log_filename   = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime())}_{unique_id}.json'
-    datacollector.setFileName(os.path.join(log_dir, log_filename))
-
-    # log
-    config_data         = simSetting
-    config_data["type"] = "sim configuration"
-    seed = simSetting["seed"]
-    datacollector.log(config_data)
-    
+    # run the simulation (blocking)
     kpis = runSim(simSetting, simUI)
 
-    #TODO: remove below, move to SimEngine
-    if kpis['completion'] is True:
-        time_to_full_mapping = kpis['timeToFullMapping']
+    # log outcome
+    if kpis['completion']:
         log.info(
-            f"    run {config_id} completed in {time_to_full_mapping}s at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
+            "run {} completed in {}s with seed {}".format(
+                simSetting['config ID'],
+                kpis['timeToFullMapping'],
+                simSetting['seed'],
+            )
+        )
     else:
-        log.info(
-            f"    run {config_id} failed at {time.strftime('%H:%M:%S', time.localtime(time.time()))} with seed {seed} ")
-
-
+        log.error(
+            "run {} FAILED with seed {}".format(
+                simSetting['config ID'],
+                simSetting['seed'],
+            )
+        )
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--simSetting", help="simulation configuration settings as dictionary")
-    parser.add_argument("--simUI", default=None, help="UI configurations")
-
-    args = parser.parse_args()
-    simSetting = args.simSetting
-    simUI = args.simUI
-
-    main(simSetting, simUI)
+    '''
+    Used by CLEPS only.
+    '''
+    
+    parser         = argparse.ArgumentParser()
+    parser.add_argument("--simSetting", help="A string containing a dictionary.")
+    args           = parser.parse_args()
+    
+    # convert the simSetting parameter (a string) to a dictionnary
+    simSetting     = eval(args.simSetting)
+    assert type(simSetting)==dict
+    
+    main(simSetting)

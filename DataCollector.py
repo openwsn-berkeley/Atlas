@@ -24,7 +24,7 @@ class DataCollector(threading.Thread):
         self._init = True
 
         #  handle params
-        self.filewriteperiod_s = filewriteperiod_s
+        self.filewriteperiod_s    = filewriteperiod_s
 
         # local variables
         self.writebuffer          = []
@@ -33,7 +33,7 @@ class DataCollector(threading.Thread):
 
         # thread
         threading.Thread.__init__(self)
-        self.name                 = 'AtlasLogger'
+        self.name                 = 'DataCollector'
         self.daemon               = True
         self.start()
 
@@ -73,7 +73,6 @@ class DataCollector(threading.Thread):
             while self.writebuffer:
                 jsontolog = self.writebuffer.pop(0)
                 f.write(jsontolog)
-
 
 # ============================ main ============================================
 
