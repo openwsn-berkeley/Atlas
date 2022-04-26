@@ -21,7 +21,7 @@ import DataCollector
 
 #====================================== HELPER =================================================
 
-def runSim(simSetting, simUI):
+def runSim(simSetting, simUI=None):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
@@ -36,29 +36,32 @@ def runSim(simSetting, simUI):
     simEngine      = SimEngine.SimEngine()
 
     # create the floorplan
-    floorplan      = Floorplan.Floorplan(simSetting['floorplanBlueprint'])
+    floorplan      = Floorplan.Floorplan(simSetting['floorplan'])
 
     # shorthand
     (initx, inity) = simSetting['initialPosition']
 
     # create the DotBots
     dotBots        = []
-    for dotBotId in range(simSetting['swarmSize']):
+    for dotBotId in range(simSetting['numRobots']):
         dotBots   += [DotBot.DotBot(dotBotId, initx, inity, floorplan)]
 
     # create the orchestrator
+    relaySettings = {
+                    "relayAlgorithm": simSetting['relayAlgorithm'],
+                     "lowerPdrThreshold": simSetting['lowerPdrThreshold'],
+                     "upperPdrThreshold": simSetting['upperPdrThreshold'],
+                    }
     orchestrator   = Orchestrator.Orchestrator(
-        simSetting['swarmSize'],
+        simSetting['numRobots'],
         simSetting['initialPosition'],
+        relaySettings,
         simSetting['navigationAlgorithm'],
-        simSetting['relaySettings'],
-        simSetting['config ID'],
     )
 
     # create the wireless communication medium
-    wireless_model      = getattr(Wireless, f"Wireless{simSetting['wirelessModel']}")
-    propagation_model   = getattr(Wireless, f"Propagation{simSetting['propagationModel']}")
-    wireless            = wireless_model(propagation=propagation_model)
+
+    wireless=Wireless.WirelessConcurrentTransmission()
     wireless.indicateDevices(devices=dotBots + [orchestrator])
     wireless.indicateFloorplan(floorplan=floorplan)
 
@@ -82,21 +85,15 @@ def runSim(simSetting, simUI):
     wireless.destroy()
 
     kpis = {
-        'numDotBots':        simSetting['numDotBots'],
-        'relaySettings':     simSetting['relaySettings'],
-        'navAlgorithm':      simSetting['navAlgorithm'],
-        'numRelays':         orchestrator.navigation.relayPositions,
         'timeToFullMapping': timeToFullMapping,
-        'mappingProfile':    orchestrator.timeseries_kpis['numCells'], 'relayProfile': orchestrator.relayProfile,
-        'pdrProfile':        orchestrator.timeseries_kpis['pdrProfile'],
-        'timeline':          orchestrator.timeseries_kpis['time'], 'completion': simEngine.simComplete,
+        'completion': simEngine.simComplete,
     }
 
     return kpis
 
 #========================= main ==========================================
 
-def main(simSetting, simUI=None):
+def main(simSetting, simUI=True):
     '''
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
@@ -116,7 +113,7 @@ def main(simSetting, simUI=None):
         os.path.join(
             log_dir,
             '{}_{}_{}.json'.format(
-                simSetting['config ID'],
+                simSetting['configFileName'],
                 time.strftime("%y%m%d%H%M%S", time.localtime()),
                 simSetting['seed'],
             )
@@ -138,7 +135,7 @@ def main(simSetting, simUI=None):
     if kpis['completion']:
         log.info(
             "run {} completed in {}s with seed {}".format(
-                simSetting['config ID'],
+                simSetting['configFileName'],
                 kpis['timeToFullMapping'],
                 simSetting['seed'],
             )
@@ -146,7 +143,7 @@ def main(simSetting, simUI=None):
     else:
         log.error(
             "run {} FAILED with seed {}".format(
-                simSetting['config ID'],
+                simSetting['configFileName'],
                 simSetting['seed'],
             )
         )
@@ -160,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument("--simSetting", help="A string containing a dictionary.")
     args           = parser.parse_args()
     
-    # convert the simSetting parameter (a string) to a dictionnary
+    # convert the simSetting parameter (a string) to a dictionary
     simSetting     = eval(args.simSetting)
     assert type(simSetting)==dict
     

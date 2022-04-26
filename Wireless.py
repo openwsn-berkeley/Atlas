@@ -7,11 +7,6 @@ from functools import wraps
 import numpy as np
 # local
 import Utils as u
-from Floorplan import Floorplan
-
-from statistics import mode
-from statistics import mean
-
 
 def timeit(my_func):
     @wraps(my_func)
@@ -24,7 +19,6 @@ def timeit(my_func):
 
     return timed
 
-# TODO: Add timing infrastructure to all these
 
 class WirelessDevice(object):
     '''
@@ -232,7 +226,7 @@ class PropagationFriis(PropagationBase):
 
         return pdr
 
-class PropagationPister(PropagationFriis):
+class PropagationPisterHack(PropagationFriis):
     '''
     Communications model.
 
@@ -273,7 +267,7 @@ class WirelessBase(abc.ABC):
             cls._instance = super(WirelessBase, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, propagation=PropagationPister):
+    def __init__(self, propagation=PropagationPisterHack):
 
         # singleton pattern
         # if instance of class already exists the return, to restrict to one instance only

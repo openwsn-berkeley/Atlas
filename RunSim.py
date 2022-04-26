@@ -15,42 +15,42 @@ from   atlas.config import AtlasConfig
 
 #============================ main ============================================
 
-def main(config, cleps):
+def main(configFile, cleps, simUI):
+    configFileName = configFile
+    config = AtlasConfig(configFile).atlas
+    #config = config.atlas
     
     # create a list of settings, one per simulation run
     simSettings  = []
     seedCounter = 0
-    for run in range(config.numberOfRuns):
-        for idx, floorplanBlueprint in config.floorplanBlueprints:
-            for communicationProtocol in config.communicationProtocols:
-                for communicationModel in config.communicationModels:
-                    for pathPlanningAlgorithm in config.pathPlanningAlgorithms:
-                        for navigationAlgorithm in config.navigationAlgorithms:
-                            for relayAlgorithm in config.relayAlgorithms:
-                                for lowerPdrThreshold in config.lowerPdrThresholds:
-                                    for upperPdrThreshold in config.upperPdrThresholds:
-                                        for swarmSize in config.swarmSizes:
-                                            for initialPosition in config.initialPositions:
-                                                seedCounter += 1
-                                                simSettings  += [{
-                                                    'seed':                seedCounter,
-                                                    'config ID':           config.configId ,
-                                                    'floorplanBlueprint':  pkg_resources.resource_string(
-                                                        'atlas.resources.maps',
-                                                        floorplanBlueprint).decode('utf-8'),
-                                                    'communicationProtocol': communicationProtocol,
-                                                    'communicationModel': communicationModel,
-                                                    'pathPlanningAlgorithm': pathPlanningAlgorithm,
-                                                    'explorationAlgorithm': explorationAlgorithm,
-                                                    'relayAlgorithm': relayAlgorithm,
-                                                    'lowerPdrThreshold': lowerPdrThreshold,
-                                                    'upperPdrThreshold': upperPdrThreshold,
-                                                    'swarmSize': swarmSize,
-                                                    'initialPosition': initialPosition,
-                                                }]
+    for numRobots in config.numRobots:
+        for floorplan in config.floorplan:
+            for initialPosition in config.initialPosition:
+                for navigationAlgorithm in config.navigationAlgorithm:
+                    for relayAlgorithm in config.relayAlgorithm:
+                        for lowerPdrThreshold in config.lowerPdrThreshold:
+                            for upperPdrThreshold in config.upperPdrThreshold:
+                                for propagationModel in config.propagationModel:
+                                    for run in range(config.numberOfRuns):
+                                        seedCounter += 1
+                                        simSettings  += [{
+                                            'configFileName':       configFileName,
+                                            'seed':                 seedCounter,
+                                            'numRobots':            numRobots,
+                                            'floorplan':            pkg_resources.resource_string(
+                                                'atlas.resources.maps',
+                                                floorplan).decode('utf-8'),
+                                            'initialPosition':       initialPosition,
+                                            'navigationAlgorithm':   navigationAlgorithm,
+                                            'relayAlgorithm':        relayAlgorithm,
+                                            'lowerPdrThreshold':     lowerPdrThreshold,
+                                            'upperPdrThreshold':     upperPdrThreshold,
+                                            'propagationModel':      propagationModel,
+
+                                        }]
 
     # create the UI
-    simUI          = SimUI.SimUI() if config.ui else None
+    simUI          = SimUI.SimUI() if not simUI else None
 
     # run simulations, one run per simSetting
     for (runNum, simSetting) in enumerate(simSettings):
@@ -66,9 +66,8 @@ if __name__=='__main__':
 
     parser.add_argument("--configfile", type=str, default="default", help="TOML configuration file")
     parser.add_argument("--cleps"     , help="running on the Inria CLEPS cluster")
+    parser.add_argument("--simUI"     , help="deactivate UI")
 
     args = parser.parse_args()
 
-    config = AtlasConfig(args.configfile)
-
-    main(config.atlas, args.cleps)
+    main(args.configfile, args.cleps, args.simUI)

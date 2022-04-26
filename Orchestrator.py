@@ -60,7 +60,7 @@ class MapBuilder(object):
         self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
         self.exploredCells = []
         self.numRelayBots  = 0
-        self.numDotBots    = 0
+        self.numRobots     = 0
 
     #======================== public ==========================================
 
@@ -310,10 +310,10 @@ class Navigation(abc.ABC):
     Navigation algorithm .
     '''
 
-    def __init__(self, numDotBots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
+    def __init__(self, numRobots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
 
         # store params
-        self.numDotBots      = numDotBots
+        self.numRobots       = numRobots
         self.initialPosition = initialPosition
         
         # local variables
@@ -337,7 +337,7 @@ class Navigation(abc.ABC):
                 'pdrStatus':                None,
 
 
-            } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots) # TODO: handle initial position List
+            } for [id,(x,y)] in enumerate([self.initialPosition]*self.numRobots) # TODO: handle initial position List
         ]
         self.mapBuilder       = MapBuilder()
         self.datacollector    = DataCollector.DataCollector()
@@ -512,11 +512,11 @@ class NavigationAtlas(Navigation):
         self.relayBots         = set()
 
         # SelfHealing, Naive, NoRelay, Recovery
-        relay_algorithm = globals()[str(relaySettings["relayAlg"])]
+        relay_algorithm = globals()[str(relaySettings["relayAlgorithm"])]
 
         self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy, settings=relaySettings)
 
-        self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numDotBots)
+        self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numRobots)
 
         self.scheduleCheckForRelays()
 
@@ -745,20 +745,19 @@ class Orchestrator(Wireless.WirelessDevice):
 
     COMM_DOWNSTREAM_PERIOD_S   = 1
     # WirelessConcurrentTransmission or WirelessBase
-    def __init__(self, numDotBots, initialPosition, navAlgorithm, relaySettings, config_ID, wireless=Wireless.WirelessConcurrentTransmission):
+    def __init__(self, numRobots, initialPosition, relaySettings, navigationAlgorithm, wireless=Wireless.WirelessConcurrentTransmission):
         # TODO: change initial position to orchestrator position and turn initial positions into array
         # store params
-        self.numDotBots        = numDotBots
-        self.initialPosition   = initialPosition
-        self.relaySettings     = relaySettings
-        self.config_ID         = config_ID
+        self.numRobots          = numRobots
+        self.initialPosition    = initialPosition
+        self.relaySettings      = relaySettings
 
         # local variables
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = wireless()
         self.datacollector      = DataCollector.DataCollector()
-        navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
-        self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relaySettings=self.relaySettings)
+        navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navigationAlgorithm))
+        self.navigation         = navigationclass(self.numRobots, self.initialPosition, relaySettings=self.relaySettings)
         self.communicationQueue = []
         self.timeseries_kpis    = {"type": "timeseries_kpi","numCells": [], "pdrProfile": [], "time": []}
 

@@ -538,7 +538,7 @@ class Recovery(RelayPlanner):
         relay = None
         for robot in robots_data:
 
-            if robot['heartbeat'] > self.relay_settings['minPdrThreshold']:
+            if robot['heartbeat'] > self.relay_settings['lowerPdrThreshold']:
                 continue
             if robot['ID'] in self.targeted_relays:
                 continue
@@ -555,7 +555,7 @@ class Recovery(RelayPlanner):
         pdrHistory = relay['pdrHistory']
         pdrHistoryReversed = pdrHistory[::-1]
         for value in pdrHistoryReversed:
-            if value[0] >= self.relay_settings['bestPdrThreshold']:
+            if value[0] >= self.relay_settings['upperPdrThreshold']:
                 bestPDRposition = value[1]
                 x = bestPDRposition[0]
                 y = bestPDRposition[1]
