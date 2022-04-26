@@ -1,8 +1,7 @@
 # built-in
 import math
 import itertools
-import time
-import logging
+
 # third-party
 # local
 import SimEngine

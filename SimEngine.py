@@ -4,7 +4,7 @@ import time
 import datetime
 # third-party
 # local
-import DataCollecter
+import DataCollector
 import traceback
 
 class SimEngine(threading.Thread):
@@ -44,7 +44,7 @@ class SimEngine(threading.Thread):
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
         self.simComplete          = False
-        self.datacollecter        = DataCollecter.DataCollecter()
+        self.datacollector        = DataCollector.DataCollector()
         self.semIsRunning.acquire()
 
 
@@ -96,7 +96,7 @@ class SimEngine(threading.Thread):
         else:
             message = {"type": "Simulation Completion", "Success": True}
         finally:
-            self.datacollecter.log(message)
+            self.datacollector.log(message)
             time.sleep(10)
 
     #======================== public ==========================================

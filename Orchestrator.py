@@ -15,7 +15,7 @@ from typing import Union, Optional, List
 import SimEngine
 import Wireless
 import Utils as u
-import DataCollecter
+import DataCollector
 
 from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
 
@@ -340,7 +340,7 @@ class Navigation(abc.ABC):
             } for [id,(x,y)] in enumerate([self.initialPosition]*self.numDotBots) # TODO: handle initial position List
         ]
         self.mapBuilder       = MapBuilder()
-        self.datacollecter    = DataCollecter.DataCollecter()
+        self.datacollector    = DataCollector.DataCollector()
         self.movingDuration   = 0
         self.heatmap          = [(self.initialPosition, 0)] # TODO: handle initial position List
         self.profile          = []
@@ -595,7 +595,7 @@ class NavigationAtlas(Navigation):
                     relay_kpis["relayID"]       = dotbot['ID']
                     relay_kpis["relayPosition"] = dotbot_position
                     relay_kpis["placementTime"] = self.simEngine.currentTime()
-                    self.datacollecter.log(relay_kpis)
+                    self.datacollector.log(relay_kpis)
                     self.readyRelays.add(dotbot['ID'])
                     self.relayPositions.append(dotbot_position)
 
@@ -756,7 +756,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # local variables
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = wireless()
-        self.datacollecter      = DataCollecter.DataCollecter()
+        self.datacollector      = DataCollector.DataCollector()
         navigationclass         = getattr(sys.modules[__name__],'Navigation{}'.format(navAlgorithm))
         self.navigation         = navigationclass(self.numDotBots, self.initialPosition, relaySettings=self.relaySettings)
         self.communicationQueue = []
@@ -840,7 +840,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         #TODO: add assert here for if sim engine is just stuck
 
-        self.datacollecter.log(self.timeseries_kpis)
+        self.datacollector.log(self.timeseries_kpis)
 
 
     def receive(self,frame):

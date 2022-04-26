@@ -3,10 +3,10 @@ import os
 import argparse
 
 import pkg_resources
-import AtlasLogging
+import LoggingConfig
 import logging
 import logging.config
-logging.config.dictConfig(AtlasLogging.LOGGING_CONFIG)
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # built-in
 # third-party
@@ -17,7 +17,7 @@ import Orchestrator
 import Wireless
 import SimEngine
 import time
-import DataCollecter
+import DataCollector
 import random
 import ast
 
@@ -100,7 +100,7 @@ def main(simSetting, simUI):
     
     # setup logging
     log            = logging.getLogger('RunOneSim')
-    datacollecter    = DataCollecter.DataCollecter()
+    datacollector    = DataCollector.DataCollector()
     log_dir        = "./logs"
     os.makedirs(log_dir, exist_ok=True)
     
@@ -116,13 +116,13 @@ def main(simSetting, simUI):
     unique_id = simSetting['seed']
     config_id = simSetting['config ID']
     log_filename   = f'{config_id}_{time.strftime("%y%m%d%H%M%S", time.localtime())}_{unique_id}.json'
-    datacollecter.setFileName(os.path.join(log_dir, log_filename))
+    datacollector.setFileName(os.path.join(log_dir, log_filename))
 
     # log
     config_data         = simSetting
     config_data["type"] = "sim configuration"
     seed = simSetting["seed"]
-    datacollecter.log(config_data)
+    datacollector.log(config_data)
     
     kpis = runSim(simSetting, simUI)
 

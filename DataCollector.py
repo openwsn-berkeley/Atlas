@@ -2,7 +2,7 @@ import threading
 import time
 import json
 
-class DataCollecter(threading.Thread):
+class DataCollector(threading.Thread):
     '''
     Singleton, write to file periodically.
     '''
@@ -13,7 +13,7 @@ class DataCollecter(threading.Thread):
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(DataCollecter, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super(DataCollector, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self, filewriteperiod_s=10):

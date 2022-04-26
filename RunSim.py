@@ -1,7 +1,7 @@
 # logging (do first)
-import AtlasLogging
+import LoggingConfig
 import logging.config
-logging.config.dictConfig(AtlasLogging.LOGGING_CONFIG)
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # built-in
 import argparse
