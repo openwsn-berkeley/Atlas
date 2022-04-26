@@ -66,8 +66,8 @@ if __name__=='__main__':
 
     parser.add_argument("--configfile", type=str, default="default", help="TOML configuration file")
     parser.add_argument("--cleps"     , help="running on the Inria CLEPS cluster")
-    parser.add_argument("--simUI"     , help="deactivate UI")
+    parser.add_argument("--noUI"      , help="deactivate UI")
 
     args = parser.parse_args()
 
-    main(args.configfile, args.cleps, args.simUI)
+    main(args.configfile, args.cleps, args.noUI)
