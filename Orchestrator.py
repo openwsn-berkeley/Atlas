@@ -595,7 +595,7 @@ class NavigationAtlas(Navigation):
                     relay_kpis["relayID"]       = dotbot['ID']
                     relay_kpis["relayPosition"] = dotbot_position
                     relay_kpis["placementTime"] = self.simEngine.currentTime()
-                    self.datacollector.log(relay_kpis)
+                    self.datacollector.collect(relay_kpis)
                     self.readyRelays.add(dotbot['ID'])
                     self.relayPositions.append(dotbot_position)
 
@@ -840,7 +840,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         #TODO: add assert here for if sim engine is just stuck
 
-        self.datacollector.log(self.timeseries_kpis)
+        self.datacollector.collect(self.timeseries_kpis)
 
 
     def receive(self,frame):

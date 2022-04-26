@@ -124,7 +124,7 @@ def main(simSetting, simUI=None):
     )
     
     # collect simSettings
-    dataCollector.log(
+    dataCollector.collect(
         {
             'type':       'simSetting',
             'simSetting': simSetting,

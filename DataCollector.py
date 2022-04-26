@@ -62,7 +62,7 @@ class DataCollector(threading.Thread):
                 self._writeToFile()
             self.filename = filename
 
-    def log(self, jsontolog):
+    def collect(self, jsontolog):
         with self.dataLock:
             self.writebuffer += [json.dumps(jsontolog) + '\n']
 
@@ -77,7 +77,7 @@ class DataCollector(threading.Thread):
 # ============================ main ============================================
 
 def main():
-    atlasLogger = DataCollecter(0.100)
+    atlasLogger = DataCollector(0.100)
     time.sleep(0.100)
     atlasLogger.setFileName('log1.txt')
     time.sleep(0.100)
