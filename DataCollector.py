@@ -62,40 +62,40 @@ class DataCollector(threading.Thread):
                 self._writeToFile()
             self.filename = filename
 
-    def collect(self, jsontolog):
+    def collect(self, jsontocollect):
         with self.dataLock:
-            self.writebuffer += [json.dumps(jsontolog) + '\n']
+            self.writebuffer += [json.dumps(jsontocollect) + '\n']
 
     # ======================== private =========================================
 
     def _writeToFile(self):
         with open(self.filename, 'a') as f:
             while self.writebuffer:
-                jsontolog = self.writebuffer.pop(0)
-                f.write(jsontolog)
+                jsontocollect = self.writebuffer.pop(0)
+                f.write(jsontocollect)
 
 # ============================ main ============================================
 
 def main():
-    atlasLogger = DataCollector(0.100)
+    datacollector = DataCollector(0.100)
     time.sleep(0.100)
-    atlasLogger.setFileName('log1.txt')
+    datacollector.setFileName('data1.txt')
     time.sleep(0.100)
-    atlasLogger.log({'msg': 11})
+    datacollector.collect({'msg': 11})
     time.sleep(0.100)
-    atlasLogger.log({'msg': 12})
+    datacollector.collect({'msg': 12})
     time.sleep(0.100)
-    atlasLogger.log({'msg': 13})
-    atlasLogger.log({'msg': 14})
+    datacollector.collect({'msg': 13})
+    datacollector.collect({'msg': 14})
     time.sleep(0.100)
-    atlasLogger.setFileName('log2.txt')
+    datacollector.setFileName('data2.txt')
     time.sleep(0.100)
-    atlasLogger.log({'msg': 21})
+    datacollector.collect({'msg': 21})
     time.sleep(0.100)
-    atlasLogger.log({'msg': 22})
+    datacollector.collect({'msg': 22})
     time.sleep(0.100)
-    atlasLogger.log({'msg': 23})
-    atlasLogger.log({'msg': 24})
+    datacollector.collect({'msg': 23})
+    datacollector.collect({'msg': 24})
     time.sleep(3.100)
 
 if __name__ == "__main__":
