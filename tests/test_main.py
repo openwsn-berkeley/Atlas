@@ -1,6 +1,6 @@
 import pytest
 
-from Wireless import PropagationPister, PropagationRadius, PropagationFriis, PropagationLOS
+from Wireless import PropagationPisterHack, PropagationRadius, PropagationFriis, PropagationLOS
 from Floorplan import Floorplan
 
 def test_dummy():
@@ -9,7 +9,7 @@ def test_dummy():
 def test_get_PDR_PH():
     sender   =  (5,5)
     receiver =  (0,3)
-    pdr = PropagationPister().getPDR(sender, receiver)
+    pdr = PropagationPisterHack().getPDR(sender, receiver)
     assert pdr >= 0 and pdr <= 1
 
 def test_get_PDR_R_success():
