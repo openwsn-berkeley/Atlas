@@ -6,29 +6,15 @@ import copy
 import sys
 import math
 from functools import wraps
+from typing import Union, List
 import time
-
-from typing import Union, Optional, List
-
 # third-party
 # local
 import SimEngine
 import Wireless
 import Utils as u
 import DataCollector
-
 from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
-
-def timeit(my_func):
-    @wraps(my_func)
-    def timed(*args, **kw):
-        tstart = time.time()
-        output = my_func(*args, **kw)
-        tend = time.time()
-        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart)))
-        return output
-
-    return timed
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -58,9 +44,6 @@ class MapBuilder(object):
 
         # schedule first housekeeping activity
         self.simEngine.schedule(self.simEngine.currentTime()+self.HOUSEKEEPING_PERIOD_S,self._houseKeeping)
-        self.exploredCells = []
-        self.numRelayBots  = 0
-        self.numRobots     = 0
 
     #======================== public ==========================================
 
@@ -92,8 +75,6 @@ class MapBuilder(object):
         if self.discoMap['complete']:
             self.simEngine.completeRun(complete=True)
 
-    def get_explored(self, exploredCells):
-        self.exploredCells = exploredCells
 
     def _consolidateMap(self):
 
@@ -342,11 +323,9 @@ class Navigation(abc.ABC):
         self.mapBuilder       = MapBuilder()
         self.datacollector    = DataCollector.DataCollector()
         self.movingDuration   = 0
-        self.heatmap          = [(self.initialPosition, 0)] # TODO: handle initial position List
         self.profile          = []
         self.relayProfile     = []
         self.pdrProfile       = []
-        self.timeLine         = []
         self.heartbeat        = 1
         self.pdrStatus        = None
 
@@ -368,7 +347,6 @@ class Navigation(abc.ABC):
         if frame['seqNumNotification'] == dotbot['seqNumNotification']:
             return
         dotbot['seqNumNotification'] = frame['seqNumNotification']
-
 
         # update DotBot's position
         (newX,newY)  = u.computeCurrentPosition(
@@ -503,25 +481,17 @@ class NavigationAtlas(Navigation):
         self.positionedRelays  = set() # have been given destinations, but have not reached them
         self.relayPositions    = [] # desired positions to fill?
         self.readyRelays       = set() # relays that have reached their position
-        #self.algorithm         = relayAlg
-        self.targetBotsAndData = []
-        self.frontiers         = []
-        self.allTargets        = []
         self.initialPositions  = []
-        self.end               = False
         self.relayBots         = set()
 
         # SelfHealing, Naive, NoRelay, Recovery
         relay_algorithm = globals()[str(relaySettings["relayAlgorithm"])]
 
         self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy, settings=relaySettings)
-
         self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numRobots)
-
         self.scheduleCheckForRelays()
 
         for (dotBotId,_) in enumerate(self.dotbotsview):
-
             self._updateMovement(dotBotId)
 
 
@@ -680,7 +650,7 @@ class NavigationAtlas(Navigation):
         self._getRelayBots(self.dotbotsview)
         assert len(self.relayBots) < len(self.dotbotsview)
 
-        self.simEngine.schedule(self.simEngine.currentTime()+10, self.scheduleCheckForRelays) # TODO: change 10 to variable
+        self.simEngine.schedule(self.simEngine.currentTime()+10, self.scheduleCheckForRelays)
 
     def _getRelayBots(self, robots_data):
         new_relays = self.relay_planner.assignRelay(robots_data)
@@ -690,7 +660,7 @@ class NavigationAtlas(Navigation):
     def _getRelayPosition(self, relay):
         return self.relay_planner.positionRelay(relay)
 
-    def markTraversedCells(self, startX, startY, stopX, stopY): # TODO: unit test
+    def markTraversedCells(self, startX, startY, stopX, stopY):
         # scan horizontally
         x_sign = 2 * int(startX < stopX) - 1
         y_sign = 2 * int(startY < stopY) - 1
@@ -746,7 +716,7 @@ class Orchestrator(Wireless.WirelessDevice):
     COMM_DOWNSTREAM_PERIOD_S   = 1
     # WirelessConcurrentTransmission or WirelessBase
     def __init__(self, numRobots, initialPosition, relaySettings, navigationAlgorithm, wireless=Wireless.WirelessConcurrentTransmission):
-        # TODO: change initial position to orchestrator position and turn initial positions into array
+
         # store params
         self.numRobots          = numRobots
         self.initialPosition    = initialPosition
@@ -763,11 +733,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
         #logging
         self.pdrProfile     = []
-        self.timeline       = []
         self.relayProfile   = []
         self.numCells       = []
-        self.last_sim_time  = 0
-        self.last_real_time = time.time()
     
     #======================== public ==========================================
 
@@ -792,7 +759,11 @@ class Orchestrator(Wireless.WirelessDevice):
         self._sendDownstreamCommands()
 
         # collect data for logging purposes
-        self._collectData()
+        self.datacollector.collect({'numCells': len(self.navigation.map.obstacles) + len(self.navigation.map.explored),
+                                    'pdrProfile': self.wireless.getPdr(),
+                                    'time': self.simEngine.currentTime(),
+                                    'realTime': time.time()
+                                    })
 
         # arm next downstream communication
         self.simEngine.schedule(
@@ -829,19 +800,6 @@ class Orchestrator(Wireless.WirelessDevice):
                     sender = self,
                 )
 
-
-    def _collectData(self):
-
-        self.timeseries_kpis['numCells']      = len(self.navigation.map.obstacles)+len(self.navigation.map.explored)
-        self.timeseries_kpis['pdrProfile']    = self.wireless.getPdr()
-        self.timeseries_kpis['time']          = self.simEngine.currentTime()
-        self.timeseries_kpis['realTime']      = time.time()
-
-        #TODO: add assert here for if sim engine is just stuck
-
-        self.datacollector.collect(self.timeseries_kpis)
-
-
     def receive(self,frame):
         '''
         Notification received from a DotBot.
@@ -850,14 +808,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # hand received frame to navigation algorithm
         self.navigation.receiveNotification(frame)
-
-        if self.last_sim_time == self.simEngine.currentTime():
-            self.last_real_time = time.time()
-
-        if self.last_real_time - time.time() > 60:
-            raise TimeoutError
-
-        self.last_sim_time = self.simEngine.currentTime()
 
     
     #=== UI

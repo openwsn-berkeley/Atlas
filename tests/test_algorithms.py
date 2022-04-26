@@ -53,7 +53,7 @@ def test_map_expand():
         assert abs(x) <= map.width // 2 and abs(y) <= map.height // 2 and map.cell(x, y) is not None
 
     assert map.width == 20 and map.height == 20
-    assert map.cell(30, 30, expand=False) is None
+    assert map.cell(30, 30) is None
     assert map.width == 20 and map.height == 20
     assert map.cell(30, 30) is not None
     assert map.width == 80 and map.height == 80

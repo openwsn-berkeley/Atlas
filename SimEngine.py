@@ -34,7 +34,6 @@ class SimEngine(threading.Thread):
         
         # local variables
         self._currentTime         = 0    # what time is it for the DotBots
-        self.last_ts              = 0
         self._mode                = self.MODE_PAUSE
         self._startTsSim          = None
         self._startTsReal         = None
@@ -46,8 +45,6 @@ class SimEngine(threading.Thread):
         self.simComplete          = False
         self.datacollector        = DataCollector.DataCollector()
         self.semIsRunning.acquire()
-
-
 
         # start thread
         threading.Thread.__init__(self)
@@ -129,11 +126,6 @@ class SimEngine(threading.Thread):
                 self.events.pop(idx)
             else:
                 idx += 1
-
-
-    def completeRun(self, complete=False):
-        self.simComplete = complete
-        self.schedule(self._currentTime,None,tag='selfDestruct')
     
     #=== helper functions
 

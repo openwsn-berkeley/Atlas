@@ -1,23 +1,9 @@
 # built-in
 import abc
-import sys
 import random
-import time
-from functools import wraps
 import numpy as np
 # local
 import Utils as u
-
-def timeit(my_func):
-    @wraps(my_func)
-    def timed(*args, **kw):
-        tstart = time.time()
-        output = my_func(*args, **kw)
-        tend = time.time()
-        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart)))
-        return output
-
-    return timed
 
 
 class WirelessDevice(object):
@@ -279,12 +265,10 @@ class WirelessBase(abc.ABC):
         self.devices = []
         self.lastTree = None
         self.last_num_relays = 0
-        self.lastNodes = None
         self.edge_node_pdrs = None
         self.currentPDR = None
         self.propagation = propagation()
         self.pdrs = []
-
 
         # local variables
 
@@ -294,8 +278,7 @@ class WirelessBase(abc.ABC):
         """
         Indicates devices available for transmission.
         """
-        self.devices = devices # TODO: make this a set
-        #        self.createPDRmatrix(devices)
+        self.devices = devices
         self.orch = self.devices[-1]
         self.dotbots = self.devices[:-1]
 

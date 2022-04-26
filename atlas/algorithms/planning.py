@@ -5,27 +5,19 @@ E.g., BFS, Djikstra's, A*, D* Lite, RRT
 Created by: Felipe Campos, fmrcampos@berkeley.edu
 Date: Mon, Oct 4, 2021
 """
-
+#built-in
 import abc
-
 import collections
-
 import random
-
 from functools import wraps
-
 import time
-
-import Utils as u
-
-import numpy as np
-
 from typing import Optional, Tuple, List, Any
-
+#third-party
+import numpy as np
+#local
+import Utils as u
 from atlas.datastructures import PriorityQueue
-
 import SimEngine
-
 import DataCollector
 
 
@@ -36,18 +28,6 @@ NOTES:
 - It's likely that each implementation will define it's own graph structure (with or without costs etc.)
 - So maybe we define a basic graph class and extend from there?
 '''
-
-def timeit(my_func):
-    @wraps(my_func)
-    def timed(*args, **kw):
-        tstart = time.time()
-        output = my_func(*args, **kw)
-        tend = time.time()
-
-        print('"{}" took {:.3f} ms to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
-        return output
-
-    return timed
 
 """ Abstract Base Classes """
 
@@ -362,8 +342,7 @@ class AStar(PathPlanner):
         '''
         Path planning algorithm (A* in this case) for finding shortest path to target
         '''
-        #print(f"from {start_coords} to {target_coords} Searching........", end="\r")
-        t0 = time.time()
+
         start = self.map.cell(*start_coords, local=False)
         target = self.map.cell(*target_coords, local=False)
 
@@ -426,9 +405,6 @@ class AStar(PathPlanner):
                 child.parent = currentCell
                 openCells.put(*child.priority()) if self.Q else openCells.append(child)
 
-
-        t1 = time.time()
-        #print(f"From {start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
         return path
 
 """ Atlas Target Selector """
@@ -440,15 +416,10 @@ class AtlasTargets(TargetSelector):
         # initialize parent
         super().__init__(*args, **kwargs)
 
-        self.ix = start_x
-        self.iy = start_y
-
-        self.numDotBots = num_bots
-
+        self.ix             = start_x
+        self.iy             = start_y
         self.frontier_cells = [] # all frontier boundary cells
-
-        self.not_frontiers = set()
-        self.simEngine     = SimEngine.SimEngine()
+        self.simEngine      = SimEngine.SimEngine()
         self.datacollector  = DataCollector.DataCollector()
 
     def allocateTarget(self, dotbot_position):
@@ -457,7 +428,6 @@ class AtlasTargets(TargetSelector):
         '''
 
         alloc_target   = None
-        alloc_frontier = None
 
         while not alloc_target:
 
@@ -501,6 +471,7 @@ class AtlasTargets(TargetSelector):
                 targetsAndDistances2start += [(t, u.distance((self.ix,self.iy), t_position))]
 
         assert  targetsAndDistances2start
+
         min_target_distance = sorted(targetsAndDistances2start, key=lambda item: item[1])[0][1]
         closest_targets_to_start = [c for (c, d) in targetsAndDistances2start if d == min_target_distance]
         closest_targets = closest_targets_to_start
@@ -519,6 +490,7 @@ class AtlasTargets(TargetSelector):
                 targetsAndDistances2db += [(t, u.distance(dotbot_position, t_position))]
 
         assert targetsAndDistances2db
+
         min_target_distance = sorted(targetsAndDistances2db, key=lambda item: item[1])[0][1]
         closest_targets_to_dotbot = [c for (c, d) in targetsAndDistances2db if d == min_target_distance]
         closest_target = random.choice(closest_targets_to_dotbot)

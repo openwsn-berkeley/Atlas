@@ -3,13 +3,11 @@ import LoggingConfig
 import logging
 import logging.config
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
-
 # built-in
 import os
 import argparse
 import time
 import random
-import ast
 # third-party
 # local
 import Floorplan

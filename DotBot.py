@@ -1,7 +1,6 @@
 # built-in
 import math
 import itertools
-
 # third-party
 # local
 import SimEngine
@@ -44,7 +43,6 @@ class DotBot(Wireless.WirelessDevice):
         self.packetsRxRatio       = 1
         self.packetsRX            = 0
         self.hbLength             = 10
-        self.PDRarray             = []
         self.relay                = False
 
         self.simEngine.schedule(self.simEngine.currentTime()+self.hbLength, self._updateHeartbeat)
@@ -168,7 +166,6 @@ class DotBot(Wireless.WirelessDevice):
 
     def _updatePacketCount(self):
         self.packetsRX += 1
-        #print(self.packetsRX)
 
     def _resetPacketCount(self):
         self.packetsRX = 0
@@ -187,7 +184,6 @@ class DotBot(Wireless.WirelessDevice):
 
         self.packetsRxRatio = self.packetsRX/(self.hbLength*self.packets_per_command)
         self._resetPacketCount()
-        #print('->', self.dotBotId,'->',self.packetsRxRatio,'->',self.x,self.y)
 
         self.bump = False
 
@@ -301,7 +297,6 @@ class DotBot(Wireless.WirelessDevice):
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
 
-        # FIXME: remove this
         bump_x = self.x + (bump_ts - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_y = self.y + (bump_ts - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_x = round(bump_x, 3)
