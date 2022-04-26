@@ -1,40 +1,22 @@
 [atlas]
-    ui = true
-    cleps = true
 
-    [atlas.experiment]
-        runs = 1
-        configID    = "default"
-        description = "Running a default config experiment"
-        [atlas.experiment.logging]
-            name = "Atlas_log" # semantic prefix to date-time-hash format
+    # general configurations
 
-    [atlas.wireless]
-        models = ["ConcurrentTransmission"]
-        [atlas.wireless.propagation]
-            models = ["Pister"]
-        [atlas.wireless.propagation.custom]
-            args = {}
+    ui          = true                                       # activate simulation GUI
+    configId    = "default"                                  # configuration identifier
+    description = "Running a default config experiment"
+    name        = "Atlas_data"                               # semantic prefix to date-time-hash format
 
-    [atlas.orchestrator]
-        [atlas.orchestrator.navigation]
-            models = ["Atlas"]
-            [atlas.orchestrator.navigation.relay]
-                algorithms = ["Recovery"]
-            [atlas.orchestrator.navigation.path_planning]
-                algorithms = ["A*"] # ["Djikstras", "A*", "D*", "RRT"]
-            [atlas.orchestrator.navigation.target_selector]
-                algorithms = ["frontier"]
-            [atlas.orchestrator.navigation.custom]
-                args = {}
+    # simSetting configurations
 
-    [atlas.relays]
-        [atlas.relays.thresholds]
-            min_pdr_threshold = [0.7]
-            best_pdr_threshold = [0.8]
-
-    [atlas.world]
-        floorplans = ["small_empty.txt"]
-        [atlas.world.robots]
-            counts = [10]
-            initial_positions = [[1,1]]
+    numberOfRuns           = 1                               # number of simulations runs with same simSetting
+    floorplanBlueprints    = ["small_empty.txt"]             # blueprints of areas being explored by robots (environment model)
+    communicationProtocols = ["ConcurrentTransmission"]      # wireless communication protocol
+    communicationModels    = ["Pister"]                      # wireless propagation model
+    pathPlanningAlgorithms = ["A*"]                          # path planning algorithms for robot navigation
+    navigationAlgorithms   = ["Atlas"]                       # navigation and mapping algorithms
+    relayAlgorithms        = ["Recovery"]                    # relay placement algorithms
+    lowerPdrThresholds     = [0.7]                           # pdr that triggers relay placement in recovery alg
+    upperPdrThresholds     = [0.8]                           # pdr that determines relay placement position  in recovery alg
+    swarmSizes             = [10]                            # number of robots in swarm
+    initialPositions       = [[1,1]]                         # initial positions for robots

@@ -19,41 +19,35 @@ def main(config, cleps):
     
     # create a list of settings, one per simulation run
     simSettings  = []
-    nav_config   = config.orchestrator.navigation # shorthand
-    seed_counter = 0
-    for run in range(config.experiment.runs):
-        for idx, floorplan in enumerate(config.world.floorplans):
-            for numrobot in config.world.robots.counts:
-                for init_pos in config.world.robots.initial_positions:
-                    for wireless in config.wireless.models:
-                        for propagation in config.wireless.propagation.models:
-                            for nav in nav_config.models:
-                                for relay in nav_config.relay.algorithms:
-                                    for path_planner in nav_config.path_planning.algorithms:
-                                        for target_selector in nav_config.target_selector.algorithms:
-                                            for lower_threshold in config.relays.thresholds.min_pdr_threshold:
-                                                for upper_threshold in config.relays.thresholds.best_pdr_threshold:
-                                                    seed_counter += 1
-                                                    simSettings  += [{
-                                                        'seed':                seed_counter,
-                                                        'config ID':           config.experiment.configID ,
-                                                        'numDotBots':          numrobot,
-                                                        'floorplanType':       idx,
-                                                        'floorplanDrawing':    pkg_resources.resource_string(
-                                                            'atlas.resources.maps',
-                                                            floorplan).decode('utf-8'),
-                                                        'initialPosition':     tuple(init_pos),
-                                                        'navAlgorithm':        nav,
-                                                        'pathPlanner':         path_planner,
-                                                        'targetSelector':      target_selector,
-                                                        'wirelessModel':       wireless,
-                                                        'propagationModel':    propagation,
-                                                        'relaySettings': {
-                                                            'relayAlg':             relay,
-                                                            'minPdrThreshold':      lower_threshold,
-                                                            'bestPdrThreshold':     upper_threshold,
-                                                        }
-                                                    }]
+    seedCounter = 0
+    for run in range(config.numberOfRuns):
+        for idx, floorplanBlueprint in config.floorplanBlueprints:
+            for communicationProtocol in config.communicationProtocols:
+                for communicationModel in config.communicationModels:
+                    for pathPlanningAlgorithm in config.pathPlanningAlgorithms:
+                        for navigationAlgorithm in config.navigationAlgorithms:
+                            for relayAlgorithm in config.relayAlgorithms:
+                                for lowerPdrThreshold in config.lowerPdrThresholds:
+                                    for upperPdrThreshold in config.upperPdrThresholds:
+                                        for swarmSize in config.swarmSizes:
+                                            for initialPosition in config.initialPositions:
+                                                seedCounter += 1
+                                                simSettings  += [{
+                                                    'seed':                seedCounter,
+                                                    'config ID':           config.configId ,
+                                                    'floorplanBlueprint':  pkg_resources.resource_string(
+                                                        'atlas.resources.maps',
+                                                        floorplanBlueprint).decode('utf-8'),
+                                                    'communicationProtocol': communicationProtocol,
+                                                    'communicationModel': communicationModel,
+                                                    'pathPlanningAlgorithm': pathPlanningAlgorithm,
+                                                    'explorationAlgorithm': explorationAlgorithm,
+                                                    'relayAlgorithm': relayAlgorithm,
+                                                    'lowerPdrThreshold': lowerPdrThreshold,
+                                                    'upperPdrThreshold': upperPdrThreshold,
+                                                    'swarmSize': swarmSize,
+                                                    'initialPosition': initialPosition,
+                                                }]
 
     # create the UI
     simUI          = SimUI.SimUI() if config.ui else None

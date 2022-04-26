@@ -36,21 +36,21 @@ def runSim(simSetting, simUI):
     simEngine      = SimEngine.SimEngine()
 
     # create the floorplan
-    floorplan      = Floorplan.Floorplan(simSetting['floorplanDrawing'])
+    floorplan      = Floorplan.Floorplan(simSetting['floorplanBlueprint'])
 
     # shorthand
     (initx, inity) = simSetting['initialPosition']
 
     # create the DotBots
     dotBots        = []
-    for dotBotId in range(simSetting['numDotBots']):
+    for dotBotId in range(simSetting['swarmSize']):
         dotBots   += [DotBot.DotBot(dotBotId, initx, inity, floorplan)]
 
     # create the orchestrator
     orchestrator   = Orchestrator.Orchestrator(
-        simSetting['numDotBots'],
+        simSetting['swarmSize'],
         simSetting['initialPosition'],
-        simSetting['navAlgorithm'],
+        simSetting['navigationAlgorithm'],
         simSetting['relaySettings'],
         simSetting['config ID'],
     )
