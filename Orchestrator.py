@@ -14,7 +14,7 @@ import SimEngine
 import Wireless
 import Utils as u
 import DataCollector
-from atlas.algorithms.planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
+from atlas.algorithms.Planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
 
 class ExceptionOpenLoop(Exception):
     pass

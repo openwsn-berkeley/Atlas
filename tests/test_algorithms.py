@@ -1,6 +1,6 @@
 import pytest
 
-from atlas.algorithms.planning import Map, AStar
+from atlas.algorithms.Planning import Map, AStar
 
 def _xy2hCell(x, y):
     xsteps = int(round((x - 1) / 0.5, 0))

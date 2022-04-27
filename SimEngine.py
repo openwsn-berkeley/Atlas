@@ -126,6 +126,10 @@ class SimEngine(threading.Thread):
                 self.events.pop(idx)
             else:
                 idx += 1
+
+    def completeRun(self, complete=False):
+        self.simComplete = complete
+        self.schedule(self._currentTime,None,tag='selfDestruct')
     
     #=== helper functions
 
