@@ -11,7 +11,7 @@ import pkg_resources
 # local
 import SimUI
 import RunOneSim
-from   atlas.config import AtlasConfig
+from   Config import AtlasConfig
 
 #============================ main ============================================
 
@@ -37,7 +37,7 @@ def main(configFile, cleps, noUI):
                                             'seed':                 seedCounter,
                                             'numRobots':            numRobots,
                                             'floorplan':            pkg_resources.resource_string(
-                                                'atlas.resources.maps',
+                                                'resources.maps',
                                                 floorplan).decode('utf-8'),
                                             'initialPosition':       initialPosition,
                                             'navigationAlgorithm':   navigationAlgorithm,
