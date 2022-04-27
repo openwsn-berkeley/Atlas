@@ -37,7 +37,7 @@ def main(configFile, cleps, noUI):
                                             'seed':                 seedCounter,
                                             'numRobots':            numRobots,
                                             'floorplan':            pkg_resources.resource_string(
-                                                'resources.maps',
+                                                'maps',
                                                 floorplan).decode('utf-8'),
                                             'initialPosition':       initialPosition,
                                             'navigationAlgorithm':   navigationAlgorithm,
