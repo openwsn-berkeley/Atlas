@@ -7,6 +7,8 @@ logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 import argparse
 import subprocess
 import pkg_resources
+import  itertools
+
 # third-party
 # local
 import SimUI
@@ -14,6 +16,24 @@ import RunOneSim
 from   Config import AtlasConfig
 
 #============================ main ============================================
+def allSimSettings(config):
+    simSettings = []
+    seedCounter = 0
+    configKeys = config.keys()
+    configItems = [config[k] for k in configKeys if type(config[k]) is list]
+
+
+    simSettings = []
+    configKeys = list(config.keys())
+    configItems = [config[k] for k in configKeys if type(config[k]) is list]
+
+    for configProduct in itertools.product(*configItems):
+        simSetting   = {}
+        for idx,c in enumerate(configProduct):
+            simSetting[configKeys[idx]] = c
+        simSettings += [simSetting]
+
+    return  simSettings
 
 def main(configFile, cleps, noUI):
     configFileName = configFile

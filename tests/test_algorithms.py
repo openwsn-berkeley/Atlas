@@ -46,22 +46,6 @@ def markTraversedCells(startX, startY, stopX, stopY):  # TODO: unit test
 
     return returnVal
 
-# def test_map_expand():
-#     map = Map(width=20, height=20, scale=0.5, factor=2)
-#     assert map.width == 20 and map.height == 20
-#     for (x, y) in map.all_coordinates(map.width, map.height, map.scale):
-#         assert abs(x) <= map.width // 2 and abs(y) <= map.height // 2 and map.cell(x, y) is not None
-#
-#     assert map.width == 20 and map.height == 20
-#     assert map.cell(30, 30) is None
-#     assert map.width == 20 and map.height == 20
-#     assert map.cell(30, 30) is not None
-#     assert map.width == 80 and map.height == 80
-#     assert map.cell(45, 27) is not None
-#     assert map.width == 160 and map.height == 160
-#
-#     for (x, y) in map.all_coordinates(map.width, map.height, map.scale):
-#         assert abs(x) <= map.width // 2 and abs(y) <= map.height // 2 and map.cell(x, y) is not None
 
 def test_empty_A_star():
     planner = AStar()
