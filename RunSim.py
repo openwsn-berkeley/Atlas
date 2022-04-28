@@ -40,7 +40,7 @@ def main(configfile, cleps, noui):
 
     config = toml.load(pkg_resources.resource_filename(__name__, f"configs/{configfile}.toml"))
     config = config['atlas']
-    
+
     # create a list of settings, one per simulation run
     simSettings = allSimSettings(config)
     for (idx,simSetting) in enumerate(simSettings):
@@ -54,7 +54,7 @@ def main(configfile, cleps, noui):
     # run simulations, one run per simSetting
     for (runNum, simSetting) in enumerate(simSettings):
         if cleps:
-            cmd    = ["sbatch", "--partition=cpu_homogen", "../scripts/atlas_submit_RunOneSim.sbatch", str(simSetting)]
+            cmd    = ["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", str(simSetting)]
             p      = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             RunOneSim.main(simSetting, simUI)
