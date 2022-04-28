@@ -25,6 +25,7 @@ def runSim(simSetting, simUI=None):
     '''
 
     # ======================== setup
+
     print("simulation started")
     
     # setting the seed

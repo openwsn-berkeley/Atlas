@@ -16,6 +16,7 @@ import RunOneSim
 from   Config import AtlasConfig
 
 #============================ main ============================================
+
 def allSimSettings(config):
     simSettings = []
     configItems = []
@@ -37,20 +38,21 @@ def allSimSettings(config):
 
     return  simSettings
 
-def main(configFile, cleps, noUI):
-    configFileName = configFile
+def main(configfile, cleps, noui):
 
-    config = AtlasConfig(configFile).atlas
+    configFileName = configfile
+
+    config = AtlasConfig(configfile).atlas
     # create a list of settings, one per simulation run
 
     simSettings = allSimSettings(config)
-    for idx,setting in enumerate(simSettings):
-        simSettings[idx]['configFileName'] =  configFileName
-        simSettings[idx]['floorplan']      = pkg_resources.resource_string('maps',
-                                             simSettings[idx]['floorplan']).decode('utf-8')
+    for (idx,simSetting) in enumerate(simSettings):
+        simSetting['configFileName'] =  configFileName
+        simSetting['floorplan']      = pkg_resources.resource_string('maps',
+                                             simSetting['floorplan']).decode('utf-8')
 
     # create the UI
-    simUI          = None if noUI else SimUI.SimUI()
+    simUI          = None if noui else SimUI.SimUI()
 
     # run simulations, one run per simSetting
     for (runNum, simSetting) in enumerate(simSettings):
@@ -65,8 +67,8 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--configfile", type=str, default="default", help="TOML configuration file")
-    parser.add_argument("--cleps"     , help="running on the Inria CLEPS cluster")
-    parser.add_argument("--noui"      , help="deactivate UI")
+    parser.add_argument("--cleps"     ,                              help="running on the Inria CLEPS cluster")
+    parser.add_argument("--noui"      ,                              help="deactivate UI")
 
     args = parser.parse_args()
 

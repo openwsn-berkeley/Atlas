@@ -1,11 +1,11 @@
 [atlas]
     numRobots                = 10
     floorplan                = "small_empty.txt"         # filename in maps
-    initialPositionX         = 1                        # (0,0) is top-left
+    initialPositionX         = 1                         # (0,0) is top-left
     initialPositionY         = 1
     navigationAlgorithm      = "Atlas"                   # options: Atlas, Ballistic
     relayAlgorithm           = "Recovery"                # options: Recovery, Naive, SelfHealing
     lowerPdrThreshold        = 0.7                       # (for Recovery) trigger relay placement if below
-    upperPdrThreshold        = 0.8                      # (for Recovery) to determine relay position
+    upperPdrThreshold        = 0.8                       # (for Recovery) to determine relay position
     propagationModel         = "PisterHack"              # options: LOS, Friis, Radius, PisterHack
-    numberOfRuns             = 1                           # number of simulations runs with same simSetting
+    numberOfRuns             = 1                         # number of simulations runs with same simSetting
