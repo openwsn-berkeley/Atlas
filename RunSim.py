@@ -38,15 +38,13 @@ def allSimSettings(config):
 
 def main(configfile, cleps, noui):
 
-    configFileName = configfile
-
-    config = toml.load(pkg_resources.resource_filename(__name__, f"configs/{configFileName}.toml"))
+    config = toml.load(pkg_resources.resource_filename(__name__, f"configs/{configfile}.toml"))
     config = config['atlas']
+    
     # create a list of settings, one per simulation run
-    print(config)
     simSettings = allSimSettings(config)
     for (idx,simSetting) in enumerate(simSettings):
-        simSetting['configFileName'] =  configFileName
+        simSetting['configFileName'] =  configfile
         simSetting['floorplan']      = pkg_resources.resource_string('maps',
                                              simSetting['floorplan']).decode('utf-8')
 
