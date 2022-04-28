@@ -18,20 +18,23 @@ from   Config import AtlasConfig
 #============================ main ============================================
 def allSimSettings(config):
     simSettings = []
+    configItems = []
     seedCounter = 0
-    configKeys = config.keys()
-    configItems = [config[k] for k in configKeys if type(config[k]) is list]
-
-
-    simSettings = []
     configKeys = list(config.keys())
-    configItems = [config[k] for k in configKeys if type(config[k]) is list]
 
-    for configProduct in itertools.product(*configItems):
-        simSetting   = {}
-        for idx,c in enumerate(configProduct):
-            simSetting[configKeys[idx]] = c
-        simSettings += [simSetting]
+    for key in configKeys:
+        configItems += [config[key] if type(config[key]) is list else [config[key]]]
+
+
+    for run in range(config['numberOfRuns']):
+        for configProduct in itertools.product(*configItems):
+            simSetting   = {}
+            seedCounter += 1
+            simSetting['seed'] = seedCounter
+            for idx,c in enumerate(configProduct):
+                simSetting[configKeys[idx]] = c
+
+            simSettings += [simSetting]
 
     return  simSettings
 
