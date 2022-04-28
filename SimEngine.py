@@ -2,10 +2,16 @@
 import threading
 import time
 import datetime
+import logging.config
 # third-party
 # local
 import DataCollector
 import traceback
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+
+# setup logging
+log = logging.getLogger('SimEngine')
 
 class SimEngine(threading.Thread):
     '''
@@ -55,7 +61,6 @@ class SimEngine(threading.Thread):
     #======================== thread ==========================================
     
     def run(self):
-
         try:
             while True:
 

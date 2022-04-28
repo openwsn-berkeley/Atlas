@@ -16,6 +16,9 @@ import DataCollector
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('RunOneSim')
+
 #====================================== HELPER =================================================
 
 def runSim(simSetting, simUI=None):
@@ -25,8 +28,8 @@ def runSim(simSetting, simUI=None):
 
     # ======================== setup
 
-    print("simulation started")
-    
+    log.info("Simulation started")
+
     # setting the seed
     random.seed(simSetting['seed'])
     
@@ -97,11 +100,8 @@ def main(simSetting, simUI=None):
     and by the code below when running from CLEPS.
     '''
     
-    # setup logging
-    log            = logging.getLogger('RunOneSim')
-    
     # log start of simulation
-    log.info(f'simulation starting')
+    log.info(f'RunOneSim starting')
     
     # setup data collection
     dataCollector  = DataCollector.DataCollector()
