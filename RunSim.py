@@ -8,7 +8,6 @@ import argparse
 import subprocess
 import pkg_resources
 import  itertools
-import toml
 
 # third-party
 # local
