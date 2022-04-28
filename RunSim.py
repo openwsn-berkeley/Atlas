@@ -54,7 +54,7 @@ def main(configfile, cleps, noui):
     # run simulations, one run per simSetting
     for (runNum, simSetting) in enumerate(simSettings):
         if cleps:
-            cmd    = ["sbatch", "--partition=cpu_homogen", "RunOneSim.sbatch", str(simSetting)]
+            cmd    = ["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", str(simSetting)]
             p      = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             print('running on cleps...')  # TODO: replace with log.info
         else:
