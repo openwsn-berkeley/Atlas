@@ -1,13 +1,10 @@
-# logging (do first)
-import LoggingConfig
-import logging
-import logging.config
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 # built-in
 import os
 import argparse
 import time
 import random
+import logging
+import logging.config
 # third-party
 # local
 import Floorplan
@@ -16,6 +13,8 @@ import Orchestrator
 import Wireless
 import SimEngine
 import DataCollector
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 #====================================== HELPER =================================================
 

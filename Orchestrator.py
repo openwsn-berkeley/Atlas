@@ -5,8 +5,7 @@ import threading
 import copy
 import sys
 import math
-from functools import wraps
-from typing import Union, List
+import typing
 import time
 # third-party
 # local
@@ -14,7 +13,7 @@ import SimEngine
 import Wireless
 import Utils as u
 import DataCollector
-from Planning import Map, AStar, AtlasTargets,BFS, Recovery, NoRelays, Naive, SelfHealing
+import Planning
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -291,7 +290,7 @@ class Navigation(abc.ABC):
     Navigation algorithm .
     '''
 
-    def __init__(self, numRobots, initialPosition: Union[tuple, List[tuple]], *args, **kwargs):
+    def __init__(self, numRobots, initialPosition: typing.Union[tuple, typing.List[tuple]], *args, **kwargs):
 
         # store params
         self.numRobots       = numRobots
@@ -467,8 +466,8 @@ class NavigationAtlas(Navigation):
         # initialize parent
         super().__init__(*args, **kwargs)
 
-        self.map = Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=AStar.Cell)
-        self.path_planner  = AStar(self.map)
+        self.map = Planning.Map(offset=self.initialPosition, scale=MapBuilder.MINFEATURESIZE_M / 2, cell_class=Planning.AStar.Cell)
+        self.path_planner  = Planning.AStar(self.map)
 
         # (additional) local variables
         self.simEngine = SimEngine.SimEngine()
@@ -485,10 +484,9 @@ class NavigationAtlas(Navigation):
         self.relayBots         = set()
 
         # SelfHealing, Naive, NoRelay, Recovery
-        relay_algorithm = globals()[str(relaySettings["relayAlgorithm"])]
-
+        relay_algorithm = getattr(Planning,relaySettings["relayAlgorithm"])
         self.relay_planner = relay_algorithm(map=self.map, radius=15,  start_x=self.ix, start_y=self.iy, settings=relaySettings)
-        self.target_selector = AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numRobots)
+        self.target_selector = Planning.AtlasTargets(map=self.map, start_x=self.ix, start_y=self.iy, num_bots=self.numRobots)
         self.scheduleCheckForRelays()
 
         for (dotBotId,_) in enumerate(self.dotbotsview):

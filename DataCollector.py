@@ -1,7 +1,9 @@
+# built-in
 import threading
 import time
 import json
-
+# third-party
+# local
 class DataCollector(threading.Thread):
     '''
     Singleton, write to file periodically.

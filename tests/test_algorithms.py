@@ -1,6 +1,4 @@
-import pytest
-
-from Planning import Map, AStar
+import Planning
 
 def _xy2hCell(x, y):
     xsteps = int(round((x - 1) / 0.5, 0))
@@ -48,21 +46,21 @@ def markTraversedCells(startX, startY, stopX, stopY):  # TODO: unit test
 
 
 def test_empty_A_star():
-    planner = AStar()
+    planner = Planning.AStar()
     planner.map.explore_cell(0,0)
     planner.map.explore_cell(0, 0.5)
     path = planner.computePath((0, 0), (0, 1))
     assert path == [(0,0.5),(0,1)]
 
 def test_no_path_A_star():
-    planner = AStar()
+    planner = Planning.AStar()
     planner.map.add_obstacle(5, 0)
     path = planner.computePath((0, 0), (5, 0))
 
     assert path is None
 
 def test_no_target_neighbors_A_star():
-    planner = AStar()
+    planner = Planning.AStar()
     for i in [-0.5, 0, 0.5]:
         for j in [-0.5, 0, 0.5]:
             if i == j == 0:
@@ -74,7 +72,7 @@ def test_no_target_neighbors_A_star():
     assert path is None
 
 def test_some_obstacles_A_star():
-    planner = AStar()
+    planner = Planning.AStar()
     planner.map.explore_cell(0, 0)
     planner.map.explore_cell(0.5, 0)
     planner.map.explore_cell(0.5, 0.5)

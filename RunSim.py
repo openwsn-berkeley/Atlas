@@ -1,23 +1,21 @@
-# logging (do first)
-import LoggingConfig
-import logging.config
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
-
 # built-in
 import argparse
 import subprocess
 import pkg_resources
-import  itertools
+import itertools
 import toml
-
+import logging.config
 # third-party
 # local
 import SimUI
 import RunOneSim
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 #============================ main ============================================
 
 def allSimSettings(config):
+
     simSettings = []
     configItems = []
     seedCounter = 0
