@@ -8,12 +8,12 @@ import argparse
 import subprocess
 import pkg_resources
 import  itertools
+import toml
 
 # third-party
 # local
 import SimUI
 import RunOneSim
-from   Config import AtlasConfig
 
 #============================ main ============================================
 
@@ -42,9 +42,10 @@ def main(configfile, cleps, noui):
 
     configFileName = configfile
 
-    config = AtlasConfig(configfile).atlas
+    config = toml.load(pkg_resources.resource_filename(__name__, f"configs/{configFileName}.toml"))
+    config = config['atlas']
     # create a list of settings, one per simulation run
-
+    print(config)
     simSettings = allSimSettings(config)
     for (idx,simSetting) in enumerate(simSettings):
         simSetting['configFileName'] =  configFileName
@@ -67,8 +68,8 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--configfile", type=str, default="default", help="TOML configuration file")
-    parser.add_argument("--cleps"     ,                              help="running on the Inria CLEPS cluster")
-    parser.add_argument("--noui"      ,                              help="deactivate UI")
+    parser.add_argument("--cleps",                                   help="running on the Inria CLEPS cluster")
+    parser.add_argument("--noui",                                    help="deactivate UI")
 
     args = parser.parse_args()
 

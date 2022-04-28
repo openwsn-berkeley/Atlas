@@ -211,7 +211,7 @@ EXPECTEDINOUT = [
             'navigationAlgorithm':         ["Atlas","Ballistic"],
             'relayAlgorithm':              "Recovery",
             'lowerPdrThreshold':           0.7,
-            'upperPdrThreshold':           0.8,
+            'upperPdrThreshold':           [0.8],
             'propagationModel':            "PisterHack",
             'numberOfRuns':                2,                     # required
 
@@ -221,11 +221,11 @@ EXPECTEDINOUT = [
                 'seed':                    1,                       # normal
                 'numRobots':               10,
                 'floorplan':               "small_empty.txt",
-                'initialPosition':         [1,1],
+                'initialPosition':         (1,1),
                 'navigationAlgorithm':     "Atlas",
                 'relayAlgorithm':          "Recovery",
                 'lowerPdrThreshold':       0.7,
-                'upperPdrThreshold':       [0.8],
+                'upperPdrThreshold':       0.8,
                 'propagationModel':        "PisterHack",
                 'numberOfRuns':            2,
 
@@ -267,6 +267,58 @@ EXPECTEDINOUT = [
                 'upperPdrThreshold':       0.8,
                 'propagationModel':        "PisterHack",
                 'numberOfRuns':            2,
+
+            },
+            {
+                'seed':                     5,
+                'numRobots':                10,
+                'floorplan':                "small_empty.txt",
+                'initialPosition':          (1, 1),
+                'navigationAlgorithm':      "Atlas",
+                'relayAlgorithm':           "Recovery",
+                'lowerPdrThreshold':        0.7,
+                'upperPdrThreshold':        0.8,
+                'propagationModel':         "PisterHack",
+                'numberOfRuns':             2,
+
+            },
+            {
+                'seed':                     6,
+                'numRobots':                10,
+                'floorplan':                "small_empty.txt",
+                'initialPosition':          (1, 1),
+                'navigationAlgorithm':      "Ballistic",
+                'relayAlgorithm':           "Recovery",
+                'lowerPdrThreshold':        0.7,
+                'upperPdrThreshold':        0.8,
+                'propagationModel':         "PisterHack",
+                'numberOfRuns':             2,
+
+            },
+            {
+                'seed':                     7,
+                'numRobots':                20,
+                'floorplan':                "small_empty.txt",
+                'initialPosition':          (1, 1),
+                'navigationAlgorithm':      "Atlas",
+                'relayAlgorithm':           "Recovery",
+                'lowerPdrThreshold':        0.7,
+                'upperPdrThreshold':        0.8,
+                'propagationModel':         "PisterHack",
+                'numberOfRuns':             2,
+
+            },
+            {
+                'seed':                     8,
+                'numRobots':                20,
+                'floorplan':                "small_empty.txt",
+                'initialPosition':          (1, 1),
+                'navigationAlgorithm':      "Ballistic",
+                'relayAlgorithm':           "Recovery",
+                'lowerPdrThreshold':        0.7,
+                'upperPdrThreshold':        0.8,
+                'propagationModel':         "PisterHack",
+                'numberOfRuns':             2,
 
             },
         ],

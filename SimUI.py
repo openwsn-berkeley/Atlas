@@ -6,7 +6,7 @@ import time
 import bottle
 # local
 import SimEngine
-import SimVersion
+import AtlasVersion
 
 class SimUI(object):
     '''
@@ -68,7 +68,7 @@ class SimUI(object):
         return bottle.template(
             'SimUI',
             pagetitle   = 'DotBot Simulator',
-            version     = SimVersion.formatVersion(),
+            version     = AtlasVersion.formatVersion(),
         )
     
     def _webhandle_static_GET(self,filename):
