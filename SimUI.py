@@ -2,11 +2,14 @@
 import threading
 import webbrowser
 import time
+import logging.config
 # third-party
 import bottle
 # local
 import SimEngine
 import AtlasVersion
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 class SimUI(object):
     '''
@@ -16,6 +19,9 @@ class SimUI(object):
     TCPPORT = 8080
     
     def __init__(self):
+
+        # setup logging
+        self.log = logging.getLogger('SimUI')
     
         # store params
         self.floorplan       = None
@@ -136,18 +142,9 @@ class SimUI(object):
     #=== web server admin
     
     def _bottle_try_running_forever(self,*args,**kwargs):
-        RETRY_PERIOD = 3
+
         while True:
             try:
                 args[0](**kwargs) # blocking
-            except Exception as err:
-                if False: # how to get socket.error? if err[0] == 10013:
-                    print('FATAL: cannot open TCP port {0}.'.format(kwargs['port']))
-                    print('    Is another application running on that port?')
-                else:
-                    print(err)
-            print('    Trying again in {0} seconds'.format(RETRY_PERIOD))
-            for _ in range(RETRY_PERIOD):
-                time.sleep(1)
-                print('.')
-            print('')
+            except:
+                pass

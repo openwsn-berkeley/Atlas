@@ -7,17 +7,17 @@ Date: Mon, Oct 4, 2021
 """
 # built-in
 import abc
-import collections
 import random
-import time
-from typing import Optional, Tuple, List, Any
+import typing
+import logging.config
 # third-party
 import numpy as np
 # local
 import Utils as u
 import SimEngine
 import DataCollector
-
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 '''
 NOTES:
@@ -31,6 +31,10 @@ NOTES:
 
 class Cell(abc.ABC):
     def __init__(self, x, y, map, explored=False, obstacle=False, unreachable=False):
+
+        # setup logging
+        self.log = logging.getLogger('Planning')
+
         self.x = x
         self.y = y
 
@@ -82,6 +86,10 @@ class Map(abc.ABC):
     # TODO: create a function that maps coordinates here to global coordinates via a translation (and possible a rotation later on)
 
     def __init__(self, width=100, height=100, scale=0.5, cell_class=Cell, offset=(0, 0), factor=2):
+
+        # setup logging
+        self.log = logging.getLogger('Planning')
+
         self.width = width
         self.height = height
         self.scale = scale
@@ -195,6 +203,10 @@ class TargetSelector(abc.ABC):
         pass
 
     def __init__(self, map=None, map_kwargs={}):
+
+        # setup logging
+        self.log = logging.getLogger('Planning')
+
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
 
     @abc.abstractmethod
@@ -206,10 +218,12 @@ class PathPlanner(abc.ABC):
         pass
 
     def __init__(self, map=None, map_kwargs={}):
+        # setup logging
+        self.log = logging.getLogger('Planning')
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
 
     @abc.abstractmethod
-    def computePath(self, *args, **kwargs) -> Optional[List[Any]]: # TODO: define the type of object that the path should be comprised of, likely a cell object or tuple
+    def computePath(self, *args, **kwargs) -> typing.Optional[typing.List[typing.Any]]: # TODO: define the type of object that the path should be comprised of, likely a cell object or tuple
         ...
 
 class RelayPlanner(abc.ABC):
@@ -217,6 +231,10 @@ class RelayPlanner(abc.ABC):
         pass
 
     def __init__(self, map=None, radius=10, start_x=None, start_y=None, settings={}, map_kwargs={}):
+
+        # setup logging
+        self.log = logging.getLogger('Planning')
+
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
         self.assigned_relays         = set()   # robots assigned to become relays
         self.targeted_relays         = set()   # relay robots that have been given a target position
@@ -237,43 +255,6 @@ class RelayPlanner(abc.ABC):
 
 """ Implementations """
 
-""" BFS """
-
-class BFS(PathPlanner):
-
-    def computePath(self, start_coords: Tuple[float, float], target_coords: Tuple[float, float]) -> Optional[List[Any]]: # TODO: have type definitions
-        '''
-        Path planning algorithm (BFS in this case) for finding path to target
-        '''
-        #print(f"{start_coords} to {target_coords} Searching........", end="\r")
-        t0 = time.time()
-        start = self.map.cell(*start_coords, local=False)
-        target = self.map.cell(*target_coords, local=False)
-
-        visited, toVisit = set(), collections.deque([start])
-
-        if target.obstacle or not self.map.neighbors(target):
-            return None
-
-        # TODO: when it returns None, orchestrator should handle removing target on it's own side
-        path = []
-        while toVisit:
-            node = toVisit.popleft()
-            visited.add(node)
-
-            if node == target:
-                t1 = time.time()
-                #print(f"{start_coords} to {target_coords} Done ............. Took {t1 - t0}s to search", end="\r")
-
-                return path
-
-            for neighbor in self.map.neighbors(node):
-                if neighbor not in visited:
-                    toVisit.append(neighbor)
-            if node != start:
-                path.append(node.position(_local=False))
-
-
 """ A Star """
 
 class AStar(PathPlanner):
@@ -281,6 +262,10 @@ class AStar(PathPlanner):
     ID = 0
 
     def __init__(self, map=None, map_kwargs={}):
+
+        # setup logging
+        self.log = logging.getLogger('Planning')
+
         super().__init__(map=map, map_kwargs=map_kwargs)
 
 
@@ -336,7 +321,7 @@ class AStar(PathPlanner):
         def priority(self):
             return (self.fCost, self)
 
-    def computePath(self, start_coords: Tuple[float, float], target_coords: Tuple[float, float]) -> Optional[List[Any]]: # TODO: have type definitions
+    def computePath(self, start_coords: typing.Tuple[float, float], target_coords: typing.Tuple[float, float]) -> typing.Optional[typing.List[typing.Any]]: # TODO: have type definitions
         '''
         Path planning algorithm (A* in this case) for finding shortest path to target
         '''
@@ -371,7 +356,6 @@ class AStar(PathPlanner):
             currentCell = openCells.get() if self.Q else openCells.pop(0)
 
             if currentCell is None:
-                print("NO PATH!")
                 return
 
             closedCells.add(currentCell)
@@ -428,9 +412,7 @@ class AtlasTargets(TargetSelector):
         alloc_target   = None
 
         while not alloc_target:
-
             # end of mission if no frontier cells left
-
             self.updateFrontierBoundary(dotbot_position)
             random.shuffle(self.frontier_cells)
             if not self.frontier_cells:
@@ -515,7 +497,6 @@ class Recovery(RelayPlanner):
 
             relay = robot['ID']
             break
-
         return relay
 
     def positionRelay(self, relay):

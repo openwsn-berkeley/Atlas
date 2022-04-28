@@ -24,8 +24,6 @@ def runSim(simSetting, simUI=None):
     '''
 
     # ======================== setup
-
-    print("simulation started")
     
     # setting the seed
     random.seed(simSetting['seed'])
@@ -101,7 +99,7 @@ def main(simSetting, simUI=None):
     log            = logging.getLogger('RunOneSim')
     
     # log start of simulation
-    log.info(f'simulation starting')
+    log.info(f'RunOneSim starting')
     
     # setup data collection
     dataCollector  = DataCollector.DataCollector()

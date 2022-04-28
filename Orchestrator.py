@@ -7,6 +7,7 @@ import sys
 import math
 import typing
 import time
+import logging.config
 # third-party
 # local
 import SimEngine
@@ -14,6 +15,8 @@ import Wireless
 import Utils as u
 import DataCollector
 import Planning
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 class ExceptionOpenLoop(Exception):
     pass
@@ -29,6 +32,9 @@ class MapBuilder(object):
     MINFEATURESIZE_M         = 1.00 # shortest wall, narrowest opening
 
     def __init__(self):
+
+        # setup logging
+        self.log = logging.getLogger('Orchestrator')
 
         # store params
 
@@ -292,6 +298,9 @@ class Navigation(abc.ABC):
 
     def __init__(self, numRobots, initialPosition: typing.Union[tuple, typing.List[tuple]], *args, **kwargs):
 
+        # setup logging
+        self.log = logging.getLogger('Orchestrator')
+
         # store params
         self.numRobots       = numRobots
         self.initialPosition = initialPosition
@@ -491,7 +500,6 @@ class NavigationAtlas(Navigation):
 
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
-
 
     #======================== public ==========================================
 
@@ -715,6 +723,9 @@ class Orchestrator(Wireless.WirelessDevice):
     # WirelessConcurrentTransmission or WirelessBase
     def __init__(self, numRobots, initialPosition, relaySettings, navigationAlgorithm, wireless=Wireless.WirelessConcurrentTransmission):
 
+        # setup logging
+        self.log = logging.getLogger('Orchestrator')
+
         # store params
         self.numRobots          = numRobots
         self.initialPosition    = initialPosition
@@ -733,7 +744,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.pdrProfile     = []
         self.relayProfile   = []
         self.numCells       = []
-    
+
     #======================== public ==========================================
 
     #=== admin
@@ -752,7 +763,6 @@ class Orchestrator(Wireless.WirelessDevice):
     #=== communication
 
     def _downstreamTimeoutCb(self):
-
         # send downstream command
         self._sendDownstreamCommands()
 

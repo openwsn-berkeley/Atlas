@@ -1,10 +1,13 @@
 # built-in
 import abc
 import random
+import logging.config
+# built-in
 import numpy as np
 # local
 import Utils as u
-
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 class WirelessDevice(object):
     '''
@@ -261,6 +264,8 @@ class WirelessBase(abc.ABC):
             return
         self._init = True
 
+        # setup logging
+        self.log = logging.getLogger('Wireless')
         # store params
         self.devices = []
         self.lastTree = None

@@ -2,10 +2,13 @@
 import threading
 import time
 import datetime
+import logging.config
 # third-party
 # local
 import DataCollector
 import traceback
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 class SimEngine(threading.Thread):
     '''
@@ -31,6 +34,9 @@ class SimEngine(threading.Thread):
         if self._init:
             return
         self._init = True
+
+        # setup logging
+        self.log = logging.getLogger('SimEngine')
         
         # local variables
         self._currentTime         = 0    # what time is it for the DotBots
@@ -55,7 +61,6 @@ class SimEngine(threading.Thread):
     #======================== thread ==========================================
     
     def run(self):
-
         try:
             while True:
 

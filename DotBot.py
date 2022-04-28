@@ -1,13 +1,15 @@
 # built-in
 import math
 import itertools
+import logging.config
 # third-party
 # local
 import SimEngine
 import Orchestrator
 import Wireless
 import Utils as u
-
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 class DotBot(Wireless.WirelessDevice):
     '''
@@ -15,6 +17,9 @@ class DotBot(Wireless.WirelessDevice):
     '''
 
     def __init__(self, dotBotId, x, y, floorplan, wireless=Wireless.WirelessConcurrentTransmission):
+
+        # setup logging
+        self.log = logging.getLogger('DotBot')
 
         # store params
         self.dotBotId             = dotBotId

@@ -4,6 +4,7 @@ import time
 import json
 # third-party
 # local
+
 class DataCollector(threading.Thread):
     '''
     Singleton, write to file periodically.
@@ -54,7 +55,7 @@ class DataCollector(threading.Thread):
                 with self.dataLock:
                     self._writeToFile()
         except Exception as err:
-            print(err)
+            pass
 
     # ======================== public ==========================================
 
