@@ -49,7 +49,7 @@ def main(configfile, cleps, noui):
                                              simSetting['floorplan']).decode('utf-8')
 
     # create the UI
-    simUI          = None if noui else SimUI.SimUI()
+    simUI          = None if noui or cleps else SimUI.SimUI()
 
     # run simulations, one run per simSetting
     for (runNum, simSetting) in enumerate(simSettings):
