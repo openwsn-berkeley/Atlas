@@ -16,6 +16,9 @@ import DataCollector
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('RunOneSim')
+
 #====================================== HELPER =================================================
 
 def runSim(simSetting, simUI=None):
@@ -24,7 +27,9 @@ def runSim(simSetting, simUI=None):
     '''
 
     # ======================== setup
-    
+
+    log.info("Simulation started")
+
     # setting the seed
     random.seed(simSetting['seed'])
     
@@ -94,9 +99,6 @@ def main(simSetting, simUI=None):
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
     '''
-    
-    # setup logging
-    log            = logging.getLogger('RunOneSim')
     
     # log start of simulation
     log.info(f'RunOneSim starting')

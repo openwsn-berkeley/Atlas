@@ -12,6 +12,9 @@ import RunOneSim
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('RunSim')
+
 #============================ main ============================================
 
 def allSimSettings(config):
@@ -38,11 +41,8 @@ def allSimSettings(config):
 
 def main(configfile, cleps, noui):
 
-    # setup logging
-    log = logging.getLogger('RunSim')
-
     # log start of simulation
-    log.info(f'RunSim starting')
+    log.info(f'RunSim starting ...')
 
     config = toml.load(pkg_resources.resource_filename(__name__, f"configs/{configfile}.toml"))
     config = config['atlas']
@@ -59,6 +59,7 @@ def main(configfile, cleps, noui):
         if cleps:
             cmd    = ["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", str(simSetting)]
             p      = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            log.info('running on cleps ...')
         else:
             # create the UI
             simUI = None if noui else SimUI.SimUI()

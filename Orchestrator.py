@@ -18,6 +18,9 @@ import Planning
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('Orchestrator')
+
 class ExceptionOpenLoop(Exception):
     pass
 
@@ -32,9 +35,6 @@ class MapBuilder(object):
     MINFEATURESIZE_M         = 1.00 # shortest wall, narrowest opening
 
     def __init__(self):
-
-        # setup logging
-        self.log = logging.getLogger('Orchestrator')
 
         # store params
 
@@ -297,9 +297,6 @@ class Navigation(abc.ABC):
     '''
 
     def __init__(self, numRobots, initialPosition: typing.Union[tuple, typing.List[tuple]], *args, **kwargs):
-
-        # setup logging
-        self.log = logging.getLogger('Orchestrator')
 
         # store params
         self.numRobots       = numRobots
@@ -585,8 +582,8 @@ class NavigationAtlas(Navigation):
             else:
                 try:
                     self.target_selector.frontier_cells.remove(self.map.cell(*target, local=False))
-                except:
-                    pass
+                except Exception as err:
+                    log.debug(err)
 
                 target = self.target_selector.allocateTarget(dotbot_position)
 
@@ -722,9 +719,6 @@ class Orchestrator(Wireless.WirelessDevice):
     COMM_DOWNSTREAM_PERIOD_S   = 1
     # WirelessConcurrentTransmission or WirelessBase
     def __init__(self, numRobots, initialPosition, relaySettings, navigationAlgorithm, wireless=Wireless.WirelessConcurrentTransmission):
-
-        # setup logging
-        self.log = logging.getLogger('Orchestrator')
 
         # store params
         self.numRobots          = numRobots

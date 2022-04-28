@@ -9,6 +9,9 @@ import Utils as u
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('Wireless')
+
 class WirelessDevice(object):
     '''
     Abstract class for any device communicating over the wireless medium.
@@ -264,8 +267,6 @@ class WirelessBase(abc.ABC):
             return
         self._init = True
 
-        # setup logging
-        self.log = logging.getLogger('Wireless')
         # store params
         self.devices = []
         self.lastTree = None

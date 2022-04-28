@@ -19,6 +19,9 @@ import DataCollector
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('Planning')
+
 '''
 NOTES:
 - Maybe include abstract graph representation (list of nodes or otherwise idk) that easily maps back to Atlas rep
@@ -31,9 +34,6 @@ NOTES:
 
 class Cell(abc.ABC):
     def __init__(self, x, y, map, explored=False, obstacle=False, unreachable=False):
-
-        # setup logging
-        self.log = logging.getLogger('Planning')
 
         self.x = x
         self.y = y
@@ -86,9 +86,6 @@ class Map(abc.ABC):
     # TODO: create a function that maps coordinates here to global coordinates via a translation (and possible a rotation later on)
 
     def __init__(self, width=100, height=100, scale=0.5, cell_class=Cell, offset=(0, 0), factor=2):
-
-        # setup logging
-        self.log = logging.getLogger('Planning')
 
         self.width = width
         self.height = height
@@ -203,10 +200,6 @@ class TargetSelector(abc.ABC):
         pass
 
     def __init__(self, map=None, map_kwargs={}):
-
-        # setup logging
-        self.log = logging.getLogger('Planning')
-
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
 
     @abc.abstractmethod
@@ -218,8 +211,6 @@ class PathPlanner(abc.ABC):
         pass
 
     def __init__(self, map=None, map_kwargs={}):
-        # setup logging
-        self.log = logging.getLogger('Planning')
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
 
     @abc.abstractmethod
@@ -231,9 +222,6 @@ class RelayPlanner(abc.ABC):
         pass
 
     def __init__(self, map=None, radius=10, start_x=None, start_y=None, settings={}, map_kwargs={}):
-
-        # setup logging
-        self.log = logging.getLogger('Planning')
 
         self.map = map or Map(cell_class=self.Cell, **map_kwargs)
         self.assigned_relays         = set()   # robots assigned to become relays
@@ -262,9 +250,6 @@ class AStar(PathPlanner):
     ID = 0
 
     def __init__(self, map=None, map_kwargs={}):
-
-        # setup logging
-        self.log = logging.getLogger('Planning')
 
         super().__init__(map=map, map_kwargs=map_kwargs)
 
@@ -356,6 +341,7 @@ class AStar(PathPlanner):
             currentCell = openCells.get() if self.Q else openCells.pop(0)
 
             if currentCell is None:
+                log.warning("NO PATH!")
                 return
 
             closedCells.add(currentCell)

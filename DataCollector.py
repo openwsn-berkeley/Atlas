@@ -2,8 +2,14 @@
 import threading
 import time
 import json
+import logging.config
 # third-party
 # local
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+
+# setup logging
+log = logging.getLogger('DataCollector')
 
 class DataCollector(threading.Thread):
     '''
@@ -55,7 +61,7 @@ class DataCollector(threading.Thread):
                 with self.dataLock:
                     self._writeToFile()
         except Exception as err:
-            pass
+            log.error(err)
 
     # ======================== public ==========================================
 

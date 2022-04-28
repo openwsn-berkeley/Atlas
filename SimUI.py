@@ -11,6 +11,9 @@ import AtlasVersion
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('SimUI')
+
 class SimUI(object):
     '''
     Web-based User Interface of the simulator.
@@ -19,9 +22,6 @@ class SimUI(object):
     TCPPORT = 8080
     
     def __init__(self):
-
-        # setup logging
-        self.log = logging.getLogger('SimUI')
     
         # store params
         self.floorplan       = None
@@ -147,4 +147,13 @@ class SimUI(object):
             try:
                 args[0](**kwargs) # blocking
             except:
-                pass
+                if False:  # how to get socket.error? if err[0] == 10013:
+                    log.critical('FATAL: cannot open TCP port {0}.'.format(kwargs['port']))
+                    log.critical('    Is another application running on that port?')
+                else:
+                    log.critical(err)
+            log.critical('    Trying again in {0} seconds'.format(RETRY_PERIOD))
+            for _ in range(RETRY_PERIOD):
+                time.sleep(1)
+                log.critical('.')
+            log.critical('')

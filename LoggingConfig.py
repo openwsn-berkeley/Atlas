@@ -73,5 +73,10 @@ LOGGINGCONFIG = {
             'level':              'DEBUG',
             'propagate':          False
         },
+        'DataCollector': {
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
     } 
 }

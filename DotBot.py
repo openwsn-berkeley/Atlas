@@ -11,15 +11,15 @@ import Utils as u
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('DotBot')
+
 class DotBot(Wireless.WirelessDevice):
     '''
     A single DotBot.
     '''
 
     def __init__(self, dotBotId, x, y, floorplan, wireless=Wireless.WirelessConcurrentTransmission):
-
-        # setup logging
-        self.log = logging.getLogger('DotBot')
 
         # store params
         self.dotBotId             = dotBotId

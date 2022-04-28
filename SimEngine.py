@@ -10,6 +10,9 @@ import traceback
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# setup logging
+log = logging.getLogger('SimEngine')
+
 class SimEngine(threading.Thread):
     '''
     Discrete-event simulation engine for a swarm of DotBots.
@@ -34,9 +37,6 @@ class SimEngine(threading.Thread):
         if self._init:
             return
         self._init = True
-
-        # setup logging
-        self.log = logging.getLogger('SimEngine')
         
         # local variables
         self._currentTime         = 0    # what time is it for the DotBots
