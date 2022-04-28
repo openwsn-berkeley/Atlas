@@ -37,7 +37,7 @@ def runSim(simSetting, simUI=None):
     floorplan      = Floorplan.Floorplan(simSetting['floorplan'])
 
     # shorthand
-    (initx, inity) = simSetting['initialPosition']
+    (initx, inity) = (simSetting['initialPositionX'], simSetting['initialPositionY'])
 
     # create the DotBots
     dotBots        = []
@@ -52,7 +52,7 @@ def runSim(simSetting, simUI=None):
                     }
     orchestrator   = Orchestrator.Orchestrator(
         simSetting['numRobots'],
-        simSetting['initialPosition'],
+        (simSetting['initialPositionX'],simSetting['initialPositionY']),
         relaySettings,
         simSetting['navigationAlgorithm'],
     )

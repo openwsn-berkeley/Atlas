@@ -8,6 +8,7 @@ import argparse
 import subprocess
 import pkg_resources
 import  itertools
+import toml
 
 # third-party
 # local
@@ -25,7 +26,6 @@ def allSimSettings(config):
     for key in configKeys:
         configItems += [config[key] if type(config[key]) is list else [config[key]]]
 
-
     for run in range(config['numberOfRuns']):
         for configProduct in itertools.product(*configItems):
             simSetting   = {}
@@ -40,36 +40,15 @@ def allSimSettings(config):
 
 def main(configFile, cleps, noUI):
     configFileName = configFile
-    config = AtlasConfig(configFile).atlas
-    
-    # create a list of settings, one per simulation run
-    simSettings  = []
-    seedCounter = 0
-    for numRobots in config.numRobots:
-        for floorplan in config.floorplan:
-            for initialPosition in config.initialPosition:
-                for navigationAlgorithm in config.navigationAlgorithm:
-                    for relayAlgorithm in config.relayAlgorithm:
-                        for lowerPdrThreshold in config.lowerPdrThreshold:
-                            for upperPdrThreshold in config.upperPdrThreshold:
-                                for propagationModel in config.propagationModel:
-                                    for run in range(config.numberOfRuns):
-                                        seedCounter += 1
-                                        simSettings  += [{
-                                            'configFileName':       configFileName,
-                                            'seed':                 seedCounter,
-                                            'numRobots':            numRobots,
-                                            'floorplan':            pkg_resources.resource_string(
-                                                'maps',
-                                                floorplan).decode('utf-8'),
-                                            'initialPosition':       initialPosition,
-                                            'navigationAlgorithm':   navigationAlgorithm,
-                                            'relayAlgorithm':        relayAlgorithm,
-                                            'lowerPdrThreshold':     lowerPdrThreshold,
-                                            'upperPdrThreshold':     upperPdrThreshold,
-                                            'propagationModel':      propagationModel,
 
-                                        }]
+    config = AtlasConfig(configFile).atlas
+    # create a list of settings, one per simulation run
+
+    simSettings = allSimSettings(config)
+    for idx,setting in enumerate(simSettings):
+        simSettings[idx]['configFileName'] =  configFileName
+        simSettings[idx]['floorplan']      = pkg_resources.resource_string('maps',
+                                             simSettings[idx]['floorplan']).decode('utf-8')
 
     # create the UI
     simUI          = None if noUI else SimUI.SimUI()
