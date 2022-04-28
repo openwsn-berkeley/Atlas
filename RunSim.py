@@ -48,16 +48,16 @@ def main(configfile, cleps, noui):
         simSetting['floorplan']      = pkg_resources.resource_string('maps',
                                              simSetting['floorplan']).decode('utf-8')
 
-    # create the UI
-    simUI          = None if noui or cleps else SimUI.SimUI()
-
     # run simulations, one run per simSetting
     for (runNum, simSetting) in enumerate(simSettings):
         if cleps:
+
             cmd    = ["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", str(simSetting)]
             p      = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             print('running on cleps...')  # TODO: replace with log.info
         else:
+            # create the UI
+            simUI = None if noui else SimUI.SimUI()
             RunOneSim.main(simSetting, simUI)
 
 if __name__=='__main__':

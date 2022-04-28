@@ -91,7 +91,7 @@ def runSim(simSetting, simUI=None):
 
 #========================= main ==========================================
 
-def main(simSetting, simUI=True):
+def main(simSetting, simUI=None):
     '''
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
