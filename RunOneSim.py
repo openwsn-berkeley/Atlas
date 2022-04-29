@@ -114,27 +114,6 @@ def runOneSim(simSetting, simUI=None):
     simEngine.destroy()
     wireless.destroy()
 
-    kpis = {
-        'timeToFullMapping': timeToFullMapping,
-        'completion': simEngine.simComplete,
-    }
-
-    # log outcome
-    if kpis['completion']:
-        log.info(
-            "run {} completed in {}s with seed {}".format(
-                simSetting['configFileName'],
-                kpis['timeToFullMapping'],
-                simSetting['seed'],
-            )
-        )
-    else:
-        log.error(
-            "run {} FAILED with seed {}".format(
-                simSetting['configFileName'],
-                simSetting['seed'],
-            )
-        )
     return
 
 #========================= main ==========================================
@@ -146,6 +125,7 @@ def main(simSetting, simUI=None):
     '''
 
     # run the simulation (blocking)
+    
     runOneSim(simSetting, simUI)
 
 
