@@ -142,11 +142,11 @@ class SimUI(object):
     #=== web server admin
     
     def _bottle_try_running_forever(self,*args,**kwargs):
-
+        RETRY_PERIOD = 3
         while True:
             try:
                 args[0](**kwargs) # blocking
-            except:
+            except Exception as err:
                 if False:  # how to get socket.error? if err[0] == 10013:
                     log.critical('FATAL: cannot open TCP port {0}.'.format(kwargs['port']))
                     log.critical('    Is another application running on that port?')
