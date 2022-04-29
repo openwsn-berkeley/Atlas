@@ -45,7 +45,7 @@ def runOneSim(simSetting, simUI=None):
         os.path.join(
             log_dir,
             '{}_{}_{}.json'.format(
-                simSetting['configFileName'],
+                simSetting['configfile'],
                 time.strftime("%y%m%d%H%M%S", time.localtime()),
                 simSetting['seed'],
             )
