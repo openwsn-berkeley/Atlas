@@ -64,7 +64,7 @@ def main(configfile, cleps, noui):
         else:
             # create the UI
             simUI = None if noui else SimUI.SimUI()
-            RunOneSim.main(simSetting, simUI)
+            RunOneSim.runOneSim(simSetting, simUI)
 
 if __name__=='__main__':
 
