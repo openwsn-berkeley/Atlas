@@ -146,6 +146,7 @@ def main(simSetting, simUI=None):
     and by the code below when running from CLEPS.
     '''
 
+    log.debug(f'simSetting type is {type(simSetting)}')
     # run the simulation (blocking)
     runOneSim(simSetting, simUI)
 

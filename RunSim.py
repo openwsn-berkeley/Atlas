@@ -60,9 +60,9 @@ def main(configfile, cleps, noui):
 
     for simSetting in simSettings:
         if cleps:
-            log.info(f'simSetting is {json.dumps(simSetting)}')
-            cmd    = ["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", json.dumps(simSetting)]
-            p      = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.Popen(["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", json.dumps(simSetting)],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
             log.info('running on cleps ...')
         else:
             # create the UI
