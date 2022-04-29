@@ -142,7 +142,7 @@ class SimUI(object):
     #=== web server admin
     
     def _bottle_try_running_forever(self,*args,**kwargs):
-
+        RETRY_PERIOD = 3
         while True:
             try:
                 args[0](**kwargs) # blocking
