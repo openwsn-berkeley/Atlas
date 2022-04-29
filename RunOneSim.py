@@ -30,12 +30,7 @@ def runOneSim(simSetting, simUI=None):
     # ======================== setup
 
     # log
-    log.info(
-        "run {}/{} starting ...".format(
-            simSetting['seed'],
-            simSetting['numberOfRuns'],
-        )
-    )
+    log.info('Simulation started')
 
     # setup data collection
     dataCollector = DataCollector.DataCollector()
@@ -55,8 +50,8 @@ def runOneSim(simSetting, simUI=None):
     # collect simSettings
     dataCollector.collect(
         {
-            'type': 'simSetting',
-            'simSetting': simSetting,
+            'type':         'simSetting',
+            'simSetting':    simSetting,
         },
     )
 

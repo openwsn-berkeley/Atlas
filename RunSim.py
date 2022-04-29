@@ -46,16 +46,15 @@ def main(configfile, cleps, noui):
     log.info(f'RunSim starting ...')
 
     # create a list of simSettings, one per simulation run
-
     simSettings = allSimSettings(
     toml.load(pkg_resources.resource_filename(__name__, f"configs/{configfile}.toml"))['atlas'])
 
     # run simulations, one run per simSetting
-
     for (idx,simSetting) in enumerate(simSettings):
         simSetting['configfile']     =  configfile
         simSetting['floorplan']      = pkg_resources.resource_string('maps',
-                                             simSetting['floorplan']).decode('utf-8')
+                                                                      simSetting['floorplan']
+                                                                    ).decode('utf-8')
 
     # create the UI
     simUI = None if noui else SimUI.SimUI()
