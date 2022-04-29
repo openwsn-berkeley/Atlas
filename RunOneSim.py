@@ -3,6 +3,7 @@ import os
 import argparse
 import time
 import random
+import json
 import logging
 import logging.config
 # third-party
@@ -156,7 +157,6 @@ if __name__ == '__main__':
     args           = parser.parse_args()
     
     # convert the simSetting parameter (a string) to a dictionary
-    simSetting     = eval(args.simSetting)
-    assert type(simSetting)==dict
+    simSetting     = json.loads(args.simSetting)
     
     main(simSetting)
