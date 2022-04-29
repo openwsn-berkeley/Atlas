@@ -2,13 +2,13 @@
 import threading
 import time
 import json
-import logging.config
 # third-party
 # local
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('DataCollector')
 
 class DataCollector(threading.Thread):

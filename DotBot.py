@@ -1,17 +1,17 @@
 # built-in
 import math
 import itertools
-import logging.config
 # third-party
 # local
 import SimEngine
 import Orchestrator
 import Wireless
 import Utils as u
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('DotBot')
 
 class DotBot(Wireless.WirelessDevice):

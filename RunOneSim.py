@@ -4,8 +4,6 @@ import argparse
 import time
 import random
 import json
-import logging
-import logging.config
 # third-party
 # local
 import Floorplan
@@ -14,10 +12,11 @@ import Orchestrator
 import Wireless
 import SimEngine
 import DataCollector
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('RunOneSim')
 
 #====================================== HELPER =================================================

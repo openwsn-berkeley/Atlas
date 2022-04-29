@@ -9,17 +9,17 @@ Date: Mon, Oct 4, 2021
 import abc
 import random
 import typing
-import logging.config
 # third-party
 import numpy as np
 # local
 import Utils as u
 import SimEngine
 import DataCollector
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('Planning')
 
 '''
