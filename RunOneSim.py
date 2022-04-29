@@ -124,7 +124,7 @@ def runOneSim(simSetting, simUI=None):
     if kpis['completion']:
         log.info(
             "run {} completed in {}s with seed {}".format(
-                simSetting['configFileName'],
+                simSetting['configfile'],
                 kpis['timeToFullMapping'],
                 simSetting['seed'],
             )
@@ -132,7 +132,7 @@ def runOneSim(simSetting, simUI=None):
     else:
         log.error(
             "run {} FAILED with seed {}".format(
-                simSetting['configFileName'],
+                simSetting['configfile'],
                 simSetting['seed'],
             )
         )

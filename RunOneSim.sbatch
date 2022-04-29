@@ -8,7 +8,6 @@
 source /home/$USER/.bashrc
 conda activate py38
 echo "Running RunOneSim.Sbatch"
-echo $1
 python ../RunOneSim.py --simSetting "$1"
 
 

@@ -57,6 +57,8 @@ def main(configfile, cleps, noui):
         simSetting['floorplan']      = pkg_resources.resource_string('maps',
                                              simSetting['floorplan']).decode('utf-8')
 
+    # create the UI
+    simUI = None if noui else SimUI.SimUI()
 
     for simSetting in simSettings:
         if cleps:
@@ -65,8 +67,6 @@ def main(configfile, cleps, noui):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
         else:
-            # create the UI
-            simUI = None if noui else SimUI.SimUI()
             RunOneSim.runOneSim(simSetting, simUI)
 
 if __name__=='__main__':
