@@ -146,7 +146,7 @@ def main(simSetting, simUI=None):
     and by the code below when running from CLEPS.
     '''
 
-    log.debug(f'simSetting type is {type(simSetting)}')
+    log.info('running on cleps ...')
     # run the simulation (blocking)
     runOneSim(simSetting, simUI)
 
@@ -162,5 +162,5 @@ if __name__ == '__main__':
     
     # convert the simSetting parameter (a string) to a dictionary
     simSetting     = json.loads(args.simSetting)
-    
+
     main(simSetting)

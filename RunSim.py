@@ -63,7 +63,6 @@ def main(configfile, cleps, noui):
             subprocess.Popen(["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", json.dumps(simSetting)],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
-            log.info('running on cleps ...')
         else:
             # create the UI
             simUI = None if noui else SimUI.SimUI()
