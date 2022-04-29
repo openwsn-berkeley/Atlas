@@ -4,8 +4,6 @@ import argparse
 import time
 import random
 import json
-import logging
-import logging.config
 # third-party
 # local
 import Floorplan
@@ -14,22 +12,52 @@ import Orchestrator
 import Wireless
 import SimEngine
 import DataCollector
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('RunOneSim')
 
 #====================================== HELPER =================================================
 
-def runSim(simSetting, simUI=None):
+def runOneSim(simSetting, simUI=None):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
 
     # ======================== setup
 
-    log.info("Simulation started")
+    # log
+    log.info(
+        "run {}/{} starting ...".format(
+            simSetting['seed'],
+            simSetting['numberOfRuns'],
+        )
+    )
+
+    # setup data collection
+    dataCollector = DataCollector.DataCollector()
+    log_dir = "./logs"
+    os.makedirs(log_dir, exist_ok=True)
+    dataCollector.setFileName(
+        os.path.join(
+            log_dir,
+            '{}_{}_{}.json'.format(
+                simSetting['configFileName'],
+                time.strftime("%y%m%d%H%M%S", time.localtime()),
+                simSetting['seed'],
+            )
+        )
+    )
+
+    # collect simSettings
+    dataCollector.collect(
+        {
+            'type': 'simSetting',
+            'simSetting': simSetting,
+        },
+    )
 
     # setting the seed
     random.seed(simSetting['seed'])
@@ -91,45 +119,6 @@ def runSim(simSetting, simUI=None):
         'completion': simEngine.simComplete,
     }
 
-    return kpis
-
-#========================= main ==========================================
-
-def main(simSetting, simUI=None):
-    '''
-    This function is called directly by RunSim when running standalone,
-    and by the code below when running from CLEPS.
-    '''
-    
-    # log start of simulation
-    log.info(f'RunOneSim starting')
-    
-    # setup data collection
-    dataCollector  = DataCollector.DataCollector()
-    log_dir        = "./logs"
-    os.makedirs(log_dir, exist_ok=True)
-    dataCollector.setFileName(
-        os.path.join(
-            log_dir,
-            '{}_{}_{}.json'.format(
-                simSetting['configFileName'],
-                time.strftime("%y%m%d%H%M%S", time.localtime()),
-                simSetting['seed'],
-            )
-        )
-    )
-    
-    # collect simSettings
-    dataCollector.collect(
-        {
-            'type':       'simSetting',
-            'simSetting': simSetting,
-        },
-    )
-    
-    # run the simulation (blocking)
-    kpis = runSim(simSetting, simUI)
-
     # log outcome
     if kpis['completion']:
         log.info(
@@ -146,6 +135,19 @@ def main(simSetting, simUI=None):
                 simSetting['seed'],
             )
         )
+    return
+
+#========================= main ==========================================
+
+def main(simSetting, simUI=None):
+    '''
+    This function is called directly by RunSim when running standalone,
+    and by the code below when running from CLEPS.
+    '''
+
+    # run the simulation (blocking)
+    runOneSim(simSetting, simUI)
+
 
 if __name__ == '__main__':
     '''

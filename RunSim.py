@@ -5,15 +5,15 @@ import pkg_resources
 import itertools
 import toml
 import json
-import logging.config
 # third-party
 # local
 import SimUI
 import RunOneSim
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('RunSim')
 
 #============================ main ============================================
@@ -64,7 +64,7 @@ def main(configfile, cleps, noui):
         else:
             # create the UI
             simUI = None if noui else SimUI.SimUI()
-            RunOneSim.main(simSetting, simUI)
+            RunOneSim.runOneSim(simSetting, simUI)
 
 if __name__=='__main__':
 

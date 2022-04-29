@@ -2,15 +2,15 @@
 import threading
 import time
 import datetime
-import logging.config
 # third-party
 # local
 import DataCollector
 import traceback
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('SimEngine')
 
 class SimEngine(threading.Thread):
