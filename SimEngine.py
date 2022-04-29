@@ -93,7 +93,7 @@ class SimEngine(threading.Thread):
                     if durReal*self._playSpeed<durSim:
                         time.sleep( durSim - (durReal*self._playSpeed) )
 
-        except Exception as e:
+        except:
             message = {"type": "Simulation Completion", "Success": False, "Exception": traceback.format_exc().splitlines()}
         else:
             message = {"type": "Simulation Completion", "Success": True}
