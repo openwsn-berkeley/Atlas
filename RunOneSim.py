@@ -106,7 +106,7 @@ def runOneSim(simSetting, simUI=None):
         simEngine.commandFastforward()
 
     # start a simulaion (blocks until done)
-    timeToFullMapping = simEngine.runToCompletion(orchestrator.startExploration)
+    simEngine.runToCompletion(orchestrator.startExploration)
 
     # ======================== teardown
 
