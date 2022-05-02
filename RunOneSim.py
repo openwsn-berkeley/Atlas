@@ -54,8 +54,8 @@ def runOneSim(simSetting, simUI=None):
     # collect simSettings
     dataCollector.collect(
         {
-            'type': 'simSetting',
-            'simSetting': simSetting,
+            'type':           'simSetting',
+            'simSetting':     simSetting,
         },
     )
 
@@ -114,7 +114,6 @@ def runOneSim(simSetting, simUI=None):
     simEngine.destroy()
     wireless.destroy()
 
-    return
 
 #========================= main ==========================================
 
@@ -125,7 +124,6 @@ def main(simSetting, simUI=None):
     '''
 
     # run the simulation (blocking)
-    
     runOneSim(simSetting, simUI)
 
 
