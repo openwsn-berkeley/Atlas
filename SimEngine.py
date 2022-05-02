@@ -2,15 +2,15 @@
 import threading
 import time
 import datetime
-import logging.config
 # third-party
 # local
 import DataCollector
 import traceback
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('SimEngine')
 
 class SimEngine(threading.Thread):
@@ -48,7 +48,6 @@ class SimEngine(threading.Thread):
         self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
-        self.simComplete          = False
         self.datacollector        = DataCollector.DataCollector()
         self.semIsRunning.acquire()
 
@@ -93,7 +92,7 @@ class SimEngine(threading.Thread):
                     if durReal*self._playSpeed<durSim:
                         time.sleep( durSim - (durReal*self._playSpeed) )
 
-        except Exception as e:
+        except:
             message = {"type": "Simulation Completion", "Success": False, "Exception": traceback.format_exc().splitlines()}
         else:
             message = {"type": "Simulation Completion", "Success": True}
@@ -132,8 +131,7 @@ class SimEngine(threading.Thread):
             else:
                 idx += 1
 
-    def completeRun(self, complete=False):
-        self.simComplete = complete
+    def completeRun(self):
         self.schedule(self._currentTime,None,tag='selfDestruct')
     
     #=== helper functions
