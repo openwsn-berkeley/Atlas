@@ -94,12 +94,9 @@ class SimEngine(threading.Thread):
                         time.sleep( durSim - (durReal*self._playSpeed) )
 
         except:
-            message = {"type": "Simulation Completion", "Success": False, "Exception": traceback.format_exc().splitlines()}
+            log.critical(f"Simulation failed with error {traceback.format_exc().splitlines()}")
         else:
-            message = {"type": "Simulation Completion", "Success": True}
-        finally:
-            self.datacollector.collect(message)
-            time.sleep(10)
+            log.info("Simulation Completed")
 
     #======================== public ==========================================
     
