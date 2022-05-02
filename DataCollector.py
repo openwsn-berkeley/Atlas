@@ -4,6 +4,13 @@ import time
 import json
 # third-party
 # local
+
+# setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+log = logging.getLogger('DataCollector')
+
 class DataCollector(threading.Thread):
     '''
     Singleton, write to file periodically.
@@ -54,7 +61,7 @@ class DataCollector(threading.Thread):
                 with self.dataLock:
                     self._writeToFile()
         except Exception as err:
-            print(err)
+            log.error(err)
 
     # ======================== public ==========================================
 

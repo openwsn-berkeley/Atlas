@@ -3,8 +3,7 @@ import os
 import argparse
 import time
 import random
-import logging
-import logging.config
+import json
 # third-party
 # local
 import Floorplan
@@ -13,20 +12,53 @@ import Orchestrator
 import Wireless
 import SimEngine
 import DataCollector
+
+# setup logging
+import logging.config
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+log = logging.getLogger('RunOneSim')
 
 #====================================== HELPER =================================================
 
-def runSim(simSetting, simUI=None):
+def runOneSim(simSetting, simUI=None):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
 
     # ======================== setup
 
-    print("simulation started")
-    
+    # log
+    log.info(
+        "run {}/{} starting ...".format(
+            simSetting['seed'],
+            simSetting['numberOfRuns'],
+        )
+    )
+
+    # setup data collection
+    dataCollector = DataCollector.DataCollector()
+    log_dir = "./logs"
+    os.makedirs(log_dir, exist_ok=True)
+    dataCollector.setFileName(
+        os.path.join(
+            log_dir,
+            '{}_{}_{}.json'.format(
+                simSetting['configFileName'],
+                time.strftime("%y%m%d%H%M%S", time.localtime()),
+                simSetting['seed'],
+            )
+        )
+    )
+
+    # collect simSettings
+    dataCollector.collect(
+        {
+            'type':           'simSetting',
+            'simSetting':     simSetting,
+        },
+    )
+
     # setting the seed
     random.seed(simSetting['seed'])
     
@@ -74,7 +106,7 @@ def runSim(simSetting, simUI=None):
         simEngine.commandFastforward()
 
     # start a simulaion (blocks until done)
-    timeToFullMapping = simEngine.runToCompletion(orchestrator.startExploration)
+    simEngine.runToCompletion(orchestrator.startExploration)
 
     # ======================== teardown
 
@@ -82,12 +114,6 @@ def runSim(simSetting, simUI=None):
     simEngine.destroy()
     wireless.destroy()
 
-    kpis = {
-        'timeToFullMapping': timeToFullMapping,
-        'completion': simEngine.simComplete,
-    }
-
-    return kpis
 
 #========================= main ==========================================
 
@@ -96,55 +122,10 @@ def main(simSetting, simUI=None):
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
     '''
-    
-    # setup logging
-    log            = logging.getLogger('RunOneSim')
-    
-    # log start of simulation
-    log.info(f'simulation starting')
-    
-    # setup data collection
-    dataCollector  = DataCollector.DataCollector()
-    log_dir        = "./logs"
-    os.makedirs(log_dir, exist_ok=True)
-    dataCollector.setFileName(
-        os.path.join(
-            log_dir,
-            '{}_{}_{}.json'.format(
-                simSetting['configFileName'],
-                time.strftime("%y%m%d%H%M%S", time.localtime()),
-                simSetting['seed'],
-            )
-        )
-    )
-    
-    # collect simSettings
-    dataCollector.collect(
-        {
-            'type':       'simSetting',
-            'simSetting': simSetting,
-        },
-    )
-    
-    # run the simulation (blocking)
-    kpis = runSim(simSetting, simUI)
 
-    # log outcome
-    if kpis['completion']:
-        log.info(
-            "run {} completed in {}s with seed {}".format(
-                simSetting['configFileName'],
-                kpis['timeToFullMapping'],
-                simSetting['seed'],
-            )
-        )
-    else:
-        log.error(
-            "run {} FAILED with seed {}".format(
-                simSetting['configFileName'],
-                simSetting['seed'],
-            )
-        )
+    # run the simulation (blocking)
+    runOneSim(simSetting, simUI)
+
 
 if __name__ == '__main__':
     '''
@@ -156,7 +137,6 @@ if __name__ == '__main__':
     args           = parser.parse_args()
     
     # convert the simSetting parameter (a string) to a dictionary
-    simSetting     = eval(args.simSetting)
-    assert type(simSetting)==dict
+    simSetting     = json.loads(args.simSetting)
     
     main(simSetting)

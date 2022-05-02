@@ -15,6 +15,12 @@ import Utils as u
 import DataCollector
 import Planning
 
+# setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+log = logging.getLogger('Orchestrator')
+
 class ExceptionOpenLoop(Exception):
     pass
 
@@ -492,7 +498,6 @@ class NavigationAtlas(Navigation):
         for (dotBotId,_) in enumerate(self.dotbotsview):
             self._updateMovement(dotBotId)
 
-
     #======================== public ==========================================
 
     def getExploredCells(self):
@@ -577,8 +582,8 @@ class NavigationAtlas(Navigation):
             else:
                 try:
                     self.target_selector.frontier_cells.remove(self.map.cell(*target, local=False))
-                except:
-                    pass
+                except Exception as err:
+                    log.debug(err)
 
                 target = self.target_selector.allocateTarget(dotbot_position)
 
@@ -733,7 +738,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.pdrProfile     = []
         self.relayProfile   = []
         self.numCells       = []
-    
+
     #======================== public ==========================================
 
     #=== admin
@@ -752,7 +757,6 @@ class Orchestrator(Wireless.WirelessDevice):
     #=== communication
 
     def _downstreamTimeoutCb(self):
-
         # send downstream command
         self._sendDownstreamCommands()
 

@@ -8,6 +8,11 @@ import Orchestrator
 import Wireless
 import Utils as u
 
+# setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+log = logging.getLogger('DotBot')
 
 class DotBot(Wireless.WirelessDevice):
     '''

@@ -7,6 +7,12 @@ import datetime
 import DataCollector
 import traceback
 
+# setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+log = logging.getLogger('SimEngine')
+
 class SimEngine(threading.Thread):
     '''
     Discrete-event simulation engine for a swarm of DotBots.
@@ -55,7 +61,6 @@ class SimEngine(threading.Thread):
     #======================== thread ==========================================
     
     def run(self):
-
         try:
             while True:
 
@@ -88,13 +93,10 @@ class SimEngine(threading.Thread):
                     if durReal*self._playSpeed<durSim:
                         time.sleep( durSim - (durReal*self._playSpeed) )
 
-        except Exception as e:
-            message = {"type": "Simulation Completion", "Success": False, "Exception": traceback.format_exc().splitlines()}
+        except:
+            log.critical(f"Simulation failed with error {traceback.format_exc().splitlines()}")
         else:
-            message = {"type": "Simulation Completion", "Success": True}
-        finally:
-            self.datacollector.collect(message)
-            time.sleep(10)
+            log.info("Simulation Completed")
 
     #======================== public ==========================================
     

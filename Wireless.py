@@ -1,10 +1,16 @@
 # built-in
 import abc
 import random
+# built-in
 import numpy as np
 # local
 import Utils as u
 
+# setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+log = logging.getLogger('Wireless')
 
 class WirelessDevice(object):
     '''

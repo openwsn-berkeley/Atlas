@@ -48,5 +48,35 @@ LOGGINGCONFIG = {
             'level':              'DEBUG',
             'propagate':          False
         },
+        'Planning': {
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'RunOneSim': {
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'SimEngine': {
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'SimUI': {
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'Wireless': {
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
+        'DataCollector': {
+            'handlers':           ['handler_console','handler_file'],
+            'level':              'DEBUG',
+            'propagate':          False
+        },
     } 
 }
