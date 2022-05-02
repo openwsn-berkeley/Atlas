@@ -2,16 +2,16 @@
 import threading
 import webbrowser
 import time
-import logging.config
 # third-party
 import bottle
 # local
 import SimEngine
 import AtlasVersion
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('SimUI')
 
 class SimUI(object):

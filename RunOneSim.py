@@ -3,7 +3,6 @@ import os
 import argparse
 import random
 import json
-import logging.config
 # third-party
 # local
 import Floorplan
@@ -12,9 +11,10 @@ import Orchestrator
 import Wireless
 import SimEngine
 import DataCollector
-import LoggingConfig
 
 # setup logging
+import logging.config
+import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('RunOneSim')
 
@@ -35,11 +35,13 @@ def runOneSim(simSetting, simUI=None):
     dataCollector = DataCollector.DataCollector()
     dataCollector.setFileName(uname)
 
+
     # collect simSettings
     dataCollector.collect(
         {
             'type':         'simSetting',
             'simSetting':   simSetting,
+
         },
     )
 
@@ -98,27 +100,6 @@ def runOneSim(simSetting, simUI=None):
     simEngine.destroy()
     wireless.destroy()
 
-    kpis = {
-        'timeToFullMapping': timeToFullMapping,
-        'completion': simEngine.simComplete,
-    }
-
-    # log outcome
-    if kpis['completion']:
-        log.info(
-            "run {} completed in {}s with seed {}".format(
-                simSetting['configfile'],
-                kpis['timeToFullMapping'],
-                simSetting['seed'],
-            )
-        )
-    else:
-        log.error(
-            "run {} FAILED with seed {}".format(
-                simSetting['configfile'],
-                simSetting['seed'],
-            )
-        )
     return
 
 #========================= main ==========================================
@@ -128,8 +109,8 @@ def main(simSetting, simUI=None):
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
     '''
-
     log.info('running on cleps ...')
+    
     # run the simulation (blocking)
     runOneSim(simSetting, simUI)
 

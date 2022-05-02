@@ -7,7 +7,6 @@ import sys
 import math
 import typing
 import time
-import logging.config
 # third-party
 # local
 import SimEngine
@@ -15,10 +14,11 @@ import Wireless
 import Utils as u
 import DataCollector
 import Planning
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 # setup logging
+import logging.config
+import LoggingConfig
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('Orchestrator')
 
 class ExceptionOpenLoop(Exception):
