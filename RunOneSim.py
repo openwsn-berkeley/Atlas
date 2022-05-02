@@ -14,6 +14,9 @@ import SimEngine
 import DataCollector
 import LoggingConfig
 
+# setup logging
+logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+log = logging.getLogger('RunOneSim')
 
 #====================================== HELPER =================================================
 
@@ -24,10 +27,6 @@ def runOneSim(simSetting, simUI=None):
 
     # ======================== setup
     uname = "{}_{}".format(simSetting['configfile'], simSetting['seed'])
-
-    # setup logging
-    logging.config.dictConfig(LoggingConfig.OverrideLogFileName(uname))
-    log = logging.getLogger('RunOneSim')
 
     # log
     log.info('Simulation started')
