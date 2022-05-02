@@ -1,3 +1,9 @@
+import os
+import time
+
+log_dir = "./logs"
+os.makedirs(log_dir, exist_ok=True)
+
 LOGGINGCONFIG = {
     'version':                    1,
     'disable_existing_loggers':   True,
@@ -80,3 +86,7 @@ LOGGINGCONFIG = {
         },
     } 
 }
+
+def OverrideLogFileName(uname):
+    LOGGINGCONFIG['handlers']['handler_file']['filename'] = '{}_{}.log'.format(uname,time.strftime("%y%m%d%H%M%S", time.localtime()))
+    return LOGGINGCONFIG

@@ -3,6 +3,7 @@ import threading
 import time
 import json
 import logging.config
+import os
 # third-party
 # local
 import LoggingConfig
@@ -25,19 +26,23 @@ class DataCollector(threading.Thread):
             cls._instance = super(DataCollector, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, filewriteperiod_s=10):
+    def __init__(self, uname=None, filewriteperiod_s=10):
 
         # singleton pattern
         if self._init:
+            if uname:
+                self.setFileName(self.formatFileName(uname))
             return
         self._init = True
 
         #  handle params
         self.filewriteperiod_s    = filewriteperiod_s
+        self.log_dir = "./logs"
+        os.makedirs(self.log_dir, exist_ok=True)
+        self.filename = None
 
         # local variables
         self.writebuffer          = []
-        self.filename             = None
         self.dataLock             = threading.RLock()
 
         # thread
@@ -65,11 +70,21 @@ class DataCollector(threading.Thread):
 
     # ======================== public ==========================================
 
+    def formatFileName(self, uname):
+        return os.path.join(
+                  self.log_dir,
+                  '{}_{}.json'.format(
+                  uname,
+                  time.strftime("%y%m%d%H%M%S", time.localtime()),
+                  )
+                )
+
     def setFileName(self, filename):
         with self.dataLock:
-            if self.filename != None:
+            if self.filename:
                 self._writeToFile()
-            self.filename = filename
+            else:
+                self.filename =  filename
 
     def collect(self, jsontocollect):
         with self.dataLock:

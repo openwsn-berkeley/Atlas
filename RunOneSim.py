@@ -1,10 +1,8 @@
 # built-in
 import os
 import argparse
-import time
 import random
 import json
-import logging
 import logging.config
 # third-party
 # local
@@ -15,10 +13,7 @@ import Wireless
 import SimEngine
 import DataCollector
 import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
-# setup logging
-log = logging.getLogger('RunOneSim')
 
 #====================================== HELPER =================================================
 
@@ -28,24 +23,17 @@ def runOneSim(simSetting, simUI=None):
     '''
 
     # ======================== setup
+    uname = "{}_{}".format(simSetting['configfile'], simSetting['seed'])
+
+    # setup logging
+    logging.config.dictConfig(LoggingConfig.OverrideLogFileName(uname))
+    log = logging.getLogger('RunOneSim')
 
     # log
     log.info('Simulation started')
 
     # setup data collection
-    dataCollector = DataCollector.DataCollector()
-    log_dir = "./logs"
-    os.makedirs(log_dir, exist_ok=True)
-    dataCollector.setFileName(
-        os.path.join(
-            log_dir,
-            '{}_{}_{}.json'.format(
-                simSetting['configfile'],
-                time.strftime("%y%m%d%H%M%S", time.localtime()),
-                simSetting['seed'],
-            )
-        )
-    )
+    dataCollector = DataCollector.DataCollector(uname=uname)
 
     # collect simSettings
     dataCollector.collect(
