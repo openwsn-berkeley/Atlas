@@ -1,5 +1,7 @@
 import numpy as np
 import heapq
+import logging
+import os
 
 def distance(pos1, pos2):
     return np.linalg.norm(np.array(pos2) - np.array(pos1))
@@ -81,3 +83,4 @@ class PriorityQueue:
         item = heapq.heappop(self.elements)[1]
         self.check.remove(item)
         return item
+

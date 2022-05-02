@@ -1,7 +1,6 @@
 # built-in
 import os
 import argparse
-import time
 import random
 import json
 # third-party
@@ -27,35 +26,22 @@ def runOneSim(simSetting, simUI=None):
     '''
 
     # ======================== setup
+    uname = "{}_{}".format(simSetting['configfile'], simSetting['seed'])
 
     # log
-    log.info(
-        "run {}/{} starting ...".format(
-            simSetting['seed'],
-            simSetting['numberOfRuns'],
-        )
-    )
+    log.info('Simulation started')
 
     # setup data collection
     dataCollector = DataCollector.DataCollector()
-    log_dir = "./logs"
-    os.makedirs(log_dir, exist_ok=True)
-    dataCollector.setFileName(
-        os.path.join(
-            log_dir,
-            '{}_{}_{}.json'.format(
-                simSetting['configFileName'],
-                time.strftime("%y%m%d%H%M%S", time.localtime()),
-                simSetting['seed'],
-            )
-        )
-    )
+    dataCollector.setUname(uname)
+
 
     # collect simSettings
     dataCollector.collect(
         {
-            'type': 'simSetting',
-            'simSetting': simSetting,
+            'type':         'simSetting',
+            'simSetting':   simSetting,
+
         },
     )
 
@@ -114,7 +100,6 @@ def runOneSim(simSetting, simUI=None):
     simEngine.destroy()
     wireless.destroy()
 
-    return
 
 #========================= main ==========================================
 
@@ -123,9 +108,9 @@ def main(simSetting, simUI=None):
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
     '''
-
-    # run the simulation (blocking)
+    log.info('running on cleps ...')
     
+    # run the simulation (blocking)
     runOneSim(simSetting, simUI)
 
 
@@ -140,5 +125,5 @@ if __name__ == '__main__':
     
     # convert the simSetting parameter (a string) to a dictionary
     simSetting     = json.loads(args.simSetting)
-    
+
     main(simSetting)
