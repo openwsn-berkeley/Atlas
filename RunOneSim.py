@@ -62,10 +62,10 @@ def runOneSim(simSetting, simUI=None):
 
     # create the orchestrator
     relaySettings = {
-                    "relayAlgorithm": simSetting['relayAlgorithm'],
-                     "lowerPdrThreshold": simSetting['lowerPdrThreshold'],
-                     "upperPdrThreshold": simSetting['upperPdrThreshold'],
-                    }
+        "relayAlgorithm":    simSetting['relayAlgorithm'],
+        "lowerPdrThreshold": simSetting['lowerPdrThreshold'],
+        "upperPdrThreshold": simSetting['upperPdrThreshold'],
+        }
     orchestrator   = Orchestrator.Orchestrator(
         simSetting['numRobots'],
         (simSetting['initialPositionX'],simSetting['initialPositionY']),
