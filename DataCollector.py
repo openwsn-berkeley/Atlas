@@ -68,7 +68,7 @@ class DataCollector(threading.Thread):
 
     # ======================== public ==========================================
 
-    def setUame(self, uname):
+    def setUname(self, uname):
         with self.dataLock:
             if self.filename:
                 self._writeToFile()

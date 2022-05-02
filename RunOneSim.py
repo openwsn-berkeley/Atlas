@@ -33,7 +33,7 @@ def runOneSim(simSetting, simUI=None):
 
     # setup data collection
     dataCollector = DataCollector.DataCollector()
-    dataCollector.setUame(uname)
+    dataCollector.setUname(uname)
 
 
     # collect simSettings
