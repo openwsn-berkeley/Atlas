@@ -26,7 +26,7 @@ class DataCollector(threading.Thread):
             cls._instance = super(DataCollector, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, uname=None, filewriteperiod_s=10):
+    def __init__(self, filewriteperiod_s=10):
 
         # singleton pattern
         if self._init:
@@ -35,11 +35,10 @@ class DataCollector(threading.Thread):
 
         #  handle params
         self.filewriteperiod_s    = filewriteperiod_s
-        self.log_dir = "./logs"
-        os.makedirs(self.log_dir, exist_ok=True)
-        self.filename = None
 
         # local variables
+        self.LOG_DIR              = "./logs"
+        self.filename             = None
         self.writebuffer          = []
         self.dataLock             = threading.RLock()
 
@@ -70,16 +69,15 @@ class DataCollector(threading.Thread):
 
     def setUname(self, uname):
         with self.dataLock:
-            if self.filename:
-                self._writeToFile()
 
+            os.makedirs(self.LOG_DIR, exist_ok=True)
             self.filename =  os.path.join(
-                                self.log_dir,
-                                '{}_{}.json'.format(
-                                uname,
-                                time.strftime("%y%m%d%H%M%S", time.localtime()),
-                                )
-                             )
+                                            self.LOG_DIR,
+                                            '{}_{}.json'.format(
+                                            uname,
+                                            time.strftime("%y%m%d%H%M%S", time.localtime()),
+                                            )
+                                         )
 
     def collect(self, jsontocollect):
         with self.dataLock:
@@ -98,7 +96,7 @@ class DataCollector(threading.Thread):
 def main():
     datacollector = DataCollector(0.100)
     time.sleep(0.100)
-    datacollector.setFileName('data1.txt')
+    datacollector.setUname('data1.txt')
     time.sleep(0.100)
     datacollector.collect({'msg': 11})
     time.sleep(0.100)
@@ -107,7 +105,7 @@ def main():
     datacollector.collect({'msg': 13})
     datacollector.collect({'msg': 14})
     time.sleep(0.100)
-    datacollector.setFileName('data2.txt')
+    datacollector.setUname('data2.txt')
     time.sleep(0.100)
     datacollector.collect({'msg': 21})
     time.sleep(0.100)

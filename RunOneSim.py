@@ -26,14 +26,13 @@ def runOneSim(simSetting, simUI=None):
     '''
 
     # ======================== setup
-    uname = "{}_{}".format(simSetting['configfile'], simSetting['seed'])
 
     # log
     log.info('Simulation started')
 
     # setup data collection
     dataCollector = DataCollector.DataCollector()
-    dataCollector.setUname(uname)
+    dataCollector.setUname(simSetting['uname'])
 
 
     # collect simSettings
