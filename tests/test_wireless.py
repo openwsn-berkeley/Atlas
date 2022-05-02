@@ -18,13 +18,6 @@ def test_get_PDR_R_fail():
     pdr = Wireless.PropagationRadius().getPDR(sender, receiver)
     assert pdr == 0
 
-def test_get_PDR_Friis():
-    sender   =  (5,5)
-    receiver =  (0,3)
-    pdr = Wireless.PropagationFriis().getPDR(sender, receiver)
-    assert pdr >= 0 and pdr <= 1
-
-
 def test_line_intersect_simple():
     obstacle_line = ((0, -1), (0, 1))
 
