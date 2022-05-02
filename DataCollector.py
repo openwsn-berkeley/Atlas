@@ -73,12 +73,9 @@ class DataCollector(threading.Thread):
 
             os.makedirs(self.LOG_DIR, exist_ok=True)
             self.filename = os.path.join(
-                                self.LOG_DIR,
-                                '{}_{}.json'.format(
-                                                uname,
-                                                time.strftime("%y%m%d%H%M%S", time.localtime()),
-                                                )
-                                )
+                self.LOG_DIR,
+                '{}_{}.json'.format(uname, time.strftime("%y%m%d%H%M%S", time.localtime()))
+            )
 
     def collect(self, jsontocollect):
         with self.dataLock:
