@@ -60,9 +60,7 @@ def main(configfile, cleps, noui):
     for simSetting in simSettings:
         if cleps:
             simSetting = json.dumps(simSetting)
-            subprocess.Popen(["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", simSetting],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+            subprocess.Popen(["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", simSetting])
         else:
             RunOneSim.runOneSim(simSetting, simUI)
 
