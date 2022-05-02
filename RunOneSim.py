@@ -33,7 +33,8 @@ def runOneSim(simSetting, simUI=None):
     log.info('Simulation started')
 
     # setup data collection
-    dataCollector = DataCollector.DataCollector(uname=uname)
+    dataCollector = DataCollector.DataCollector()
+    dataCollector.setFileName(uname)
 
     # collect simSettings
     dataCollector.collect(

@@ -30,8 +30,6 @@ class DataCollector(threading.Thread):
 
         # singleton pattern
         if self._init:
-            if uname:
-                self.setFileName(self.formatFileName(uname))
             return
         self._init = True
 
@@ -70,21 +68,18 @@ class DataCollector(threading.Thread):
 
     # ======================== public ==========================================
 
-    def formatFileName(self, uname):
-        return os.path.join(
-                  self.log_dir,
-                  '{}_{}.json'.format(
-                  uname,
-                  time.strftime("%y%m%d%H%M%S", time.localtime()),
-                  )
-                )
-
-    def setFileName(self, filename):
+    def setFileName(self, uname):
         with self.dataLock:
             if self.filename:
                 self._writeToFile()
-            else:
-                self.filename =  filename
+
+            self.filename =  os.path.join(
+                                self.log_dir,
+                                '{}_{}.json'.format(
+                                uname,
+                                time.strftime("%y%m%d%H%M%S", time.localtime()),
+                                )
+                             )
 
     def collect(self, jsontocollect):
         with self.dataLock:
