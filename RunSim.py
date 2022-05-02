@@ -51,8 +51,8 @@ def main(configfile, cleps, noui):
 
     # run simulations, one run per simSetting
     for (idx,simSetting) in enumerate(simSettings):
-        simSetting['configfile']     =  configfile
         simSetting['floorplan']      = pkg_resources.resource_string('maps', simSetting['floorplan']).decode('utf-8')
+        simSetting['uname']          = "{}_{}".format(configfile, simSetting['seed'])
 
     # create the UI
     simUI = None if noui else SimUI.SimUI()

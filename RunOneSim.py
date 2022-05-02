@@ -26,14 +26,13 @@ def runOneSim(simSetting, simUI=None):
     '''
 
     # ======================== setup
-    uname = "{}_{}".format(simSetting['configfile'], simSetting['seed'])
 
     # log
     log.info('Simulation started')
 
     # setup data collection
     dataCollector = DataCollector.DataCollector()
-    dataCollector.setUname(uname)
+    dataCollector.setUname(simSetting['uname'])
 
 
     # collect simSettings
@@ -41,7 +40,6 @@ def runOneSim(simSetting, simUI=None):
         {
             'type':         'simSetting',
             'simSetting':   simSetting,
-
         },
     )
 
@@ -64,10 +62,10 @@ def runOneSim(simSetting, simUI=None):
 
     # create the orchestrator
     relaySettings = {
-                    "relayAlgorithm": simSetting['relayAlgorithm'],
-                     "lowerPdrThreshold": simSetting['lowerPdrThreshold'],
-                     "upperPdrThreshold": simSetting['upperPdrThreshold'],
-                    }
+        "relayAlgorithm":    simSetting['relayAlgorithm'],
+        "lowerPdrThreshold": simSetting['lowerPdrThreshold'],
+        "upperPdrThreshold": simSetting['upperPdrThreshold'],
+        }
     orchestrator   = Orchestrator.Orchestrator(
         simSetting['numRobots'],
         (simSetting['initialPositionX'],simSetting['initialPositionY']),
@@ -92,7 +90,7 @@ def runOneSim(simSetting, simUI=None):
         simEngine.commandFastforward()
 
     # start a simulaion (blocks until done)
-    timeToFullMapping = simEngine.runToCompletion(orchestrator.startExploration)
+    simEngine.runToCompletion(orchestrator.startExploration)
 
     # ======================== teardown
 
@@ -108,6 +106,7 @@ def main(simSetting, simUI=None):
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
     '''
+
     log.info('running on cleps ...')
     
     # run the simulation (blocking)

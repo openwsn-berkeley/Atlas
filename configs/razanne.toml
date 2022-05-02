@@ -1,6 +1,6 @@
 [atlas]
     numRobots                = 10
-    floorplan                = "very_small_empty.txt"         # filename in maps
+    floorplan                = "very_small_empty.txt"    # filename in maps
     initialPositionX         = 1                         # (0,0) is top-left
     initialPositionY         = 1
     navigationAlgorithm      = "Atlas"                   # options: Atlas, Ballistic

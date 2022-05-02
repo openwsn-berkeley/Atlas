@@ -78,7 +78,7 @@ class MapBuilder(object):
 
         # stop the simulation run if mapping has completed
         if self.discoMap['complete']:
-            self.simEngine.completeRun(complete=True)
+            self.simEngine.completeRun()
 
 
     def _consolidateMap(self):
