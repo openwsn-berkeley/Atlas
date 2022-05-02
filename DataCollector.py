@@ -16,7 +16,9 @@ class DataCollector(threading.Thread):
     '''
     Singleton, write to file periodically.
     '''
-    
+
+    LOG_DIR   = "./logs"
+
     # singleton pattern
     _instance = None
     _init     = False
@@ -37,7 +39,6 @@ class DataCollector(threading.Thread):
         self.filewriteperiod_s    = filewriteperiod_s
 
         # local variables
-        self.LOG_DIR              = "./logs"
         self.filename             = None
         self.writebuffer          = []
         self.dataLock             = threading.RLock()
