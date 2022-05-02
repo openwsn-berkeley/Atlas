@@ -33,7 +33,7 @@ def runOneSim(simSetting, simUI=None):
 
     # setup data collection
     dataCollector = DataCollector.DataCollector()
-    dataCollector.setFileName(uname)
+    dataCollector.setUame(uname)
 
 
     # collect simSettings
@@ -100,7 +100,6 @@ def runOneSim(simSetting, simUI=None):
     simEngine.destroy()
     wireless.destroy()
 
-    return
 
 #========================= main ==========================================
 
