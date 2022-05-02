@@ -39,7 +39,7 @@ def runOneSim(simSetting, simUI=None):
     dataCollector.collect(
         {
             'type':         'simSetting',
-            'simSetting':    simSetting,
+            'simSetting':   simSetting,
         },
     )
 
