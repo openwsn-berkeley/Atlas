@@ -2,11 +2,9 @@
 import threading
 import time
 import datetime
+import traceback
 # third-party
 # local
-import DataCollector
-import traceback
-
 # setup logging
 import logging.config
 import LoggingConfig
@@ -48,8 +46,6 @@ class SimEngine(threading.Thread):
         self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
-        self.simComplete          = False
-        self.datacollector        = DataCollector.DataCollector()
         self.semIsRunning.acquire()
 
         # start thread
@@ -129,8 +125,7 @@ class SimEngine(threading.Thread):
             else:
                 idx += 1
 
-    def completeRun(self, complete=False):
-        self.simComplete = complete
+    def completeRun(self):
         self.schedule(self._currentTime,None,tag='selfDestruct')
     
     #=== helper functions

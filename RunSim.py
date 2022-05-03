@@ -41,29 +41,26 @@ def allSimSettings(config):
     return  simSettings
 
 def main(configfile, cleps, noui):
-
-    # log start of simulation
+    # log
     log.info(f'RunSim starting ...')
 
-    config = toml.load(pkg_resources.resource_filename(__name__, f"configs/{configfile}.toml"))
-    config = config['atlas']
-
-    # create a list of settings, one per simulation run
-    simSettings = allSimSettings(config)
-    for (idx,simSetting) in enumerate(simSettings):
-        simSetting['configFileName'] =  configfile
-        simSetting['floorplan']      = pkg_resources.resource_string('maps',
-                                             simSetting['floorplan']).decode('utf-8')
+    # create a list of simSettings, one per simulation run
+    simSettings = allSimSettings(
+    toml.load(pkg_resources.resource_filename(__name__, f"configs/{configfile}.toml"))['atlas'])
 
     # run simulations, one run per simSetting
-    for (runNum, simSetting) in enumerate(simSettings):
+    for (idx,simSetting) in enumerate(simSettings):
+        simSetting['floorplan']      = pkg_resources.resource_string('maps', simSetting['floorplan']).decode('utf-8')
+        simSetting['uname']          = "{}_{}".format(configfile, simSetting['seed'])
+
+    # create the UI
+    simUI = None if noui else SimUI.SimUI()
+
+    for simSetting in simSettings:
         if cleps:
-            cmd    = ["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", json.dumps(simSetting)]
-            p      = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            log.info('running on cleps ...')
+            simSetting = json.dumps(simSetting)
+            subprocess.Popen(["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", simSetting])
         else:
-            # create the UI
-            simUI = None if noui else SimUI.SimUI()
             RunOneSim.runOneSim(simSetting, simUI)
 
 if __name__=='__main__':

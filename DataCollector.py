@@ -2,6 +2,7 @@
 import threading
 import time
 import json
+import os
 # third-party
 # local
 
@@ -15,7 +16,9 @@ class DataCollector(threading.Thread):
     '''
     Singleton, write to file periodically.
     '''
-    
+
+    LOG_DIR   = "./logs"
+
     # singleton pattern
     _instance = None
     _init     = False
@@ -36,8 +39,8 @@ class DataCollector(threading.Thread):
         self.filewriteperiod_s    = filewriteperiod_s
 
         # local variables
-        self.writebuffer          = []
         self.filename             = None
+        self.writebuffer          = []
         self.dataLock             = threading.RLock()
 
         # thread
@@ -65,11 +68,14 @@ class DataCollector(threading.Thread):
 
     # ======================== public ==========================================
 
-    def setFileName(self, filename):
+    def setUname(self, uname):
         with self.dataLock:
-            if self.filename != None:
-                self._writeToFile()
-            self.filename = filename
+
+            os.makedirs(self.LOG_DIR, exist_ok=True)
+            self.filename = os.path.join(
+                self.LOG_DIR,
+                '{}_{}.json'.format(uname, time.strftime("%y%m%d%H%M%S", time.localtime()))
+            )
 
     def collect(self, jsontocollect):
         with self.dataLock:
@@ -88,7 +94,7 @@ class DataCollector(threading.Thread):
 def main():
     datacollector = DataCollector(0.100)
     time.sleep(0.100)
-    datacollector.setFileName('data1.txt')
+    datacollector.setUname('data1.txt')
     time.sleep(0.100)
     datacollector.collect({'msg': 11})
     time.sleep(0.100)
@@ -97,7 +103,7 @@ def main():
     datacollector.collect({'msg': 13})
     datacollector.collect({'msg': 14})
     time.sleep(0.100)
-    datacollector.setFileName('data2.txt')
+    datacollector.setUname('data2.txt')
     time.sleep(0.100)
     datacollector.collect({'msg': 21})
     time.sleep(0.100)

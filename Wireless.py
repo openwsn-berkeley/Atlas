@@ -142,11 +142,11 @@ class PropagationLOS(PropagationBase):
                 return 0
         return 1
 
-class PropagationFriis(PropagationBase):
+class PropagationPisterHack(PropagationBase):
     '''
     Communications model.
 
-    Classic Friis Path Loss Model: https://www.gaussianwaves.com/2013/09/friss-free-space-propagation-model/
+    Pister Hack or Experimental Randomness variant.
     '''
     TWO_DOT_FOUR_GHZ = 2400000000  # Hz
     SPEED_OF_LIGHT = 299792458  # m/s
@@ -217,13 +217,6 @@ class PropagationFriis(PropagationBase):
         assert pdr <= 1.0
 
         return pdr
-
-class PropagationPisterHack(PropagationFriis):
-    '''
-    Communications model.
-
-    Pister Hack or Experimental Randomness variant.
-    '''
 
     PISTER_HACK_LOWER_SHIFT = 40  # dB
 
