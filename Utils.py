@@ -1,7 +1,12 @@
-import numpy as np
+# built-in
 import heapq
 import logging
-import os
+import logging.config
+import LoggingConfig
+import time
+#third-party
+import numpy as np
+#local
 
 def distance(pos1, pos2):
     return np.linalg.norm(np.array(pos2) - np.array(pos1))
@@ -15,7 +20,7 @@ def computeCurrentPosition(currentX,currentY,heading,speed,duration):
 
 def lineSegentsIntersect(segment1,segment2):
 
-    #shorthand
+    # shorthand
     (x1,y1)           = segment1[0], segment1[1]
     (x2,y2)           = segment1[2], segment1[3]
     (x3,y3)           = segment2[0], segment2[1]
@@ -58,7 +63,7 @@ def lineSegentsIntersect(segment1,segment2):
 
         return True
 
-#============= Data Structures
+# ============= Data Structures
 
 class PriorityQueue:
     def __init__(self):
@@ -83,4 +88,13 @@ class PriorityQueue:
         item = heapq.heappop(self.elements)[1]
         self.check.remove(item)
         return item
+
+# ============== Logging Setup
+
+
+def SetLoggerUname(uname):
+    LoggingConfig.LOGGINGCONFIG['handlers']['handler_file']['filename'] = './logs/{}_{}.log'.format(uname, time.strftime("%y%m%d%H%M%S", time.localtime()))
+    logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
+    return logging.getLogger('RunOneSim')
+
 

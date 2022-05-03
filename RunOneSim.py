@@ -1,5 +1,4 @@
 # built-in
-import os
 import argparse
 import random
 import json
@@ -11,7 +10,7 @@ import Orchestrator
 import Wireless
 import SimEngine
 import DataCollector
-
+import Utils as u
 # setup logging
 import logging.config
 import LoggingConfig
@@ -27,13 +26,15 @@ def runOneSim(simSetting, simUI=None):
 
     # ======================== setup
 
+    # set up logfile name for this run
+    log = u.SetLoggerUname(simSetting['uname'])
+
     # log
     log.info('Simulation started')
 
     # setup data collection
     dataCollector = DataCollector.DataCollector()
     dataCollector.setUname(simSetting['uname'])
-
 
     # collect simSettings
     dataCollector.collect(
@@ -89,7 +90,7 @@ def runOneSim(simSetting, simUI=None):
     if not simUI:
         simEngine.commandFastforward()
 
-    # start a simulaion (blocks until done)
+    # start a simulation (blocks until done)
     simEngine.runToCompletion(orchestrator.startExploration)
 
     # ======================== teardown

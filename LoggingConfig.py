@@ -22,7 +22,7 @@ LOGGINGCONFIG = {
             'level':              'DEBUG',
             'formatter':          'formatter_file',
             'class':              'logging.handlers.RotatingFileHandler',
-            'filename':           'Atlas.log',
+            'filename':           './logs/Atlas.log',
             'maxBytes':           1000000,
             'backupCount':        10
         },

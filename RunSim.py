@@ -41,7 +41,6 @@ def allSimSettings(config):
     return  simSettings
 
 def main(configfile, cleps, noui):
-
     # log
     log.info(f'RunSim starting ...')
 
