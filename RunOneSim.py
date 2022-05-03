@@ -27,7 +27,7 @@ def runOneSim(simSetting, simUI=None):
     # ======================== setup
 
     # set up logfile name for this run
-    log = u.SetLoggerUname(simSetting['uname'])
+    log = u.setLoggerUname(simSetting['uname'], 'RunOneSim')
 
     # log
     log.info('Simulation started')

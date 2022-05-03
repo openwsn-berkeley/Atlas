@@ -92,9 +92,9 @@ class PriorityQueue:
 # ============== Logging Setup
 
 
-def SetLoggerUname(uname):
+def setLoggerUname(uname, loggername=None):
     LoggingConfig.LOGGINGCONFIG['handlers']['handler_file']['filename'] = './logs/{}_{}.log'.format(uname, time.strftime("%y%m%d%H%M%S", time.localtime()))
     logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
-    return logging.getLogger('RunOneSim')
+    return logging.getLogger(loggername)
 
 
