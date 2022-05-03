@@ -13,8 +13,6 @@ import DataCollector
 import Utils as u
 # setup logging
 import logging.config
-import LoggingConfig
-logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('RunOneSim')
 
 #====================================== HELPER =================================================
@@ -28,7 +26,6 @@ def runOneSim(simSetting, simUI=None):
 
     # set up logfile name for this run
     u.setLoggerUname(simSetting['uname'])
-    log = logging.getLogger('RunOneSim')
 
     # log
     log.info('Simulation started')
