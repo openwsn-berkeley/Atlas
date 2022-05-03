@@ -2,10 +2,9 @@
 import threading
 import time
 import datetime
+import traceback
 # third-party
 # local
-import traceback
-
 # setup logging
 import logging.config
 import LoggingConfig
