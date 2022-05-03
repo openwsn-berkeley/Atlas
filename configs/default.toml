@@ -1,8 +1,8 @@
 [atlas]
     numRobots                = 10
     floorplan                = "small_empty.txt"         # filename in maps
-    initialPositionX         = 1                         # (0,0) is top-left
-    initialPositionY         = 1
+    initX                    = 1                         # (0,0) is top-left
+    initY                    = 1
     navigationAlgorithm      = "Atlas"                   # options: Atlas, Ballistic
     relayAlgorithm           = "Recovery"                # options: Recovery, Naive, SelfHealing
     lowerPdrThreshold        = 0.7                       # (for Recovery) trigger relay placement if below

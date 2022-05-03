@@ -45,38 +45,19 @@ def runOneSim(simSetting, simUI=None):
     # setting the seed
     random.seed(simSetting['seed'])
     
-    # create the SimEngine
-    simEngine      = SimEngine.SimEngine()
-
-    # create the floorplan
+    # create the simulation environment
     floorplan      = Floorplan.Floorplan(simSetting['floorplan'])
-
-    # shorthand
-    (initx, inity) = (simSetting['initialPositionX'], simSetting['initialPositionY'])
-
-    # create the DotBots
-    dotBots        = []
-    for dotBotId in range(simSetting['numRobots']):
-        dotBots   += [DotBot.DotBot(dotBotId, initx, inity, floorplan)]
-
-    # create the orchestrator
-    relaySettings = {
-        "relayAlgorithm":    simSetting['relayAlgorithm'],
-        "lowerPdrThreshold": simSetting['lowerPdrThreshold'],
-        "upperPdrThreshold": simSetting['upperPdrThreshold'],
-        }
+    simEngine      = SimEngine.SimEngine()
     orchestrator   = Orchestrator.Orchestrator(
         simSetting['numRobots'],
-        (simSetting['initialPositionX'],simSetting['initialPositionY']),
-        relaySettings,
-        simSetting['navigationAlgorithm'],
+        simSetting['initX'],
+        simSetting['initY'],
     )
-
-    # create the wireless communication medium
-
-    wireless=Wireless.WirelessConcurrentTransmission()
-    wireless.indicateDevices(devices=dotBots + [orchestrator])
-    wireless.indicateFloorplan(floorplan=floorplan)
+    dotBots        = [
+        DotBot.DotBot(dotBotId, simSetting['initX'], simSetting['initY'], floorplan)
+        for dotBotId in range(1,simSetting['numRobots']+1)
+    ]
+    wireless       = Wireless.Wireless(devices=dotBots+[orchestrator])
 
     # ======================== run
 
