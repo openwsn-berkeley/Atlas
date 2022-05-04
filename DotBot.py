@@ -40,7 +40,7 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
-
+        self.lastMovement         = None
     # ======================== public ==========================================
 
     def receive(self, frame):
@@ -53,17 +53,18 @@ class DotBot(Wireless.WirelessDevice):
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
 
-        # ignore new movement if dotbot hasn't bumped yet
-        if self.currentSpeed == 1:
+        if frame['movements'][self.dotBotId] == self.lastMovement:
             return
 
         # apply heading and speed from packet
         self._setHeading(frame['movements'][self.dotBotId]['heading'])
         self._setSpeed(frame['movements'][self.dotBotId]['speed'])
-        
+        self.lastMovement        = frame['movements'][self.dotBotId]
+
         # remember when I started moving, will be indicated in notification
         self.tsMovementStart      = self.simEngine.currentTime()
         self.tsMovementStop       = None
+
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
         log.debug(f'Dotbot {self.dotBotId} heading is {self.currentHeading} and speed is {self.currentSpeed}')
 
@@ -76,7 +77,8 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_ts         = bump_ts
 
         # schedule the bump event
-        self.simEngine.schedule(self.next_bump_ts, self._bumpSensorCb)
+        self.simEngine.schedule(self.next_bump_ts, self._bumpSensorCb, tag=f'{self.dotBotId}_bump')
+        log.debug(f'next bump for {self.dotBotId} scheduled for {self.next_bump_ts}')
 
     def computeCurrentPosition(self):
         '''
@@ -117,17 +119,12 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
 
-        self._stopAndTransmit()
-
-    def _stopAndTransmit(self):
-        '''
-        transmit a packet to the orchestrator to request a new heading and to notify of obstacle
-        '''
+        log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
+        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
+        assert self.simEngine.currentTime() == self.next_bump_ts
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
-        log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
-        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
         assert self.x == self.next_bump_x
         assert self.y == self.next_bump_y
 
@@ -312,7 +309,6 @@ class DotBot(Wireless.WirelessDevice):
         timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.currentSpeed
         bump_ts    = self.tsMovementStart + timetobump
 
-        log.debug(f'DotBot {self.dotBotId} bumping at frame at ({bump_x},{bump_y})')
         assert bump_x >= 0 and bump_y >= 0
         return (bump_x, bump_y, bump_ts)
 
@@ -379,7 +375,6 @@ class DotBot(Wireless.WirelessDevice):
             timetobump  = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
             bump_ts     = self.tsMovementStart + timetobump
 
-            log.debug(f'Dotbot {self.dotBotId} bumping at obstacle at({bump_x},{bump_y})')
             assert bump_x >= 0 and bump_y >= 0
             return (bump_x, bump_y, bump_ts)
 

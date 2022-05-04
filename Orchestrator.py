@@ -43,8 +43,9 @@ class Orchestrator(Wireless.WirelessDevice):
             (
                 i,
                 {
-                   'x': initX,
-                   'y': initY,
+                   'x':       initX,
+                   'y':       initY,
+                   'heading': 0,
                 }
             ) for i in range(1,self.numRobots+1)
         ])
@@ -86,12 +87,12 @@ class Orchestrator(Wireless.WirelessDevice):
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': dict([
                     (
-                        i,
+                        idx,
                         {
-                           'heading': 360*random.random(),
+                           'heading': dotbot['heading'],
                            'speed':   1,
                         }
-                    ) for i in range(1,self.numRobots+1)]
+                    ) for idx, dotbot in self.dotBotsView.items()]
             )
         }
 
@@ -106,7 +107,8 @@ class Orchestrator(Wireless.WirelessDevice):
         Notification received from a DotBot.
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
-    
+        self.dotBotsView[frame['source']]['heading'] = 360*random.random()
+
     #=== UI
 
     def getEvaluatedPositions(self):
@@ -115,9 +117,9 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         returnVal = [
             {
-                'x':         dotbot[1]['x'],
-                'y':         dotbot[1]['y'],
-            } for dotbot in self.dotBotsView.items()
+                'x':         dotbot['x'],
+                'y':         dotbot['y'],
+            } for idx, dotbot in self.dotBotsView.items()
         ]
         return returnVal
     
