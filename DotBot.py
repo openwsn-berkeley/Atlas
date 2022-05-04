@@ -4,7 +4,6 @@ import itertools
 # third-party
 # local
 import SimEngine
-import Orchestrator
 import Wireless
 import Utils as u
 
@@ -19,7 +18,7 @@ class DotBot(Wireless.WirelessDevice):
     A single DotBot.
     '''
 
-    def __init__(self, dotBotId, x, y, floorplan, wireless=Wireless.WirelessConcurrentTransmission):
+    def __init__(self, dotBotId, x, y, floorplan):
 
         # store params
         self.dotBotId             = dotBotId
@@ -30,10 +29,7 @@ class DotBot(Wireless.WirelessDevice):
         #=== local variables
         # singletons
         self.simEngine            = SimEngine.SimEngine()
-        self.wireless             = wireless()
-        # sequence numbers (to filter out duplicate commands and notifications)
-        self.seqNumMovement       = None
-        self.seqNumNotification   = 0
+        self.wireless             = Wireless.Wireless()
         # current heading and speed
         self.currentHeading       = 0
         self.currentSpeed         = 0
@@ -44,13 +40,6 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
-        self.bump                 = False
-        self.packetsRxRatio       = 1
-        self.packetsRX            = 0
-        self.hbLength             = 10
-        self.relay                = False
-
-        self.simEngine.schedule(self.simEngine.currentTime()+self.hbLength, self._updateHeartbeat)
 
     # ======================== public ==========================================
 
@@ -64,60 +53,34 @@ class DotBot(Wireless.WirelessDevice):
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
 
-        myMovement = [movement for movement in frame['movements'] if movement['ID'] == self.dotBotId]
-        self.packets_per_command = frame['packets per command']
-
-        self._updatePacketCount()
-
-        if not myMovement:
+        # drop frame if heading and speed are same as last frame
+        if (frame['movements'][self.dotBotId]['heading'] == self.currentHeading and
+            frame['movements'][self.dotBotId]['speed'] == self.currentSpeed):
             return
-        else:
-            myMovement = myMovement[0]
-
-        now      = self.simEngine.currentTime()
-
-        if myMovement['timer']:
-            stopTime = now + myMovement['timer']
-        else:
-            stopTime = math.inf
-
-        # filter out duplicates
-        if myMovement['seqNumMovement'] == self.seqNumMovement:
-            return
-
-        self.seqNumMovement       = myMovement['seqNumMovement']
-
-        if myMovement['speed'] == -1:
-            self.relay = True
-            return
-
-        # if I get here I have received a NEW movement
-
-        # cancel notification retransmission
-        self.simEngine.cancelEvent(tag = "retransmission_DotBot_{}".format(self.dotBotId))
 
         # apply heading and speed from packet
-        self._setHeading(myMovement['heading'])
-        self._setSpeed(myMovement['speed'])
-        
+        self._setHeading(frame['movements'][self.dotBotId]['heading'])
+        self._setSpeed(frame['movements'][self.dotBotId]['speed'])
+
         # remember when I started moving, will be indicated in notification
-        self.tsMovementStart      = now
+        self.tsMovementStart      = self.simEngine.currentTime()
         self.tsMovementStop       = None
+
+        log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
+        log.debug(f'Dotbot {self.dotBotId} heading is {self.currentHeading} and speed is {self.currentSpeed}')
 
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
-        
+        log.debug(f'Dotbot {self.dotBotId} next bump at ({bump_x}, {bump_y}) at {bump_ts}')
+
         # remember
         self.next_bump_x          = bump_x
         self.next_bump_y          = bump_y
         self.next_bump_ts         = bump_ts
 
-        if stopTime < self.next_bump_ts:
-            # schedule timeout event
-            self.simEngine.schedule(stopTime, self._timeout)
-        else:
-            # schedule the bump event
-            self.simEngine.schedule(self.next_bump_ts, self._bump)
+        # schedule the bump event
+        self.simEngine.schedule(self.next_bump_ts, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
+        log.debug(f'next bump for {self.dotBotId} scheduled for {self.next_bump_ts}')
 
     def computeCurrentPosition(self):
         '''
@@ -147,75 +110,31 @@ class DotBot(Wireless.WirelessDevice):
         Retrieve the position of this DotBot's next bump.
         '''
 
-        return (self.next_bump_x,self.next_bump_y)
+        return (self.next_bump_x, self.next_bump_y)
 
     # ======================== private =========================================
 
     #=== bump sensor interrupt handler
     
-    def _bump(self):
+    def _bumpSensorCb(self):
         '''
         Bump sensor triggered
         '''
 
-        self.bump = True
-        self._stopAndTransmit()
+        assert self.simEngine.currentTime() == self.next_bump_ts
 
-    def _timeout(self):
-        '''
-        movement allocated timer ran out
-        '''
-
-        self.bump = False
-        self._stopAndTransmit()
-
-    def _updatePacketCount(self):
-        self.packetsRX += 1
-
-    def _resetPacketCount(self):
-        self.packetsRX = 0
-
-    def _updateHeartbeat(self):
-        '''
-        send heartbeat with percentage of packets recieved since last heartbeat
-        '''
-
-        now = self.simEngine.currentTime()
-
-        self.simEngine.schedule(now + self.hbLength, self._updateHeartbeat)
-
-        if now < self.hbLength:
-            return
-
-        self.packetsRxRatio = self.packetsRX/(self.hbLength*self.packets_per_command)
-        self._resetPacketCount()
-
-        self.bump = False
-
-        self._transmit()
-
-
-    def _stopAndTransmit(self):
-        '''
-        transmit a packet to the orchestrator to request a new heading and to notify of obstacle
-        '''
-        self.packetsRxRatio = None
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
-
-        if self.bump == True:
-
-            assert self.x == self.next_bump_x
-            assert self.y == self.next_bump_y
+        log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
+        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
+        assert self.x == self.next_bump_x
+        assert self.y == self.next_bump_y
 
         # stop moving
         self.currentSpeed        = 0
-        
+
         # remember when I stop moving
         self.tsMovementStop      = self.simEngine.currentTime()
-
-        # update notification ID
-        self.seqNumNotification += 1
 
         # transmit
         self._transmit()
@@ -228,29 +147,14 @@ class DotBot(Wireless.WirelessDevice):
         # format frame to transmit
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
-            'dotBotId':           self.dotBotId,
-            'seqNumNotification': self.seqNumNotification,
-            'tsMovementStart':    self.tsMovementStart,
-            'tsMovementStop':     self.tsMovementStop,
-            'bump':               self.bump,
-            'heartbeat':          self.packetsRxRatio,
+            'source':             self.dotBotId,
         }
-
 
         # hand over to wireless
         self.wireless.transmit(
             frame       = frameToTx,
             sender      = self,
         )
-
-        # schedule re-transmit
-        self.simEngine.schedule(
-            ts  = self.simEngine.currentTime() + Orchestrator.Orchestrator.COMM_DOWNSTREAM_PERIOD_S,
-            cb  = self._transmit,
-            tag = "retransmission_DotBot_{}".format(self.dotBotId),
-        )
-
-        self.NewPacket = 0
 
     #=== motor control
     
@@ -302,17 +206,17 @@ class DotBot(Wireless.WirelessDevice):
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
 
-        bump_x = self.x + (bump_ts - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
-        bump_y = self.y + (bump_ts - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_x = round(bump_x, 3)
         bump_y = round(bump_y, 3)
-        
+        log.debug(f'Dotbot {self.dotBotId} at ({self.x},{self.y}) next bump at ({bump_x},{bump_y}) at {self.next_bump_ts}')
+        assert bump_x >= 0 and bump_y >= 0
+
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
 
     def _computeNextBumpFrame(self):
 
-        if   self.currentHeading in [90, 270]:
+        if  self.currentHeading in [90, 270]:
             # horizontal edge case
 
             north_x     = None  # doesn't cross
@@ -342,11 +246,13 @@ class DotBot(Wireless.WirelessDevice):
             east_y      = self.floorplan.width * a + b     # intersection with East  wall (x=self.floorplan.width)
 
             # round
-            north_x     = round(north_x, 3)
-            south_x     = round(south_x, 3)
-            west_y      = round(west_y,  3)
-            east_y      = round(east_y,  3)
+            north_x = round(north_x, 10)
+            south_x = round(south_x, 10)
+            west_y  = round(west_y,  10)
+            east_y  = round(east_y,  10)
 
+        log.debug(f'x intersection points {north_x}, {south_x}')
+        log.debug(f'y intersection points {west_y}, {east_y}')
         # pick the two intersection points on the floorplan perimeter
         valid_intersections = []
         if (north_x != None and 0 <= north_x and north_x <= self.floorplan.width):
@@ -359,6 +265,7 @@ class DotBot(Wireless.WirelessDevice):
             valid_intersections += [(self.floorplan.width, east_y)]
 
         # if more than 2 valid points, pick the pair that is furthest apart
+        log.debug(f'valid intersections {valid_intersections}')
         if len(valid_intersections) > 2:
             distances = [
                 (u.distance(a, b), a, b)
@@ -368,52 +275,54 @@ class DotBot(Wireless.WirelessDevice):
             distances = sorted(distances, key=lambda e: e[0])
             valid_intersections = [distances[-1][1], distances[-1][2]]
 
-        assert len(valid_intersections) == 2
+        log.debug(f'closest intersections {valid_intersections}')
+        assert  len(valid_intersections) == 2 or len(valid_intersections) == 1
 
-        # pick the correct intersection point given the heading of the robot
-        (x_int0, y_int0) = valid_intersections[0]
-        (x_int1, y_int1) = valid_intersections[1]
-        if self.currentHeading == 0:
-            # going up
+        if len(valid_intersections) == 2:
+            # pick the correct intersection point given the heading of the robot
+            (x_int0, y_int0) = valid_intersections[0]
+            (x_int1, y_int1) = valid_intersections[1]
+            if self.currentHeading == 0:
+                # going up
 
-            # pick top-most intersection
-            if y_int0 < y_int1:
-                (bump_x, bump_y) = (x_int0, y_int0)
+                # pick top-most intersection
+                if y_int0 < y_int1:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
+            elif (0 < self.currentHeading and self.currentHeading < 180):
+                # going right
+
+                # pick right-most intersection
+                if x_int1 < x_int0:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
+            elif self.currentHeading == 180:
+                # going down
+
+                # pick bottom-most intersection
+                if y_int1 < y_int0:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
             else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        elif (0 < self.currentHeading and self.currentHeading < 180):
-            # going right
+                # going left
 
-            # pick right-most intersection
-            if x_int1 < x_int0:
-                (bump_x, bump_y) = (x_int0, y_int0)
-            else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        elif self.currentHeading == 180:
-            # going down
+                # pick right-most intersection
+                if x_int0 < x_int1:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
+        elif len(valid_intersections) == 1:
+            # dotbot in corner
+            (bump_x, bump_y) = (valid_intersections[0][0], valid_intersections[0][1])
 
-            # pick bottom-most intersection
-            if y_int1 < y_int0:
-                (bump_x, bump_y) = (x_int0, y_int0)
-            else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        else:
-            # going left
-
-            # pick right-most intersection
-            if x_int0 < x_int1:
-                (bump_x, bump_y) = (x_int0, y_int0)
-            else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        
         # compute time to bump
         timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.currentSpeed
         bump_ts    = self.tsMovementStart + timetobump
-
-        # round
-        bump_x     = round(bump_x, 3)
-        bump_y     = round(bump_y, 3)
-
+        log.debug(f'Dotbot {self.dotBotId} frame bump at ({bump_x},{bump_y})')
+        assert bump_x >= 0 and bump_y >= 0
         return (bump_x, bump_y, bump_ts)
 
     def _computeNextBumpObstacle(self, rx, ry, x2, y2, ax, ay, bx, by):
@@ -478,13 +387,9 @@ class DotBot(Wireless.WirelessDevice):
             
             timetobump  = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
             bump_ts     = self.tsMovementStart + timetobump
-            
-            # round
-            bump_x      = round(bump_x, 3)
-            bump_y      = round(bump_y, 3)
-
+            log.debug(f'Dotbot {self.dotBotId} obstacle bump at ({bump_x},{bump_y})')
+            assert bump_x >= 0 and bump_y >= 0
             return (bump_x, bump_y, bump_ts)
-
         else:
 
             return (None, None, None)
