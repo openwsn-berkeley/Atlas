@@ -53,17 +53,21 @@ class DotBot(Wireless.WirelessDevice):
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
 
+        # ignore new movement if dotbot hasn't bumped yet
+        if self.currentSpeed == 1:
+            return
+
         # apply heading and speed from packet
         self._setHeading(frame['movements'][self.dotBotId]['heading'])
         self._setSpeed(frame['movements'][self.dotBotId]['speed'])
         
         # remember when I started moving, will be indicated in notification
-        self.tsMovementStart      = now
+        self.tsMovementStart      = self.simEngine.currentTime()
         self.tsMovementStop       = None
 
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
-        
+
         # remember
         self.next_bump_x          = bump_x
         self.next_bump_y          = bump_y
@@ -100,7 +104,7 @@ class DotBot(Wireless.WirelessDevice):
         Retrieve the position of this DotBot's next bump.
         '''
 
-        return (self.next_bump_x,self.next_bump_y)
+        return (self.next_bump_x, self.next_bump_y)
 
     # ======================== private =========================================
 
@@ -117,15 +121,16 @@ class DotBot(Wireless.WirelessDevice):
         '''
         transmit a packet to the orchestrator to request a new heading and to notify of obstacle
         '''
-        
+
         # update my position
+        (self.x, self.y) = self.computeCurrentPosition()
+
         assert self.x == self.next_bump_x
         assert self.y == self.next_bump_y
-        (self.x, self.y) = self.computeCurrentPosition()
 
         # stop moving
         self.currentSpeed        = 0
-        
+
         # remember when I stop moving
         self.tsMovementStop      = self.simEngine.currentTime()
 

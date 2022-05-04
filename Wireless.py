@@ -41,21 +41,24 @@ class Wireless(object):
             cls._instance = super(Wireless, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, devices):
+    def __init__(self):
 
         # singleton pattern
         # if instance of class already exists the return, to restrict to one instance only
         if self._init:
             return
         self._init = True
-
-        # store params
-        self.devices         = devices
         
         # local variables
-
+        self.devices = []
     # ======================== public ==========================================
-    
+
+    def indicateDevices(self, devices):
+        """
+        Indicates devices available for transmission.
+        """
+        self.devices = devices
+
     def destroy(self):
         """
         Singleton destructor.

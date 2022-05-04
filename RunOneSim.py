@@ -57,7 +57,8 @@ def runOneSim(simSetting, simUI=None):
         DotBot.DotBot(dotBotId, simSetting['initX'], simSetting['initY'], floorplan)
         for dotBotId in range(1,simSetting['numRobots']+1)
     ]
-    wireless       = Wireless.Wireless(devices=dotBots+[orchestrator])
+    wireless       = Wireless.Wireless()
+    wireless.indicateDevices(devices=dotBots+[orchestrator])
 
     # ======================== run
 

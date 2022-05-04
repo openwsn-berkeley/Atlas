@@ -96,7 +96,6 @@ class SimUI(object):
         
         try:
             orchestratorView = self.orchestrator.getView()
-            
             returnValDotBots = []
             # x,y,next_bump_x,next_bump_y
             for dotbot in self.dotbots:

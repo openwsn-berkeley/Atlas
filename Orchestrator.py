@@ -39,18 +39,16 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         self.datacollector      = DataCollector.DataCollector()
-        self.dotBotView         = dict(
-            [
-                (
-                    i,
-                    {
-                       'x': 0,
-                       'y': 0,
-                    }
-                )
-            ] for i in range(1,self.numRobots+1)
-        )
-    
+        self.dotBotsView        = dict([
+            (
+                i,
+                {
+                   'x': initX,
+                   'y': initY,
+                }
+            ) for i in range(1,self.numRobots+1)
+        ])
+
     #======================== public ==========================================
 
     #=== admin
@@ -84,18 +82,16 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
-        frameToTx {
-            'frameType': FRAMETYPE_COMMAND,
-            'movements': dict(
-                [
+        frameToTx = {
+            'frameType': self.FRAMETYPE_COMMAND,
+            'movements': dict([
                     (
                         i,
                         {
                            'heading': 360*random.random(),
-                           'speed':   0,
+                           'speed':   1,
                         }
-                    )
-                ] for i in range(1,self.numRobots+1)
+                    ) for i in range(1,self.numRobots+1)]
             )
         }
 
@@ -112,6 +108,18 @@ class Orchestrator(Wireless.WirelessDevice):
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
     
     #=== UI
+
+    def getEvaluatedPositions(self):
+        '''
+        Retrieve the evaluated positions of each DotBot.
+        '''
+        returnVal = [
+            {
+                'x':         dotbot[1]['x'],
+                'y':         dotbot[1]['y'],
+            } for dotbot in self.dotBotsView.items()
+        ]
+        return returnVal
     
     def getView(self):
         '''
@@ -119,9 +127,9 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         
         returnVal = {
-            'dotbotpositions':    self.navigation.getEvaluatedPositions(),
-            'discomap':           self.navigation.mapBuilder.getMap(),
-            'exploredCells':      self.navigation.getExploredCells(),
+            'dotbotpositions':    self.getEvaluatedPositions(),
+            'discomap':           None,
+            'exploredCells':      None,
         }
         
         return returnVal
