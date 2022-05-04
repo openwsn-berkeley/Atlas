@@ -119,12 +119,12 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
 
-        log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
-        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
         assert self.simEngine.currentTime() == self.next_bump_ts
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
+        log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
+        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
         assert self.x == self.next_bump_x
         assert self.y == self.next_bump_y
 
@@ -208,6 +208,7 @@ class DotBot(Wireless.WirelessDevice):
         bump_y = round(bump_y, 3)
 
         log.debug(f'Dotbot {self.dotBotId} at ({self.x},{self.y}) next bump at ({bump_x},{bump_y}) at {self.next_bump_ts}')
+
         assert bump_x >= 0 and bump_y >= 0
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
@@ -243,6 +244,14 @@ class DotBot(Wireless.WirelessDevice):
             west_y      = 0 * a + b                        # intersection with West  wall (x=0)
             east_y      = self.floorplan.width * a + b     # intersection with East  wall (x=self.floorplan.width)
 
+            # round
+            north_x = round(north_x, 10)
+            south_x = round(south_x, 10)
+            west_y  = round(west_y,  10)
+            east_y  = round(east_y,  10)
+
+        log.debug(f'x intersection points {north_x}, {south_x}')
+        log.debug(f'y intersection points {west_y}, {east_y}')
         # pick the two intersection points on the floorplan perimeter
         valid_intersections = []
         if (north_x != None and 0 <= north_x and north_x <= self.floorplan.width):
@@ -255,6 +264,7 @@ class DotBot(Wireless.WirelessDevice):
             valid_intersections += [(self.floorplan.width, east_y)]
 
         # if more than 2 valid points, pick the pair that is furthest apart
+        log.debug(f'valid intersections {valid_intersections}')
         if len(valid_intersections) > 2:
             distances = [
                 (u.distance(a, b), a, b)
@@ -264,7 +274,9 @@ class DotBot(Wireless.WirelessDevice):
             distances = sorted(distances, key=lambda e: e[0])
             valid_intersections = [distances[-1][1], distances[-1][2]]
 
+        log.debug(f'closest intersections {valid_intersections}')
         assert  len(valid_intersections) == 2 or len(valid_intersections) == 1
+
         if len(valid_intersections) == 2:
             # pick the correct intersection point given the heading of the robot
             (x_int0, y_int0) = valid_intersections[0]
@@ -308,7 +320,7 @@ class DotBot(Wireless.WirelessDevice):
         # compute time to bump
         timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.currentSpeed
         bump_ts    = self.tsMovementStart + timetobump
-
+        log.debug(f'Dotbot {self.dotBotId} frame bump at ({bump_x},{bump_y})')
         assert bump_x >= 0 and bump_y >= 0
         return (bump_x, bump_y, bump_ts)
 
@@ -374,10 +386,9 @@ class DotBot(Wireless.WirelessDevice):
             
             timetobump  = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
             bump_ts     = self.tsMovementStart + timetobump
-
+            log.debug(f'Dotbot {self.dotBotId} obstacle bump at ({bump_x},{bump_y})')
             assert bump_x >= 0 and bump_y >= 0
             return (bump_x, bump_y, bump_ts)
-
         else:
 
             return (None, None, None)
