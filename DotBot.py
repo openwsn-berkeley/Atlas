@@ -64,10 +64,12 @@ class DotBot(Wireless.WirelessDevice):
         # remember when I started moving, will be indicated in notification
         self.tsMovementStart      = self.simEngine.currentTime()
         self.tsMovementStop       = None
+        log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
+        log.debug(f'Dotbot {self.dotBotId} heading is {self.currentHeading} and speed is {self.currentSpeed}')
 
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
-
+        log.debug(f'Dotbot {self.dotBotId} next bump at ({bump_x}, {bump_y}) at {bump_ts}')
         # remember
         self.next_bump_x          = bump_x
         self.next_bump_y          = bump_y
@@ -124,7 +126,8 @@ class DotBot(Wireless.WirelessDevice):
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
-
+        log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
+        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
         assert self.x == self.next_bump_x
         assert self.y == self.next_bump_y
 
@@ -204,17 +207,17 @@ class DotBot(Wireless.WirelessDevice):
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
 
-        bump_x = self.x + (bump_ts - self.tsMovementStart) * math.cos(math.radians(self.currentHeading - 90)) * self.currentSpeed
-        bump_y = self.y + (bump_ts - self.tsMovementStart) * math.sin(math.radians(self.currentHeading - 90)) * self.currentSpeed
         bump_x = round(bump_x, 3)
         bump_y = round(bump_y, 3)
-        
+
+        log.debug(f'Dotbot {self.dotBotId} at ({self.x},{self.y}) next bump at ({bump_x},{bump_y}) at {self.next_bump_ts}')
+        assert bump_x >= 0 and bump_y >= 0
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
 
     def _computeNextBumpFrame(self):
 
-        if   self.currentHeading in [90, 270]:
+        if  self.currentHeading in [90, 270]:
             # horizontal edge case
 
             north_x     = None  # doesn't cross
@@ -243,12 +246,6 @@ class DotBot(Wireless.WirelessDevice):
             west_y      = 0 * a + b                        # intersection with West  wall (x=0)
             east_y      = self.floorplan.width * a + b     # intersection with East  wall (x=self.floorplan.width)
 
-            # round
-            north_x     = round(north_x, 3)
-            south_x     = round(south_x, 3)
-            west_y      = round(west_y,  3)
-            east_y      = round(east_y,  3)
-
         # pick the two intersection points on the floorplan perimeter
         valid_intersections = []
         if (north_x != None and 0 <= north_x and north_x <= self.floorplan.width):
@@ -270,52 +267,53 @@ class DotBot(Wireless.WirelessDevice):
             distances = sorted(distances, key=lambda e: e[0])
             valid_intersections = [distances[-1][1], distances[-1][2]]
 
-        assert len(valid_intersections) == 2
+        assert  len(valid_intersections) == 2 or len(valid_intersections) == 1
+        if len(valid_intersections) == 2:
+            # pick the correct intersection point given the heading of the robot
+            (x_int0, y_int0) = valid_intersections[0]
+            (x_int1, y_int1) = valid_intersections[1]
+            if self.currentHeading == 0:
+                # going up
 
-        # pick the correct intersection point given the heading of the robot
-        (x_int0, y_int0) = valid_intersections[0]
-        (x_int1, y_int1) = valid_intersections[1]
-        if self.currentHeading == 0:
-            # going up
+                # pick top-most intersection
+                if y_int0 < y_int1:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
+            elif (0 < self.currentHeading and self.currentHeading < 180):
+                # going right
 
-            # pick top-most intersection
-            if y_int0 < y_int1:
-                (bump_x, bump_y) = (x_int0, y_int0)
+                # pick right-most intersection
+                if x_int1 < x_int0:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
+            elif self.currentHeading == 180:
+                # going down
+
+                # pick bottom-most intersection
+                if y_int1 < y_int0:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
             else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        elif (0 < self.currentHeading and self.currentHeading < 180):
-            # going right
+                # going left
 
-            # pick right-most intersection
-            if x_int1 < x_int0:
-                (bump_x, bump_y) = (x_int0, y_int0)
-            else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        elif self.currentHeading == 180:
-            # going down
+                # pick right-most intersection
+                if x_int0 < x_int1:
+                    (bump_x, bump_y) = (x_int0, y_int0)
+                else:
+                    (bump_x, bump_y) = (x_int1, y_int1)
+        elif len(valid_intersections) == 1:
+            # dotbot in corner
+            (bump_x, bump_y) = (valid_intersections[0][0], valid_intersections[0][1])
 
-            # pick bottom-most intersection
-            if y_int1 < y_int0:
-                (bump_x, bump_y) = (x_int0, y_int0)
-            else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        else:
-            # going left
-
-            # pick right-most intersection
-            if x_int0 < x_int1:
-                (bump_x, bump_y) = (x_int0, y_int0)
-            else:
-                (bump_x, bump_y) = (x_int1, y_int1)
-        
         # compute time to bump
         timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.currentSpeed
         bump_ts    = self.tsMovementStart + timetobump
 
-        # round
-        bump_x     = round(bump_x, 3)
-        bump_y     = round(bump_y, 3)
-
+        log.debug(f'DotBot {self.dotBotId} bumping at frame at ({bump_x},{bump_y})')
+        assert bump_x >= 0 and bump_y >= 0
         return (bump_x, bump_y, bump_ts)
 
     def _computeNextBumpObstacle(self, rx, ry, x2, y2, ax, ay, bx, by):
@@ -380,11 +378,9 @@ class DotBot(Wireless.WirelessDevice):
             
             timetobump  = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
             bump_ts     = self.tsMovementStart + timetobump
-            
-            # round
-            bump_x      = round(bump_x, 3)
-            bump_y      = round(bump_y, 3)
 
+            log.debug(f'Dotbot {self.dotBotId} bumping at obstacle at({bump_x},{bump_y})')
+            assert bump_x >= 0 and bump_y >= 0
             return (bump_x, bump_y, bump_ts)
 
         else:
