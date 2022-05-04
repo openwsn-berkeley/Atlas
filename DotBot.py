@@ -40,7 +40,7 @@ class DotBot(Wireless.WirelessDevice):
         self.next_bump_x          = None  # coordinate the DotBot will bump into next
         self.next_bump_y          = None
         self.next_bump_ts         = None  # time at which DotBot will bump
-        self.lastMovement         = None
+
     # ======================== public ==========================================
 
     def receive(self, frame):
@@ -53,13 +53,14 @@ class DotBot(Wireless.WirelessDevice):
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
 
-        if frame['movements'][self.dotBotId] == self.lastMovement:
+        # drop frame if heading and speed are same as last frame
+        if (frame['movements'][self.dotBotId]['heading'] == self.currentHeading and
+            frame['movements'][self.dotBotId]['speed'] == self.currentSpeed):
             return
 
         # apply heading and speed from packet
         self._setHeading(frame['movements'][self.dotBotId]['heading'])
         self._setSpeed(frame['movements'][self.dotBotId]['speed'])
-        self.lastMovement        = frame['movements'][self.dotBotId]
 
         # remember when I started moving, will be indicated in notification
         self.tsMovementStart      = self.simEngine.currentTime()
@@ -71,13 +72,14 @@ class DotBot(Wireless.WirelessDevice):
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
         log.debug(f'Dotbot {self.dotBotId} next bump at ({bump_x}, {bump_y}) at {bump_ts}')
+
         # remember
         self.next_bump_x          = bump_x
         self.next_bump_y          = bump_y
         self.next_bump_ts         = bump_ts
 
         # schedule the bump event
-        self.simEngine.schedule(self.next_bump_ts, self._bumpSensorCb, tag=f'{self.dotBotId}_bump')
+        self.simEngine.schedule(self.next_bump_ts, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
         log.debug(f'next bump for {self.dotBotId} scheduled for {self.next_bump_ts}')
 
     def computeCurrentPosition(self):
@@ -206,10 +208,9 @@ class DotBot(Wireless.WirelessDevice):
 
         bump_x = round(bump_x, 3)
         bump_y = round(bump_y, 3)
-
         log.debug(f'Dotbot {self.dotBotId} at ({self.x},{self.y}) next bump at ({bump_x},{bump_y}) at {self.next_bump_ts}')
-
         assert bump_x >= 0 and bump_y >= 0
+
         # return where and when robot will bump
         return (bump_x, bump_y, bump_ts)
 
