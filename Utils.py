@@ -4,6 +4,7 @@ import logging
 import logging.config
 import LoggingConfig
 import time
+import os
 #third-party
 import numpy as np
 #local
@@ -92,7 +93,11 @@ class PriorityQueue:
 # ============== Logging Setup
 
 def setLoggerUname(uname):
-    LoggingConfig.LOGGINGCONFIG['handlers']['handler_file']['filename'] = './logs/{}_{}.log'.format(uname, time.strftime("%y%m%d%H%M%S", time.localtime()))
+    os.makedirs('./logs', exist_ok=True)
+    LoggingConfig.LOGGINGCONFIG['handlers']['handler_file']['filename'] = os.path.join(
+        './logs',
+        '{}_{}.log'.format(uname, time.strftime("%y%m%d%H%M%S", time.localtime()))
+    )
     logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
 
