@@ -90,7 +90,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         idx,
                         {
                            'heading': 360 * random.random(),
-                           'speed':   5,
+                           'speed':   10 * random.random(),
                         }
                     ) for idx, dotbot in self.dotBotsView.items()]
             )
