@@ -63,7 +63,7 @@ LOGGINGCONFIG = {
             'level':              'DEBUG',
             'propagate':          False
         },
-        'SimUI': {
+        'AtlasUI': {
             'handlers':           ['handler_console','handler_file'],
             'level':              'DEBUG',
             'propagate':          False

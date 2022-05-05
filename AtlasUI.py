@@ -12,9 +12,9 @@ import AtlasVersion
 import logging.config
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
-log = logging.getLogger('SimUI')
+log = logging.getLogger('AtlasUI')
 
-class SimUI(object):
+class AtlasUI(object):
     '''
     Web-based User Interface of the simulator.
     '''
@@ -72,7 +72,7 @@ class SimUI(object):
     
     def _webhandle_root_GET(self):
         return bottle.template(
-            'SimUI',
+            'AtlasUI',
             pagetitle   = 'DotBot Simulator',
             version     = AtlasVersion.formatVersion(),
         )

@@ -17,7 +17,7 @@ log = logging.getLogger('RunOneSim')
 
 #====================================== HELPER =================================================
 
-def runOneSim(simSetting, simUI=None):
+def runOneSim(simSetting, atlasUI=None):
     '''
     Run a single simulation. Finishes when map is complete (or mapping times out).
     '''
@@ -63,11 +63,11 @@ def runOneSim(simSetting, simUI=None):
     # ======================== run
 
     # let the UI know about the new objects
-    if simUI:
-        simUI.updateObjectsToQuery(floorplan, dotBots, orchestrator)
+    if atlasUI:
+        atlasUI.updateObjectsToQuery(floorplan, dotBots, orchestrator)
 
     # if there is no UI, run as fast as possible
-    if not simUI:
+    if not atlasUI:
         simEngine.commandFastforward()
 
     # start a simulation (blocks until done)
@@ -82,7 +82,7 @@ def runOneSim(simSetting, simUI=None):
 
 #========================= main ==========================================
 
-def main(simSetting, simUI=None):
+def main(simSetting, atlasUI=None):
     '''
     This function is called directly by RunSim when running standalone,
     and by the code below when running from CLEPS.
@@ -91,7 +91,7 @@ def main(simSetting, simUI=None):
     log.info('running on cleps ...')
     
     # run the simulation (blocking)
-    runOneSim(simSetting, simUI)
+    runOneSim(simSetting, atlasUI)
 
 
 if __name__ == '__main__':
