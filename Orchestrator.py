@@ -13,7 +13,6 @@ import SimEngine
 import Wireless
 import Utils as u
 import DataCollector
-import Planning
 
 # setup logging
 import logging.config

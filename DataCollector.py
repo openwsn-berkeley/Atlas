@@ -17,7 +17,7 @@ class DataCollector(threading.Thread):
     Singleton, write to file periodically.
     '''
 
-    LOG_DIR   = "./logs"
+    LOG_DIR   = "logs"
 
     # singleton pattern
     _instance = None
