@@ -60,11 +60,10 @@ class DotBot(Wireless.WirelessDevice):
 
         # cancel scheduled bump when new packet is received
         self.simEngine.cancelEvent(tag=f'{self.dotBotId}_bumpSensorCb')
-        log.debug(f'{self.dotBotId}_bumpSensorCb cancelled at {self.simEngine.currentTime()}')
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
-        
+
         # apply heading and speed from packet
         self._setHeading(frame['movements'][self.dotBotId]['heading'])
         self._setSpeed(frame['movements'][self.dotBotId]['speed'])
