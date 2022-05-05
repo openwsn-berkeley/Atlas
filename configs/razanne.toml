@@ -1,5 +1,5 @@
 [atlas]
-    numRobots                = 10
+    numRobots                = 1
     floorplan                = "scattered_obstacles.txt" # filename in maps
     initX                    = 1                         # (0,0) is top-left
     initY                    = 1
