@@ -89,8 +89,8 @@ class Orchestrator(Wireless.WirelessDevice):
                     (
                         idx,
                         {
-                           'heading': dotbot['heading'],
-                           'speed':   1,
+                           'heading': 360 * random.random(),
+                           'speed':   5,
                         }
                     ) for idx, dotbot in self.dotBotsView.items()]
             )
@@ -107,7 +107,7 @@ class Orchestrator(Wireless.WirelessDevice):
         Notification received from a DotBot.
         '''
         assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
-        self.dotBotsView[frame['source']]['heading'] = 360*random.random()
+
 
     #=== UI
 
