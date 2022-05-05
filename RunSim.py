@@ -7,7 +7,7 @@ import toml
 import json
 # third-party
 # local
-import SimUI
+import AtlasUI
 import RunOneSim
 
 # setup logging
@@ -54,14 +54,14 @@ def main(configfile, cleps, noui):
         simSetting['uname']          = "{}_{}".format(configfile, simSetting['seed'])
 
     # create the UI
-    simUI = None if noui else SimUI.SimUI()
+    atlasUI = None if noui else AtlasUI.AtlasUI()
 
     for simSetting in simSettings:
         if cleps:
             simSetting = json.dumps(simSetting)
             subprocess.Popen(["sbatch", "--partition=cpu_homogen", "../RunOneSim.sbatch", simSetting])
         else:
-            RunOneSim.runOneSim(simSetting, simUI)
+            RunOneSim.runOneSim(simSetting, atlasUI)
 
 if __name__=='__main__':
 
