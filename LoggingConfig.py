@@ -48,11 +48,6 @@ LOGGINGCONFIG = {
             'level':              'DEBUG',
             'propagate':          False
         },
-        'Planning': {
-            'handlers':           ['handler_console','handler_file'],
-            'level':              'DEBUG',
-            'propagate':          False
-        },
         'RunOneSim': {
             'handlers':           ['handler_console','handler_file'],
             'level':              'DEBUG',
