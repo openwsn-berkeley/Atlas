@@ -141,8 +141,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _hCell2SvgRect(self,cx,cy):
         returnVal = {
-            'x':        cx-1/4,
-            'y':        cy-1/4,
+            'x':        cx,
+            'y':        cy,
             'width':    1/2,
             'height':   1/2,
         }
@@ -163,7 +163,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         returnVal = {
             'dotbotpositions':    self.getEvaluatedPositions(),
-            'discomap':           [],
+            'discomap':           {"complete": False, "dots": [], "lines": []},
             'exploredCells':      self.getExploredCells(),
         }
         
