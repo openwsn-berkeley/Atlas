@@ -46,6 +46,7 @@ class Orchestrator(Wireless.WirelessDevice):
                    'y':       initY,
                    'heading': 0,
                    'speed':   0,
+                   'bump':    False,
                 }
             ) for i in range(1,self.numRobots+1)
         ])
@@ -83,14 +84,40 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
+        log.debug(f'dotbotsView -> {self.dotBotsView}')
+
+        # update dotbot positions before giving new heading and speed
+        for idx, dotbot in self.dotBotsView.items():
+            if dotbot['bump'] == False:
+                # update DotBot's position if it hasn't bumped yet
+                (newX, newY) = u.computeCurrentPosition(
+                    currentX=dotbot['x'],
+                    currentY=dotbot['y'],
+                    heading=dotbot['heading'],
+                    speed=dotbot['speed'],
+                    duration=self.COMM_DOWNSTREAM_PERIOD_S,
+                )
+                dotbot['x']       = newX
+                dotbot['y']       = newY
+
+        log.debug(f'new dotbotsView -> {self.dotBotsView}')
+
+        for idx, dotbot in self.dotBotsView.items():
+            # set new movements
+            dotbot['heading'] = 360*random.random()
+            dotbot['speed']   = 1
+
+            # reset bump status
+            dotbot['bump'] = False
+
         frameToTx = {
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': dict([
                     (
                         idx,
                         {
-                           'heading': 360 * random.random(),
-                           'speed':   1,
+                           'heading': dotbot['heading'],
+                           'speed':   dotbot['speed'],
                         }
                     ) for idx, dotbot in self.dotBotsView.items()]
             )
@@ -112,15 +139,19 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # update DotBot's position
         (newX,newY)  = u.computeCurrentPosition(
-            currentX = dotbot['x'],
-            currentY = dotbot['y'],
-            heading  = dotbot['heading'],
-            speed    = dotbot['speed'],
-            duration = frame['duration'],
+            currentX=dotbot['x'],
+            currentY=dotbot['y'],
+            heading=dotbot['heading'],
+            speed=dotbot['speed'],
+            duration=frame['duration'],
         )
 
-        dotbot['x']  = newX
-        dotbot['y']  = newY
+        dotbot['x']    = newX
+        dotbot['y']    = newY
+
+        # we ony recieve notifications if dotbot bumps
+        dotbot['bump'] = True
+
         log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
     #=== UI
