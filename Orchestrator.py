@@ -45,6 +45,7 @@ class Orchestrator(Wireless.WirelessDevice):
                    'x':       initX,
                    'y':       initY,
                    'heading': 0,
+                   'speed':   0,
                 }
             ) for i in range(1,self.numRobots+1)
         ])
@@ -88,7 +89,7 @@ class Orchestrator(Wireless.WirelessDevice):
                     (
                         idx,
                         {
-                           'heading': dotbot['heading'],
+                           'heading': 360 * random.random(),
                            'speed':   1,
                         }
                     ) for idx, dotbot in self.dotBotsView.items()]
@@ -105,8 +106,22 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         Notification received from a DotBot.
         '''
-        assert frame['frameType']==self.FRAMETYPE_NOTIFICATION
-        self.dotBotsView[frame['source']]['heading'] = 360*random.random()
+        assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
+        dotbot       = self.dotBotsView[frame['source']]
+        log.debug('dotbot {} was at ( {},{} ) '.format(dotbot, dotbot['x'], dotbot['y']))
+
+        # update DotBot's position
+        (newX,newY)  = u.computeCurrentPosition(
+            currentX = dotbot['x'],
+            currentY = dotbot['y'],
+            heading  = dotbot['heading'],
+            speed    = dotbot['speed'],
+            duration = frame['duration'],
+        )
+
+        dotbot['x']  = newX
+        dotbot['y']  = newY
+        log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
     #=== UI
 

@@ -58,16 +58,21 @@ class DotBot(Wireless.WirelessDevice):
             frame['movements'][self.dotBotId]['speed'] == self.currentSpeed):
             return
 
+        # cancel scheduled bump when new packet is received
+        self.simEngine.cancelEvent(tag=f'{self.dotBotId}_bumpSensorCb')
+
+        # update my position
+        (self.x, self.y) = self.computeCurrentPosition()
+
         # apply heading and speed from packet
         self._setHeading(frame['movements'][self.dotBotId]['heading'])
         self._setSpeed(frame['movements'][self.dotBotId]['speed'])
+        log.debug(f'Dotbot {self.dotBotId} heading is {self.currentHeading} and speed is {self.currentSpeed}')
 
         # remember when I started moving, will be indicated in notification
         self.tsMovementStart      = self.simEngine.currentTime()
         self.tsMovementStop       = None
-
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
-        log.debug(f'Dotbot {self.dotBotId} heading is {self.currentHeading} and speed is {self.currentSpeed}')
 
         # compute when/where next bump will happen
         (bump_x, bump_y, bump_ts) = self._computeNextBump()
@@ -148,6 +153,7 @@ class DotBot(Wireless.WirelessDevice):
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
             'source':             self.dotBotId,
+            'duration':           self.tsMovementStop - self.tsMovementStart
         }
 
         # hand over to wireless
