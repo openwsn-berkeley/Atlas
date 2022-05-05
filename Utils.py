@@ -93,9 +93,9 @@ class PriorityQueue:
 # ============== Logging Setup
 
 def setLoggerUname(uname):
-    os.makedirs('./logs', exist_ok=True)
+    os.makedirs('logs', exist_ok=True)
     LoggingConfig.LOGGINGCONFIG['handlers']['handler_file']['filename'] = os.path.join(
-        './logs',
+        'logs',
         '{}_{}.log'.format(uname, time.strftime("%y%m%d%H%M%S", time.localtime()))
     )
     logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
