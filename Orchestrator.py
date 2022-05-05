@@ -42,18 +42,18 @@ class Orchestrator(Wireless.WirelessDevice):
             (
                 i,
                 {
-                   'x':        initX,
-                   'y':        initY,
-                   'heading':  0,
-                   'speed':    0,
-                   'duration': 0
+                   'x':                initX,
+                   'y':                initY,
+                   'heading':          0,
+                   'speed':            0,
+                   'movementDuration': 0
                 }
             ) for i in range(1, self.numRobots+1)
         ])
 
         # initial movements
-        for i in range(1,self.numRobots+1):
-            self._updateMovement(source=i)
+        for dotBotId in range(1,self.numRobots+1):
+            self._updateMovement(source=dotBotId)
 
     #======================== public ==========================================
 
@@ -94,12 +94,12 @@ class Orchestrator(Wireless.WirelessDevice):
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': dict([
                     (
-                        i,
+                        dotBotId,
                         {
                            'heading': dotbot['heading'],
                            'speed':   dotbot['speed'],
                         }
-                    ) for i, dotbot in self.dotBotsView.items()]
+                    ) for (dotBotId, dotbot) in self.dotBotsView.items()]
             )
         }
 
@@ -122,13 +122,13 @@ class Orchestrator(Wireless.WirelessDevice):
             currentY = dotbot['y'],
             heading  = dotbot['heading'],
             speed    = dotbot['speed'],
-            duration = dotbot['duration'],
+            duration = dotbot['movementDuration'],
         )
 
-        dotbot['x'] = newX
-        dotbot['y'] = newY
+        dotbot['x']       = newX
+        dotbot['y']       = newY
         dotbot['heading'] = 360 * random.random()
-        dotbot['speed'] = 1
+        dotbot['speed']   = 1
 
         log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
@@ -140,7 +140,7 @@ class Orchestrator(Wireless.WirelessDevice):
         assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
 
         dotbot       = self.dotBotsView[frame['source']]
-        dotbot['duration'] = frame['duration']
+        dotbot['movementDuration'] = frame['movementDuration']
         log.debug('dotbot {} was at ( {},{} ) '.format(dotbot, dotbot['x'], dotbot['y']))
 
         # update dotbot position and find new speed and heading

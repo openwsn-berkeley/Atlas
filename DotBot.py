@@ -153,7 +153,7 @@ class DotBot(Wireless.WirelessDevice):
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
             'source':             self.dotBotId,
-            'duration':           self.tsMovementStop - self.tsMovementStart
+            'movementDuration':   self.tsMovementStop - self.tsMovementStart
         }
 
         # hand over to wireless
