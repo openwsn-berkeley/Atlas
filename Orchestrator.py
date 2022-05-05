@@ -38,6 +38,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         self.datacollector      = DataCollector.DataCollector()
+        self.hCellsOpen         = [(self.initX, self.initY)]
+        self.hCellsObstacle     = []
         self.dotBotsView        = dict([
             (
                 i,
@@ -136,16 +138,33 @@ class Orchestrator(Wireless.WirelessDevice):
             } for idx, dotbot in self.dotBotsView.items()
         ]
         return returnVal
-    
+
+    def _hCell2SvgRect(self,cx,cy):
+        returnVal = {
+            'x':        cx-1/4,
+            'y':        cy-1/4,
+            'width':    1/2,
+            'height':   1/2,
+        }
+        return returnVal
+
+    def getExploredCells(self):
+        returnVal = {
+                'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
+                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
+            }
+        return returnVal
+
     def getView(self):
         '''
         Retrieves the approximate location of the DotBot for visualization.
         '''
-        
+
+
         returnVal = {
             'dotbotpositions':    self.getEvaluatedPositions(),
-            'discomap':           None,
-            'exploredCells':      None,
+            'discomap':           [],
+            'exploredCells':      self.getExploredCells(),
         }
         
         return returnVal
