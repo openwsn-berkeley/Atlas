@@ -45,13 +45,19 @@ class Orchestrator(Wireless.WirelessDevice):
             (
                 i,
                 {
-                   'x':       initX,
-                   'y':       initY,
-                   'heading': 0,
-                   'speed':   0,
+                   'x':                initX,
+                   'y':                initY,
+                   'heading':          0,
+                   'speed':            0,
                 }
-            ) for i in range(1,self.numRobots+1)
+            ) for i in range(1, self.numRobots+1)
         ])
+
+        # initial movements
+        for dotBotId in range(1,self.numRobots+1):
+            (heading, speed) = self._pickNewMovement(dotBotId)
+            self.dotBotsView[dotBotId]['heading'] = heading
+            self.dotBotsView[dotBotId]['speed']   = speed
 
     #======================== public ==========================================
 
@@ -86,16 +92,18 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
+        log.debug(f'dotbotsView -> {self.dotBotsView}')
+
         frameToTx = {
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': dict([
                     (
-                        idx,
+                        dotBotId,
                         {
-                           'heading': 360 * random.random(),
-                           'speed':   1,
+                           'heading': dotbot['heading'],
+                           'speed':   dotbot['speed'],
                         }
-                    ) for idx, dotbot in self.dotBotsView.items()]
+                    ) for (dotBotId, dotbot) in self.dotBotsView.items()]
             )
         }
 
@@ -105,29 +113,52 @@ class Orchestrator(Wireless.WirelessDevice):
             sender = self,
         )
 
+    def _pickNewMovement(self, dotBotId):
+        '''
+        modifies the movement in dotbotsview
+        '''
+
+        heading = 360 * random.random()
+        speed   = 1
+
+        return (heading, speed)
+
     def receive(self,frame):
         '''
-        Notification received from a DotBot.
+        Notification received from a DotBot, indicating it has just bumped
         '''
+
         assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
+
+        # shorthand
         dotbot       = self.dotBotsView[frame['source']]
         log.debug('dotbot {} was at ( {},{} ) '.format(dotbot, dotbot['x'], dotbot['y']))
 
         # update DotBot's position
-        (newX,newY)  = u.computeCurrentPosition(
+        (newX, newY) = u.computeCurrentPosition(
             currentX = dotbot['x'],
             currentY = dotbot['y'],
             heading  = dotbot['heading'],
             speed    = dotbot['speed'],
-            duration = frame['duration'],
+            duration = frame['movementDuration'],
         )
+
+        # update dotBotsView
+        dotbot['x']       = newX
+        dotbot['y']       = newY
+        log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
+
+        # pick new speed and heading for dotbot
+        (heading, speed) = self._pickNewMovement(frame['source'])
+        dotbot['heading'] = heading
+        dotbot['speed']   = speed
+
         self.hCellsObstacle += [self._xy2hCell(newX, newY)]
         cellsTraversed = self._cellsTraversed(0, 0, 5, 5)
         log.debug(f'cells traversed -> {cellsTraversed}')
         self.hCellsOpen += [c for c in cellsTraversed]
         log.debug(f'open cells -> {self.hCellsOpen}')
-        dotbot['x']  = newX
-        dotbot['y']  = newY
+
         log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
     #=== Map

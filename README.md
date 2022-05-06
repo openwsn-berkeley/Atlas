@@ -53,6 +53,7 @@ frame = {
 frame = {
     'frameType': FRAMETYPE_NOTIFICATION,
     'source':    1,
+    'movementDuration': 1, # amount of time (in seconds) robot moved until it stopped
 }
 ```
 
