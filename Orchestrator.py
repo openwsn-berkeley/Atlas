@@ -26,6 +26,7 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
     
     COMM_DOWNSTREAM_PERIOD_S    = 1
+    MINFEATURESIZE_M            = 1
     
     def __init__(self, numRobots, initX, initY):
 
@@ -159,7 +160,6 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         Retrieves the approximate location of the DotBot for visualization.
         '''
-
 
         returnVal = {
             'dotbotpositions':    self.getEvaluatedPositions(),
