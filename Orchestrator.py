@@ -52,7 +52,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # initial movements
         for dotBotId in range(1,self.numRobots+1):
-            heading, speed = self._pickNewMovement(dotBotId)
+            (heading, speed) = self._pickNewMovement(dotBotId)
             self.dotBotsView[dotBotId]['heading'] = heading
             self.dotBotsView[dotBotId]['speed']   = speed
 
@@ -118,7 +118,7 @@ class Orchestrator(Wireless.WirelessDevice):
         heading = 360 * random.random()
         speed   = 1
 
-        return heading, speed
+        return (heading, speed)
 
     def receive(self,frame):
         '''
@@ -146,7 +146,7 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
         # pick new speed and heading for dotbot
-        heading, speed = self._pickNewMovement(frame['source'])
+        (heading, speed) = self._pickNewMovement(frame['source'])
         dotbot['heading'] = heading
         dotbot['speed']   = speed
 
