@@ -53,6 +53,7 @@ frame = {
 frame = {
     'frameType': FRAMETYPE_NOTIFICATION,
     'source':    1,
+    'movementDuration': self.tsMovementStop - self.tsMovementStart, # amount of time robot moved until it stopped 
 }
 ```
 

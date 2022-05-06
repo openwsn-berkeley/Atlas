@@ -46,14 +46,15 @@ class Orchestrator(Wireless.WirelessDevice):
                    'y':                initY,
                    'heading':          0,
                    'speed':            0,
-                   'movementDuration': 0
                 }
             ) for i in range(1, self.numRobots+1)
         ])
 
         # initial movements
         for dotBotId in range(1,self.numRobots+1):
-            self._updateMovement(source=dotBotId)
+            heading, speed = self._pickNewMovement(dotBotId)
+            self.dotBotsView[dotBotId]['heading'] = heading
+            self.dotBotsView[dotBotId]['speed']   = speed
 
     #======================== public ==========================================
 
@@ -109,12 +110,26 @@ class Orchestrator(Wireless.WirelessDevice):
             sender = self,
         )
 
-    def _updateMovement(self, source):
+    def _pickNewMovement(self, dotBotId):
         '''
         modifies the movement in dotbotsview
         '''
 
-        dotbot       = self.dotBotsView[source]
+        heading = 360 * random.random()
+        speed   = 1
+
+        return heading, speed
+
+    def receive(self,frame):
+        '''
+        Notification received from a DotBot, indicating it has just bumped
+        '''
+
+        assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
+
+        # shorthand
+        dotbot       = self.dotBotsView[frame['source']]
+        log.debug('dotbot {} was at ( {},{} ) '.format(dotbot, dotbot['x'], dotbot['y']))
 
         # update DotBot's position
         (newX, newY) = u.computeCurrentPosition(
@@ -122,29 +137,18 @@ class Orchestrator(Wireless.WirelessDevice):
             currentY = dotbot['y'],
             heading  = dotbot['heading'],
             speed    = dotbot['speed'],
-            duration = dotbot['movementDuration'],
+            duration = frame['movementDuration'],
         )
 
+        # update dotBotsView
         dotbot['x']       = newX
         dotbot['y']       = newY
-        dotbot['heading'] = 360 * random.random()
-        dotbot['speed']   = 1
-
         log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
-    def receive(self,frame):
-        '''
-        Notification received from a DotBot.
-        '''
-
-        assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
-
-        dotbot       = self.dotBotsView[frame['source']]
-        dotbot['movementDuration'] = frame['movementDuration']
-        log.debug('dotbot {} was at ( {},{} ) '.format(dotbot, dotbot['x'], dotbot['y']))
-
-        # update dotbot position and find new speed and heading
-        self._updateMovement(frame['source'])
+        # pick new speed and heading for dotbot
+        heading, speed = self._pickNewMovement(frame['source'])
+        dotbot['heading'] = heading
+        dotbot['speed']   = speed
 
     #=== UI
 
