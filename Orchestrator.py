@@ -143,6 +143,24 @@ class Orchestrator(Wireless.WirelessDevice):
             duration = frame['movementDuration'],
         )
 
+        # update explored cells
+        self.hCellsObstacle += [self._xy2hCell(newX, newY)]
+        cellsTraversed       = self._cellsTraversed(dotbot['x'], dotbot['y'], newX, newY)
+        self.hCellsOpen     += [c for c in cellsTraversed if c not in self.hCellsObstacle]
+
+        # if a cell is obstacle, remove from open cells
+        try:
+            self.hCellsOpen.remove(self._xy2hCell(newX, newY))
+        except ValueError:
+            pass
+
+        # remove duplicate cells
+        self.hCellsObstacle  = list(set(self.hCellsObstacle))
+        self.hCellsOpen      = list(set(self.hCellsOpen))
+
+        log.debug(f'open cells -> {self.hCellsOpen}')
+        log.debug(f'obstacle cells -> {self.hCellsObstacle}')
+
         # update dotBotsView
         dotbot['x']       = newX
         dotbot['y']       = newY
@@ -152,14 +170,6 @@ class Orchestrator(Wireless.WirelessDevice):
         (heading, speed) = self._pickNewMovement(frame['source'])
         dotbot['heading'] = heading
         dotbot['speed']   = speed
-
-        self.hCellsObstacle += [self._xy2hCell(newX, newY)]
-        cellsTraversed = self._cellsTraversed(0, 0, 5, 5)
-        log.debug(f'cells traversed -> {cellsTraversed}')
-        self.hCellsOpen += [c for c in cellsTraversed]
-        log.debug(f'open cells -> {self.hCellsOpen}')
-
-        log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
     #=== Map
 
@@ -233,10 +243,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _hCell2SvgRect(self,cx,cy):
         returnVal = {
-            'x':        cx,
-            'y':        cy,
-            'width':    1/2,
-            'height':   1/2,
+            'x':        cx-self.MINFEATURESIZE/2,
+            'y':        cy-self.MINFEATURESIZE/2,
+            'width':    self.MINFEATURESIZE/2,
+            'height':   self.MINFEATURESIZE/2,
         }
         return returnVal
 
