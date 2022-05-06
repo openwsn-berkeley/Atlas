@@ -26,6 +26,7 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
     
     COMM_DOWNSTREAM_PERIOD_S    = 1
+    MINFEATURESIZE              = 1
     
     def __init__(self, numRobots, initX, initY):
 
@@ -38,6 +39,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         self.datacollector      = DataCollector.DataCollector()
+        self.hCellsOpen         = [(self.initX, self.initY)]
+        self.hCellsObstacle     = []
         self.dotBotsView        = dict([
             (
                 i,
@@ -150,6 +153,70 @@ class Orchestrator(Wireless.WirelessDevice):
         dotbot['heading'] = heading
         dotbot['speed']   = speed
 
+        self.hCellsObstacle += [self._xy2hCell(newX, newY)]
+        cellsTraversed = self._cellsTraversed(0, 0, 5, 5)
+        log.debug(f'cells traversed -> {cellsTraversed}')
+        self.hCellsOpen += [c for c in cellsTraversed]
+        log.debug(f'open cells -> {self.hCellsOpen}')
+
+        log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
+
+    #=== Map
+
+    def _cellsTraversed(self, startX, startY, stopX, stopY):
+        returnVal = []
+        log.debug(f"dotbot moved from ({startX},{startY}) to ({stopX},{stopY})")
+        # scan horizontally
+        x = startX
+        while True:
+
+            if startX < stopX:
+                # going right
+                x += self.MINFEATURESIZE / 2
+                if x > stopX:
+                    break
+            else:
+                # going left
+                x -= self.MINFEATURESIZE / 2
+                if x < stopX:
+                    break
+
+            y = startY + (((stopY - startY) * (x - startX)) / (stopX - startX))
+            (cx, cy) = self._xy2hCell(x, y)
+            returnVal += [(cx, cy)]
+
+        # scan vertically
+        y = startY
+        while True:
+
+            if startY < stopY:
+                # going down
+                y += self.MINFEATURESIZE / 2
+                if y > stopY:
+                    break
+            else:
+                y -= self.MINFEATURESIZE / 2
+                if y < stopY:
+                    break
+
+            x = startX + (((stopX - startX) * (y - startY)) / (stopY - startY))
+            (cx, cy) = self._xy2hCell(x, y)
+            returnVal += [(cx, cy)]
+
+        # filter duplicates
+        returnVal = list(set(returnVal))
+        log.debug(f'new cells found -> {returnVal}')
+        return returnVal
+
+    def _xy2hCell(self, x, y):
+
+        xsteps = int(round((x - self.initX) / (self.MINFEATURESIZE / 2), 0))
+        cx = self.initX + xsteps * (self.MINFEATURESIZE / 2)
+        ysteps = int(round((y - self.initY) / (self.MINFEATURESIZE / 2), 0))
+        cy = self.initY + ysteps * (self.MINFEATURESIZE / 2)
+
+        return (cx, cy)
+
     #=== UI
 
     def getEvaluatedPositions(self):
@@ -163,16 +230,32 @@ class Orchestrator(Wireless.WirelessDevice):
             } for idx, dotbot in self.dotBotsView.items()
         ]
         return returnVal
-    
+
+    def _hCell2SvgRect(self,cx,cy):
+        returnVal = {
+            'x':        cx,
+            'y':        cy,
+            'width':    1/2,
+            'height':   1/2,
+        }
+        return returnVal
+
+    def getExploredCells(self):
+        returnVal = {
+                'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
+                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
+            }
+        return returnVal
+
     def getView(self):
         '''
         Retrieves the approximate location of the DotBot for visualization.
         '''
-        
+
         returnVal = {
             'dotbotpositions':    self.getEvaluatedPositions(),
-            'discomap':           None,
-            'exploredCells':      None,
+            'discomap':           {"complete": False, "dots": [], "lines": []},
+            'exploredCells':      self.getExploredCells(),
         }
         
         return returnVal
