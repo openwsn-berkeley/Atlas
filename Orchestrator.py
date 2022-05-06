@@ -26,7 +26,6 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
     
     COMM_DOWNSTREAM_PERIOD_S    = 1
-    MINFEATURESIZE              = 1
     
     def __init__(self, numRobots, initX, initY):
 
@@ -165,15 +164,6 @@ class Orchestrator(Wireless.WirelessDevice):
                 'y':         dotbot['y'],
             } for idx, dotbot in self.dotBotsView.items()
         ]
-        return returnVal
-
-    def _hCell2SvgRect(self,cx,cy):
-        returnVal = {
-            'x':        cx,
-            'y':        cy,
-            'width':    1/2,
-            'height':   1/2,
-        }
         return returnVal
 
     def getView(self):
