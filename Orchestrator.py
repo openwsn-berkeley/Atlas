@@ -176,42 +176,48 @@ class Orchestrator(Wireless.WirelessDevice):
     def _cellsTraversed(self, startX, startY, stopX, stopY):
         returnVal = []
         log.debug(f"dotbot moved from ({startX},{startY}) to ({stopX},{stopY})")
-        # scan horizontally
+
+        if startX == stopX and startY == stopY:
+            return []
+
+        if stopX < startX:
+            stepx = -self.MINFEATURESIZE/2
+        else:
+            stepx = self.MINFEATURESIZE/2
+
+        if stopY < startY:
+            stepy = -self.MINFEATURESIZE/2
+        else:
+            stepy = self.MINFEATURESIZE / 2
+
+        # find distance till next intersection with an axis
+        tdeltaX = stepx / (stopX - startX)
+        tdeltaY = stepy / (stopY - startY)
+
+        # find starting cell position
+        (currentXindex, currentYindex ) = self._xy2hCell(startX, startY)
+
+        # initialize txMax, tyMax
+        txMax = (self.initX + currentXindex - startX) / (stopX - startX)
+        tyMax = (self.initY + currentYindex - startY) / (stopY - startY)
+
+        # loop to find all cells
         x = startX
-        while True:
-
-            if startX < stopX:
-                # going right
-                x += self.MINFEATURESIZE / 2
-                if x > stopX:
-                    break
-            else:
-                # going left
-                x -= self.MINFEATURESIZE / 2
-                if x < stopX:
-                    break
-
-            y = startY + (((stopY - startY) * (x - startX)) / (stopX - startX))
-            (cx, cy) = self._xy2hCell(x, y)
-            returnVal += [(cx, cy)]
-
-        # scan vertically
         y = startY
+
         while True:
-
-            if startY < stopY:
-                # going down
-                y += self.MINFEATURESIZE / 2
-                if y > stopY:
-                    break
+            if (txMax < tyMax):
+                txMax = txMax + tdeltaX
+                x = x + stepx
             else:
-                y -= self.MINFEATURESIZE / 2
-                if y < stopY:
-                    break
+                tyMax = tyMax + tdeltaY
+                y = y + stepy
 
-            x = startX + (((stopX - startX) * (y - startY)) / (stopY - startY))
-            (cx, cy) = self._xy2hCell(x, y)
-            returnVal += [(cx, cy)]
+            returnVal += [self._xy2hCell(x, y)]
+            if math.floor(x) == stopX or math.ceil(x) == stopX:
+                break
+            if math.floor(y) == stopY or math.ceil(y) == stopY:
+                break
 
         # filter duplicates
         returnVal = list(set(returnVal))
