@@ -173,7 +173,7 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         find cells on trajectory between points a and b
         '''
-        # FIXME: add cases where startX = StopX and y in negative direction
+        log.debug(f' finding cells betwen {ax},{ay} and {bx}, {by}')
         # shorthand
         cellSize  = self.MINFEATURESIZE/2
 
@@ -202,13 +202,15 @@ class Orchestrator(Wireless.WirelessDevice):
             (minY, maxY) = (startY, stopY)
             yDirection   = 1
 
+        log.debug(f"minx, maxx: {minX}, {maxX}. miny, maxy {minY}, {maxY}")
+
         # find the distance of movement from cell to cell
         stepX   =  cellSize
         stepY   =  cellSize * yDirection
 
         # find the distance of movement from cell to cell with direction
-        tDeltaX = (cellSize / (stopX - startX)) if startX != stopX else 0
-        tDeltaY = (cellSize / (stopY - startY)) if startY != stopY else 0
+        tDeltaX = (cellSize / (stopX - startX)) if round(startX,0) != round(stopX,0) else 0
+        tDeltaY = (cellSize / (stopY - startY)) if round(startY,0) != round(stopY,0) else 0
 
         # find starting cell from starting point
         if xDirection == 1 and yDirection == -1:
@@ -226,22 +228,26 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'tmaxx,tmaxy : {txMax}, {tyMax}')
 
         # loop to shift across trajectory and find all cells
-        (x, y) = (startX, startY)
-        returnVal = []
+        (x, y)      = (startX, startY)
+        currentCell = self._xy2hCell(x, y)
+        returnVal = [currentCell]
         while True:
-            log.debug(f'previous cell : {self._xy2hCell(x,y)}')
             if (txMax < tyMax):
                 x = x + stepX
                 if x > maxX or x < minX:
                     break
                 txMax = txMax + tDeltaX
-                returnVal += [self._xy2hCell(x, y)]
+                log.debug(f'txmax {txMax}')
+                currentCell = (currentCell[0]+stepX, currentCell[1])
+                returnVal += [currentCell]
             else:
                 y = y + stepY
                 if y > maxY or y < minY:
                     break
                 tyMax = tyMax + tDeltaY*yDirection
-                returnVal += [self._xy2hCell(x, y)]
+                log.debug(f'tymax {tyMax}')
+                currentCell = (currentCell[0], currentCell[1]+stepY)
+                returnVal += [currentCell]
 
             log.debug(f'next point : {x},{y}')
             log.debug(f'next cell  : {self._xy2hCell(x, y)}')
@@ -252,19 +258,22 @@ class Orchestrator(Wireless.WirelessDevice):
         return returnVal
 
     def _xy2hCell(self, x, y):
-        if (x - math.floor(x)) <  (self.MINFEATURESIZE/2):
-            cx = math.floor(x) + (self.MINFEATURESIZE/2)
-        elif (x - math.floor(x)) >  (self.MINFEATURESIZE/2):
-            cx = math.floor(x) + self.MINFEATURESIZE
-        else:
-            cx = x
 
-        if (y - math.floor(y)) <  (self.MINFEATURESIZE/2) and (y - math.floor(y)) > 0:
-            cy = math.floor(y) + (self.MINFEATURESIZE/2)
-        elif (y - math.floor(y)) >  (self.MINFEATURESIZE/2) and (y - math.floor(y)) > 0:
-            cy = math.floor(y) + self.MINFEATURESIZE
+        cellSize = self.MINFEATURESIZE/2
+
+        if (math.ceil(x) - x) >= cellSize:
+            cx = math.ceil(x) - cellSize
+        elif x == 0:
+            cx = x + cellSize
         else:
-            cy = y
+            cx = math.ceil(x)
+
+        if (math.ceil(y) - y) >= cellSize:
+            cy = math.ceil(y) - cellSize
+        elif y == 0:
+            cy = y + cellSize
+        else:
+            cy = math.ceil(y)
 
         return (cx, cy)
 
