@@ -158,13 +158,9 @@ class Orchestrator(Wireless.WirelessDevice):
         self.hCellsObstacle  = list(set(self.hCellsObstacle))
         self.hCellsOpen      = list(set(self.hCellsOpen))
 
-        log.debug(f'open cells -> {self.hCellsOpen}')
-        log.debug(f'obstacle cells -> {self.hCellsObstacle}')
-
         # update dotBotsView
         dotbot['x']       = newX
         dotbot['y']       = newY
-        log.debug(f'dotbot {dotbot} is at ( {newX},{newY} ) ')
 
         # pick new speed and heading for dotbot
         (heading, speed) = self._pickNewMovement(frame['source'])
@@ -173,51 +169,82 @@ class Orchestrator(Wireless.WirelessDevice):
 
     #=== Map
 
-    def _cellsTraversed(self, startX, startY, stopX, stopY):
-        returnVal = []
-        log.debug(f"dotbot moved from ({startX},{startY}) to ({stopX},{stopY})")
+    def _cellsTraversed(self, ax, ay, bx, by):
+        '''
+        find cells on trajectory between points a and b
+        '''
+        # FIXME: add cases where startX = StopX and y in negative direction
+        # shorthand
+        cellSize  = self.MINFEATURESIZE/2
 
-        if startX == stopX and startY == stopY:
+        # dotbot hasn't moved
+        if ax == bx and ay == by:
             return []
 
-        if stopX < startX:
-            stepx = -self.MINFEATURESIZE/2
+        # set starting point as one with smallest x
+        # x should always move in a positive direction
+        if ax < bx or ax == bx:
+            (startX, startY) = (ax, ay)
+            (stopX,  stopY)  = (bx, by)
+            (minX,   maxX)   = (ax, bx)
+            xDirection       =  1
         else:
-            stepx = self.MINFEATURESIZE/2
+            (startX, startY) = (bx, by)
+            (stopX,  stopY)  = (ax, ay)
+            (minX,   maxX)   = (bx, ax)
+            xDirection       =  -1       # refers to original direction of movement
 
+        # check direction of y axis movement
         if stopY < startY:
-            stepy = -self.MINFEATURESIZE/2
+            (minY, maxY) = (stopY,startY)
+            yDirection   = -1
         else:
-            stepy = self.MINFEATURESIZE / 2
+            (minY, maxY) = (startY, stopY)
+            yDirection   = 1
 
-        # find distance till next intersection with an axis
-        tdeltaX = stepx / (stopX - startX)
-        tdeltaY = stepy / (stopY - startY)
+        # find the distance of movement from cell to cell
+        stepX   =  cellSize
+        stepY   =  cellSize * yDirection
 
-        # find starting cell position
-        (currentXindex, currentYindex ) = self._xy2hCell(startX, startY)
+        # find the distance of movement from cell to cell with direction
+        tDeltaX = (cellSize / (stopX - startX)) if startX != stopX else 0
+        tDeltaY = (cellSize / (stopY - startY)) if startY != stopY else 0
 
-        # initialize txMax, tyMax
-        txMax = (self.initX + currentXindex - startX) / (stopX - startX)
-        tyMax = (self.initY + currentYindex - startY) / (stopY - startY)
+        # find starting cell from starting point
+        if xDirection == 1 and yDirection == -1:
+            (indexX, indexY) = (stopX, stopY)
+        else:
+            (indexX, indexY) = (startX, startY)
 
-        # loop to find all cells
-        x = startX
-        y = startY
+        (currentXindex, currentYindex) = self._xy2hCell(indexX,indexY)
+        log.debug(f'starting at point ({startX}, {startY}) in cell ({currentXindex}, {currentYindex})')
 
+        # find first distance till next intersection with an axis
+        # the tDelta values are added to this value to move across the trajectory from cell to cell
+        txMax = (currentXindex - startX) / (stopX - startX) if startX != stopX else math.inf
+        tyMax = (currentYindex - startY) / (stopY - startY) if startY != stopY else math.inf
+        log.debug(f'tmaxx,tmaxy : {txMax}, {tyMax}')
+
+        # loop to shift across trajectory and find all cells
+        (x, y) = (startX, startY)
+        returnVal = []
         while True:
+            log.debug(f'previous cell : {self._xy2hCell(x,y)}')
             if (txMax < tyMax):
-                txMax = txMax + tdeltaX
-                x = x + stepx
+                x = x + stepX
+                if x > maxX or x < minX:
+                    break
+                txMax = txMax + tDeltaX
+                returnVal += [self._xy2hCell(x, y)]
             else:
-                tyMax = tyMax + tdeltaY
-                y = y + stepy
+                y = y + stepY
+                if y > maxY or y < minY:
+                    break
+                tyMax = tyMax + tDeltaY*yDirection
+                returnVal += [self._xy2hCell(x, y)]
 
-            returnVal += [self._xy2hCell(x, y)]
-            if math.floor(x) == stopX or math.ceil(x) == stopX:
-                break
-            if math.floor(y) == stopY or math.ceil(y) == stopY:
-                break
+            log.debug(f'next point : {x},{y}')
+            log.debug(f'next cell  : {self._xy2hCell(x, y)}')
 
         # filter duplicates
         returnVal = list(set(returnVal))
@@ -225,11 +252,19 @@ class Orchestrator(Wireless.WirelessDevice):
         return returnVal
 
     def _xy2hCell(self, x, y):
+        if (x - math.floor(x)) <  (self.MINFEATURESIZE/2):
+            cx = math.floor(x) + (self.MINFEATURESIZE/2)
+        elif (x - math.floor(x)) >  (self.MINFEATURESIZE/2):
+            cx = math.floor(x) + self.MINFEATURESIZE
+        else:
+            cx = x
 
-        xsteps = int(round((x - self.initX) / (self.MINFEATURESIZE / 2), 0))
-        cx = self.initX + xsteps * (self.MINFEATURESIZE / 2)
-        ysteps = int(round((y - self.initY) / (self.MINFEATURESIZE / 2), 0))
-        cy = self.initY + ysteps * (self.MINFEATURESIZE / 2)
+        if (y - math.floor(y)) <  (self.MINFEATURESIZE/2) and (y - math.floor(y)) > 0:
+            cy = math.floor(y) + (self.MINFEATURESIZE/2)
+        elif (y - math.floor(y)) >  (self.MINFEATURESIZE/2) and (y - math.floor(y)) > 0:
+            cy = math.floor(y) + self.MINFEATURESIZE
+        else:
+            cy = y
 
         return (cx, cy)
 
