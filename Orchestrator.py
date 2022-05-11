@@ -203,11 +203,14 @@ class Orchestrator(Wireless.WirelessDevice):
                 y += self.MINFEATURESIZE/2
                 returnVal += [(x, y)]
                 log.debug(f'next cell -> {(x,y)}')
+
+                if self._xy2hCell(x, y) == self._xy2hCell(stopX, stopY):
+                    break
+
                 maxLength = abs(math.ceil(stopY - startY))
                 log.debug(f'num cells {len(returnVal)} and maxlength = {abs(maxLength)}')
                 assert len(returnVal) <= (maxLength) * 4
-                if self._xy2hCell(x, y) == self._xy2hCell(stopX, stopY):
-                    break
+
         else:
 
             # move according to line equation y = mx + c
@@ -222,22 +225,27 @@ class Orchestrator(Wireless.WirelessDevice):
                 ymax  = y + self.MINFEATURESIZE/2
                 log.debug(f'xmax,ymax {xmax}, {ymax}')
                 log.debug(f'ynext {ynext}')
+
                 if ynext < ymin:
                     # move up
                     y = y - self.MINFEATURESIZE/2
                     returnVal += [(x, y)]
                     log.debug(f'move up to -> {(x, y)}')
+
                 elif ynext > ymax:
                     # move down
                     y = y + self.MINFEATURESIZE/2
                     returnVal += [(x, y)]
                     log.debug(f'move down to -> {(x, y)}')
+
                 elif ymin < ynext < ymax:
                     # move right
                     x = x + self.MINFEATURESIZE/2
                     returnVal += [(x, y)]
                     log.debug(f'move right to -> {(x, y)}')
+
                 elif (ynext == ymin or ynext == ymax):
+                    # move diagonally if trajectory isnt on cell border
                     if stopY != startY:
                         y = y + self.MINFEATURESIZE / 2
                     x = x + self.MINFEATURESIZE/2
@@ -258,6 +266,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _xy2hCell(self, x, y):
 
+        # convert x,y coordinates to cell (top left coordinate)
         xsteps = int(math.floor((x-self.initX)/ (self.MINFEATURESIZE/2)))
         cx     = self.initX+xsteps*(self.MINFEATURESIZE/2)
         ysteps = int(math.floor((y-self.initY)/ (self.MINFEATURESIZE/2)))

@@ -3,7 +3,7 @@ var dotbotcolors   = d3.scaleOrdinal(d3.schemeCategory10).range();
 
 var playbuttonMinX     = 175
 var playbuttonMaxX     = 285
-var playbuttonMinSpeed =   1.00
+var playbuttonMinSpeed =  1.00
 var playbuttonMaxSpeed =  10.00
 
 function coordinates2pixels(x,y) {
