@@ -39,8 +39,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         self.datacollector      = DataCollector.DataCollector()
-        self.hCellsOpen         = []
-        self.hCellsObstacle     = []
+        self.exploredCells      = []
+        self.obstacleCells      = []
         self.dotBotsView        = dict([
             (
                 i,
@@ -144,19 +144,19 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # update explored cells
-        self.hCellsObstacle += [self._xy2hCell(newX, newY)]
-        cellsTraversed       = self._cellsTraversed(dotbot['x'], dotbot['y'], newX, newY)
-        self.hCellsOpen     += [c for c in cellsTraversed if c not in self.hCellsObstacle]
+        self.obstacleCells  += [self._xy2hCell(newX, newY)]
+        cellsTraversed       = self._computeCellsTraversed(dotbot['x'], dotbot['y'], newX, newY)
+        self.exploredCells  += [c for c in cellsTraversed if c not in self.obstacleCells]
 
         # if a cell is obstacle, remove from open cells
         try:
-            self.hCellsOpen.remove(self._xy2hCell(newX, newY))
+            self.exploredCells.remove(self._xy2hCell(newX, newY))
         except ValueError:
             pass
 
         # remove duplicate cells
-        self.hCellsObstacle  = list(set(self.hCellsObstacle))
-        self.hCellsOpen      = list(set(self.hCellsOpen))
+        self.obstacleCells  = list(set(self.obstacleCells))
+        self.exploredCells      = list(set(self.exploredCells))
 
         # update dotBotsView
         dotbot['x']       = newX
@@ -169,7 +169,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     #=== Map
 
-    def _cellsTraversed(self, ax, ay, bx, by):
+    def _computeCellsTraversed(self, ax, ay, bx, by):
         '''
         find cells on trajectory between points a and b
         '''
@@ -267,10 +267,10 @@ class Orchestrator(Wireless.WirelessDevice):
     def _xy2hCell(self, x, y):
 
         # convert x,y coordinates to cell (top left coordinate)
-        xsteps = int(math.floor((x-self.initX)/ (self.MINFEATURESIZE/2)))
-        cx     = self.initX+xsteps*(self.MINFEATURESIZE/2)
-        ysteps = int(math.floor((y-self.initY)/ (self.MINFEATURESIZE/2)))
-        cy     = self.initY+ysteps*(self.MINFEATURESIZE/2)
+        xsteps = int(math.floor((x)/ (self.MINFEATURESIZE/2)))
+        cx     = xsteps*(self.MINFEATURESIZE/2)
+        ysteps = int(math.floor((y)/ (self.MINFEATURESIZE/2)))
+        cy     = ysteps*(self.MINFEATURESIZE/2)
 
         return (cx, cy)
 
@@ -299,8 +299,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def getExploredCells(self):
         returnVal = {
-                'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.hCellsOpen],
-                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.hCellsObstacle],
+                'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.exploredCells],
+                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.obstacleCells],
             }
         return returnVal
 
