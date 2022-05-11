@@ -26,7 +26,6 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
     
     COMM_DOWNSTREAM_PERIOD_S    = 1
-    MINFEATURESIZE              = 1
     
     def __init__(self, numRobots, initX, initY):
 
@@ -41,6 +40,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.datacollector      = DataCollector.DataCollector()
         self.hCellsOpen         = []
         self.hCellsObstacle     = []
+
         self.dotBotsView        = dict([
             (
                 i,
@@ -163,9 +163,10 @@ class Orchestrator(Wireless.WirelessDevice):
         dotbot['y']       = newY
 
         # pick new speed and heading for dotbot
-        (heading, speed) = self._pickNewMovement(frame['source'])
+        (heading, speed)  = self._pickNewMovement(frame['source'])
         dotbot['heading'] = heading
         dotbot['speed']   = speed
+
 
     #=== Map
 
@@ -304,6 +305,7 @@ class Orchestrator(Wireless.WirelessDevice):
             }
         return returnVal
 
+
     def getView(self):
         '''
         Retrieves the approximate location of the DotBot for visualization.
@@ -311,8 +313,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
         returnVal = {
             'dotbotpositions':    self.getEvaluatedPositions(),
-            'discomap':           {"complete": False, "dots": [], "lines": []},
-            'exploredCells':      self.getExploredCells(),
+            'discomap':           None,
+            'exploredCells':      None,
         }
         
         return returnVal
