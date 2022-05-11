@@ -39,7 +39,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         self.datacollector      = DataCollector.DataCollector()
-        self.hCellsOpen         = [(self.initX, self.initY)]
+        self.hCellsOpen         = []
         self.hCellsObstacle     = []
         self.dotBotsView        = dict([
             (
@@ -186,16 +186,15 @@ class Orchestrator(Wireless.WirelessDevice):
             (startX, startY) = (ax, ay)
             (stopX, stopY)   = (bx, by)
 
-        startX, startY = self._xy2hCell(startX, startY)
-        stopX, stopY   = self._xy2hCell(stopX, stopY)
-
+        (x,y)      = self._xy2hCell(startX, startY)
         log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
-
-        (x,y)      = (startX, startY)
         returnVal += [(x, y)]
 
-        if startX == stopX and  startY == stopY:
+        # return current cell if still in same cell
+        if self._xy2hCell(startX, startY) == self._xy2hCell(stopX, stopY):
             return returnVal
+
+        log.debug(f'next cell -> {(x, y)}')
 
         if startX == stopX:
 
@@ -204,48 +203,64 @@ class Orchestrator(Wireless.WirelessDevice):
                 y += self.MINFEATURESIZE/2
                 returnVal += [(x, y)]
                 log.debug(f'next cell -> {(x,y)}')
-                if (x, y) == (stopX, stopY):
+                maxLength = abs(math.ceil(stopY - startY))
+                log.debug(f'num cells {len(returnVal)} and maxlength = {abs(maxLength)}')
+                assert len(returnVal) <= (maxLength) * 4
+                if self._xy2hCell(x, y) == self._xy2hCell(stopX, stopY):
                     break
         else:
 
             # move according to line equation y = mx + c
-            m  = (stopY - startY)/(stopX - startY)
-            c  = y - m * x
+            m  = (by - ay)/(bx - ax)
+            c  = startY - m*startX
+            log.debug(f'stop condition is {self._xy2hCell(stopX, stopY)}')
 
             while True:
-                ynext = m * (x + self.MINFEATURESIZE/2) + c
+                xmax  = (x + self.MINFEATURESIZE/2)
+                ynext = m*xmax + c
                 ymin  = y
                 ymax  = y + self.MINFEATURESIZE/2
-
+                log.debug(f'xmax,ymax {xmax}, {ymax}')
+                log.debug(f'ynext {ynext}')
                 if ynext < ymin:
                     # move up
                     y = y - self.MINFEATURESIZE/2
                     returnVal += [(x, y)]
-                    log.debug(f'next cell -> {(x, y)}')
+                    log.debug(f'move up to -> {(x, y)}')
                 elif ynext > ymax:
                     # move down
                     y = y + self.MINFEATURESIZE/2
                     returnVal += [(x, y)]
-                    log.debug(f'next cell -> {(x, y)}')
-                elif ymin <= ynext <= ymax:
+                    log.debug(f'move down to -> {(x, y)}')
+                elif ymin < ynext < ymax:
                     # move right
                     x = x + self.MINFEATURESIZE/2
                     returnVal += [(x, y)]
-                    log.debug(f'next cell -> {(x, y)}')
+                    log.debug(f'move right to -> {(x, y)}')
+                elif (ynext == ymin or ynext == ymax):
+                    if stopY != startY:
+                        y = y + self.MINFEATURESIZE / 2
+                    x = x + self.MINFEATURESIZE/2
 
-                if (x, y) == (stopX, stopY):
+                    returnVal += [(x, y)]
+                    log.debug(f'move diagonally to -> {(x, y)}')
+
+                if self._xy2hCell(x, y) == self._xy2hCell(stopX, stopY):
                     break
 
-        # remove duplicates
-        returnVal = list(set(returnVal))
-        log.debug(f' new cells {returnVal}')
+                maxLength = abs(math.ceil(stopX - startX))+abs(math.ceil(stopY-startY))
+                log.debug(f'num cells {len(returnVal)} and maxlength = {abs(maxLength)}')
+                assert len(returnVal) <= (maxLength)*4
+
+
+        log.debug(f'new cells {returnVal}')
         return returnVal
 
     def _xy2hCell(self, x, y):
 
-        xsteps = int(round((x-self.initX)/ (self.MINFEATURESIZE/2),0))
+        xsteps = int(math.floor((x-self.initX)/ (self.MINFEATURESIZE/2)))
         cx     = self.initX+xsteps*(self.MINFEATURESIZE/2)
-        ysteps = int(round((y-self.initY)/ (self.MINFEATURESIZE/2),0))
+        ysteps = int(math.floor((y-self.initY)/ (self.MINFEATURESIZE/2)))
         cy     = self.initY+ysteps*(self.MINFEATURESIZE/2)
 
         return (cx, cy)
@@ -266,8 +281,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _hCell2SvgRect(self,cx,cy):
         returnVal = {
-            'x':        cx-self.MINFEATURESIZE/2,
-            'y':        cy-self.MINFEATURESIZE/2,
+            'x':        cx,
+            'y':        cy,
             'width':    self.MINFEATURESIZE/2,
             'height':   self.MINFEATURESIZE/2,
         }
