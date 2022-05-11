@@ -173,107 +173,80 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         find cells on trajectory between points a and b
         '''
-        log.debug(f' finding cells betwen {ax},{ay} and {bx}, {by}')
-        # shorthand
-        cellSize  = self.MINFEATURESIZE/2
+        returnVal = []
 
-        # dotbot hasn't moved
-        if ax == bx and ay == by:
-            return []
-
-        # set starting point as one with smallest x
-        # x should always move in a positive direction
-        if ax < bx or ax == bx:
-            (startX, startY) = (ax, ay)
-            (stopX,  stopY)  = (bx, by)
-            (minX,   maxX)   = (ax, bx)
-            xDirection       =  1
-        else:
+        # find start and stop cells
+        if ax > bx:
             (startX, startY) = (bx, by)
-            (stopX,  stopY)  = (ax, ay)
-            (minX,   maxX)   = (bx, ax)
-            xDirection       =  -1       # refers to original direction of movement
-
-        # check direction of y axis movement
-        if stopY < startY:
-            (minY, maxY) = (stopY,startY)
-            yDirection   = -1
+            (stopX, stopY)   = (ax, ay)
+        elif ax == bx and ay > by:
+            (startX, startY) = (bx, by)
+            (stopX, stopY)   = (ax, ay)
         else:
-            (minY, maxY) = (startY, stopY)
-            yDirection   = 1
+            (startX, startY) = (ax, ay)
+            (stopX, stopY)   = (bx, by)
 
-        log.debug(f"minx, maxx: {minX}, {maxX}. miny, maxy {minY}, {maxY}")
+        startX, startY = self._xy2hCell(startX, startY)
+        stopX, stopY   = self._xy2hCell(stopX, stopY)
 
-        # find the distance of movement from cell to cell
-        stepX   =  cellSize
-        stepY   =  cellSize * yDirection
+        log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
 
-        # find the distance of movement from cell to cell with direction
-        tDeltaX = (cellSize / (stopX - startX)) if round(startX,0) != round(stopX,0) else 0
-        tDeltaY = (cellSize / (stopY - startY)) if round(startY,0) != round(stopY,0) else 0
+        (x,y)      = (startX, startY)
+        returnVal += [(x, y)]
 
-        # find starting cell from starting point
-        if xDirection == 1 and yDirection == -1:
-            (indexX, indexY) = (stopX, stopY)
+        if startX == stopX and  startY == stopY:
+            return returnVal
+
+        if startX == stopX:
+
+            # vertical line, move down (increase y)
+            while True:
+                y += self.MINFEATURESIZE/2
+                returnVal += [(x, y)]
+                log.debug(f'next cell -> {(x,y)}')
+                if (x, y) == (stopX, stopY):
+                    break
         else:
-            (indexX, indexY) = (startX, startY)
 
-        (currentXindex, currentYindex) = self._xy2hCell(indexX,indexY)
-        log.debug(f'starting at point ({startX}, {startY}) in cell ({currentXindex}, {currentYindex})')
+            # move according to line equation y = mx + c
+            m  = (stopY - startY)/(stopX - startY)
+            c  = y - m * x
 
-        # find first distance till next intersection with an axis
-        # the tDelta values are added to this value to move across the trajectory from cell to cell
-        txMax = (currentXindex - startX) / (stopX - startX) if startX != stopX else math.inf
-        tyMax = (currentYindex - startY) / (stopY - startY) if startY != stopY else math.inf
-        log.debug(f'tmaxx,tmaxy : {txMax}, {tyMax}')
+            while True:
+                ynext = m * (x + self.MINFEATURESIZE/2) + c
+                ymin  = y
+                ymax  = y + self.MINFEATURESIZE/2
 
-        # loop to shift across trajectory and find all cells
-        (x, y)      = (startX, startY)
-        currentCell = self._xy2hCell(x, y)
-        returnVal = [currentCell]
-        while True:
-            if (txMax < tyMax):
-                x = x + stepX
-                if x > maxX or x < minX:
+                if ynext < ymin:
+                    # move up
+                    y = y - self.MINFEATURESIZE/2
+                    returnVal += [(x, y)]
+                    log.debug(f'next cell -> {(x, y)}')
+                elif ynext > ymax:
+                    # move down
+                    y = y + self.MINFEATURESIZE/2
+                    returnVal += [(x, y)]
+                    log.debug(f'next cell -> {(x, y)}')
+                elif ymin <= ynext <= ymax:
+                    # move right
+                    x = x + self.MINFEATURESIZE/2
+                    returnVal += [(x, y)]
+                    log.debug(f'next cell -> {(x, y)}')
+
+                if (x, y) == (stopX, stopY):
                     break
-                txMax = txMax + tDeltaX
-                log.debug(f'txmax {txMax}')
-                currentCell = (currentCell[0]+stepX, currentCell[1])
-                returnVal += [currentCell]
-            else:
-                y = y + stepY
-                if y > maxY or y < minY:
-                    break
-                tyMax = tyMax + tDeltaY*yDirection
-                log.debug(f'tymax {tyMax}')
-                currentCell = (currentCell[0], currentCell[1]+stepY)
-                returnVal += [currentCell]
 
-            log.debug(f'next point : {x},{y}')
-            log.debug(f'next cell  : {self._xy2hCell(x, y)}')
-
-        # filter duplicates
+        # remove duplicates
         returnVal = list(set(returnVal))
-        log.debug(f'new cells found -> {returnVal}')
+        log.debug(f' new cells {returnVal}')
         return returnVal
 
     def _xy2hCell(self, x, y):
 
-        cellSize = self.MINFEATURESIZE/2
-
-        if (math.ceil(x) - x) >= cellSize:
-            cx = math.ceil(x) - cellSize
-        elif x == 0:
-            cx = x + cellSize
-        else:
-            cx = math.ceil(x)
-
-        if (math.ceil(y) - y) >= cellSize:
-            cy = math.ceil(y) - cellSize
-        elif y == 0:
-            cy = y + cellSize
-        else:
-            cy = math.ceil(y)
+        xsteps = int(round((x-self.initX)/ (self.MINFEATURESIZE/2),0))
+        cx     = self.initX+xsteps*(self.MINFEATURESIZE/2)
+        ysteps = int(round((y-self.initY)/ (self.MINFEATURESIZE/2),0))
+        cy     = self.initY+ysteps*(self.MINFEATURESIZE/2)
 
         return (cx, cy)
 
