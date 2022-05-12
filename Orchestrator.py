@@ -301,7 +301,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def getExploredCells(self):
         returnVal = {
-                'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.exploredCells],
+                'cellsExplored': [self._hCell2SvgRect(*c) for c in self.exploredCells],
                 'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.obstacleCells],
             }
         return returnVal
