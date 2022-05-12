@@ -39,8 +39,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         self.datacollector      = DataCollector.DataCollector()
-        self.exploredCells      = []
-        self.obstacleCells      = []
+        self.cellsExplored      = []
+        self.cellsObstacle      = []
 
         self.dotBotsView        = dict([
             (
@@ -145,19 +145,19 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # update explored cells
-        self.obstacleCells  += [self._xy2hCell(newX, newY)]
+        self.cellsObstacle  += [self._xy2hCell(newX, newY)]
         cellsTraversed       = self._computeCellsTraversed(dotbot['x'], dotbot['y'], newX, newY)
-        self.exploredCells  += [c for c in cellsTraversed if c not in self.obstacleCells]
+        self.cellsExplored  += [c for c in cellsTraversed if c not in self.cellsObstacle]
 
         # if a cell is obstacle, remove from open cells
         try:
-            self.exploredCells.remove(self._xy2hCell(newX, newY))
+            self.cellsExplored.remove(self._xy2hCell(newX, newY))
         except ValueError:
             pass
 
         # remove duplicate cells
-        self.obstacleCells  = list(set(self.obstacleCells))
-        self.exploredCells      = list(set(self.exploredCells))
+        self.cellsObstacle  = list(set(self.cellsObstacle))
+        self.cellsExplored      = list(set(self.cellsExplored))
 
         # update dotBotsView
         dotbot['x']       = newX
@@ -301,8 +301,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def getExploredCells(self):
         returnVal = {
-                'cellsExplored': [self._hCell2SvgRect(*c) for c in self.exploredCells],
-                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.obstacleCells],
+                'cellsExplored': [self._hCell2SvgRect(*c) for c in self.cellsExplored],
+                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.cellsObstacle],
             }
         return returnVal
 
