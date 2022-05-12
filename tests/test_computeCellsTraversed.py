@@ -126,12 +126,23 @@ EXPECTEDINOUT = [
         'out': [(2, 1.5)],
     },
 
-    # two cells next to each other (movement across cell boundary)
+    # two cells next to each other (movement across x cell boundary)
     {
         'in': {
             'ax': 2,
             'ay': 1,
             'bx': 2.5,
+            'by': 1,
+        },
+        'out': [],
+    },
+
+    # movement across y cell boundary
+    {
+        'in': {
+            'ax': 1.5,
+            'ay': 1,
+            'bx': 3,
             'by': 1,
         },
         'out': [],

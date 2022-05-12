@@ -25,7 +25,7 @@ class AtlasUI(object):
     
         # store params
         self.floorplan       = None
-        self.dotbots         = []
+        self.dotBots         = []
         self.orchestrator    = None
         
         # local variables
@@ -36,7 +36,7 @@ class AtlasUI(object):
         self.websrv.route('/',                        'GET',    self._webhandle_root_GET)
         self.websrv.route('/static/<filename>',       'GET',    self._webhandle_static_GET)
         self.websrv.route('/floorplan.json',          'GET',    self._webhandle_floorplan_GET)
-        self.websrv.route('/dotbots.json',            'GET',    self._webhandle_dotbots_GET)
+        self.websrv.route('/data.json',               'GET',    self._webhandle_data_GET)
         self.websrv.route('/frameforward',            'POST',   self._webhandle_frameforward_POST)
         self.websrv.route('/play',                    'POST',   self._webhandle_play_POST)
         self.websrv.route('/fastforward',             'POST',   self._webhandle_fastforward_POST)
@@ -61,9 +61,9 @@ class AtlasUI(object):
     
     #======================== public ==========================================
     
-    def updateObjectsToQuery(self,floorplan,dotbots,orchestrator):
+    def updateObjectsToQuery(self,floorplan,dotBots,orchestrator):
         self.floorplan       = floorplan
-        self.dotbots         = dotbots
+        self.dotBots         = dotBots
         self.orchestrator    = orchestrator
     
     #======================== private =========================================
@@ -91,16 +91,16 @@ class AtlasUI(object):
 
         return ' '.join([t.name for t in threading.enumerate()])
 
-    def _webhandle_dotbots_GET(self):
+    def _webhandle_data_GET(self):
         simulatedTime = self.simEngine.currentTime()
         
         try:
             orchestratorView = self.orchestrator.getView()
             returnValDotBots = []
             # x,y,next_bump_x,next_bump_y
-            for dotbot in self.dotbots:
-                (x,y)                     = dotbot.computeCurrentPosition()
-                (next_bump_x,next_bump_y) = dotbot.getNextBumpPosition()
+            for dotBot in self.dotBots:
+                (x,y)                     = dotBot.computeCurrentPosition()
+                (next_bump_x,next_bump_y) = dotBot.getNextBumpPosition()
                 returnValDotBots += [{
                     'x': x,
                     'y': y,
@@ -108,14 +108,14 @@ class AtlasUI(object):
                     'next_bump_y': next_bump_y,
                 }]
             # orchestratorview_x,orchestratorview_y
-            for (db,orchestratorview) in zip(returnValDotBots,orchestratorView['dotbotpositions']):
+            for (db,orchestratorview) in zip(returnValDotBots,orchestratorView['dotBotpositions']):
                 db['orchestratorview_x'] = orchestratorview['x']
                 db['orchestratorview_y'] = orchestratorview['y']
             
             returnVal = {
                 'mode':                self.simEngine.mode(),
                 'simulatedTime':       self.simEngine.formatSimulatedTime(),
-                'dotbots':             returnValDotBots,
+                'dotBots':             returnValDotBots,
                 'discomap':            orchestratorView['discomap'],
                 'exploredCells':       orchestratorView['exploredCells'],
             }
