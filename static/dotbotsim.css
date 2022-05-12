@@ -12,10 +12,10 @@
 
 #floorplan {
     position:         absolute;
-    top:              60px;
-    left:             10px;
+    top:              61px;
+    left:             11px;
     background-color: white;
-    border-width:     0px;
+    border-width:     1px;
     background-color: #f0f0f0;
 }
 
