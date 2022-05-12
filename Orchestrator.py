@@ -133,7 +133,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # shorthand
         dotbot       = self.dotBotsView[frame['source']]
-        log.debug('dotbot {} was at ( {},{} ) '.format(dotbot, dotbot['x'], dotbot['y']))
 
         # update DotBot's position
         (newX, newY) = u.computeCurrentPosition(
@@ -145,19 +144,15 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # update explored cells
-        self.obstacleCells  += [self._xy2hCell(newX, newY)]
         cellsTraversed       = self._computeCellsTraversed(dotbot['x'], dotbot['y'], newX, newY)
-        self.exploredCells  += [c for c in cellsTraversed if c not in self.obstacleCells]
+        self.exploredCells  += [c for c in cellsTraversed]
 
-        # if a cell is obstacle, remove from open cells
-        try:
-            self.exploredCells.remove(self._xy2hCell(newX, newY))
-        except ValueError:
-            pass
+        # update obstacle cells
+        self.obstacleCells  += [self._xy2hCell(newX, newY)]
 
         # remove duplicate cells
         self.obstacleCells  = list(set(self.obstacleCells))
-        self.exploredCells      = list(set(self.exploredCells))
+        self.exploredCells  = list(set(self.exploredCells))
 
         # update dotBotsView
         dotbot['x']       = newX
@@ -173,7 +168,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _computeCellsTraversed(self, ax, ay, bx, by):
         '''
-        find cells on trajectory between points a and b
+        find cells passed through on trajectory between points a and b
         '''
         returnVal = []
 
@@ -247,13 +242,17 @@ class Orchestrator(Wireless.WirelessDevice):
                     log.debug(f'move right to -> {(x, y)}')
 
                 elif (ynext == ymin or ynext == ymax):
+
                     # move diagonally if trajectory isnt on cell border
                     if stopY != startY:
                         y = y + self.MINFEATURESIZE / 2
-                    x = x + self.MINFEATURESIZE/2
-
-                    returnVal += [(x, y)]
-                    log.debug(f'move diagonally to -> {(x, y)}')
+                        x = x + self.MINFEATURESIZE/2
+                        returnVal += [(x, y)]
+                        log.debug(f'move diagonally to -> {(x, y)}')
+                    else:
+                        # cells are identified by top left corner, if robot is exactly on cell border
+                        # there is no guarantee that cell below is not an obstacle
+                        return []
 
                 if self._xy2hCell(x, y) == self._xy2hCell(stopX, stopY):
                     break
@@ -299,14 +298,6 @@ class Orchestrator(Wireless.WirelessDevice):
         }
         return returnVal
 
-    def getExploredCells(self):
-        returnVal = {
-                'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.exploredCells],
-                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.obstacleCells],
-            }
-        return returnVal
-
-
     def getView(self):
         '''
         Retrieves the approximate location of the DotBot for visualization.
@@ -314,8 +305,11 @@ class Orchestrator(Wireless.WirelessDevice):
 
         returnVal = {
             'dotbotpositions': self.getEvaluatedPositions(),
-            'discomap': {"complete": False, "dots": [], "lines": []},
-            'exploredCells': self.getExploredCells(),
+            'discomap':        {"complete": False, "dots": [], "lines": []},
+            'exploredCells':   {
+                'cellsOpen':     [self._hCell2SvgRect(*c) for c in self.exploredCells],
+                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.obstacleCells],
+            },
         }
         
         return returnVal

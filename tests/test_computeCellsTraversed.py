@@ -134,7 +134,7 @@ EXPECTEDINOUT = [
             'bx': 2.5,
             'by': 1,
         },
-        'out': [(2, 1), (2.5, 1)],
+        'out': [],
     },
 
 ]
@@ -148,6 +148,16 @@ def expectedInOut(request):
 def test_computeCellsTraversed(expectedInOut):
     '''
     testing computation of trajectory of cells created from a line from point a to point b
+    example input - output :
+        {
+        'in': {
+            'ax': 1,
+            'ay': 1,
+            'bx': 2.2,
+            'by': 1,
+        },
+        'out': [(1,1), (1.5, 1), (2, 1), (2.5, 1) ],
+    },
     '''
 
     orchestrator = Orchestrator.Orchestrator(1,1,1)

@@ -1,6 +1,6 @@
 [atlas]
     numRobots                = 1
-    floorplan                = "scattered_obstacles.txt" # filename in maps
+    floorplan                = "tiny.txt" # filename in maps
     initX                    = 5                         # (0,0) is top-left
     initY                    = 5
     navigationAlgorithm      = "Atlas"                   # options: Atlas, Ballistic
