@@ -198,20 +198,20 @@ function drawDotBots(data) {
             .remove();
     
     // explored cells
-    var exploredCellsOpen  = svg.selectAll(".exploredCellsOpen")
-        .data(data.exploredCells.cellsOpen);
-    exploredCellsOpen
+    var exploredCellsExplored  = svg.selectAll(".exploredCellsExplored")
+        .data(data.exploredCells.cellsExplored);
+    exploredCellsExplored
         .attr("x",      function(d) { return scaleFactor*d.x; })
         .attr("y",      function(d) { return scaleFactor*d.y; })
         .attr("width",  function(d) { return scaleFactor*d.width; })
         .attr("height", function(d) { return scaleFactor*d.height; });
-    exploredCellsOpen.enter().append("rect")
+    exploredCellsExplored.enter().append("rect")
             .attr("x",      function(d) { return scaleFactor*d.x; })
             .attr("y",      function(d) { return scaleFactor*d.y; })
             .attr("width",  function(d) { return scaleFactor*d.width; })
             .attr("height", function(d) { return scaleFactor*d.height; })
-            .attr("class",  "exploredCellsOpen");
-    exploredCellsOpen
+            .attr("class",  "exploredCellsExplored");
+    exploredCellsExplored
         .exit()
             .remove();
     var exploredCellsObstacle  = svg.selectAll(".exploredCellsObstacle")

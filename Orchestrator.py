@@ -33,8 +33,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine          = SimEngine.SimEngine()
         self.wireless           = Wireless.Wireless()
         self.datacollector      = DataCollector.DataCollector()
-        self.exploredCells      = []
-        self.obstacleCells      = []
+        self.cellsExplored      = []
+        self.cellsObstacle      = []
 
         self.dotBotsView        = dict([
             (
@@ -138,14 +138,14 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # update explored cells
-        self.exploredCells  += self._computeCellsTraversed(dotBot['x'], dotBot['y'], newX, newY)
+        self.cellsExplored  += self._computeExploredCells(dotBot['x'], dotBot['y'], newX, newY)
 
         # update obstacle cells
-        self.obstacleCells  += [self._xy2cell(newX, newY)]
+        self.cellsObstacle  += [self._xy2cell(newX, newY)]
 
         # remove duplicate cells
-        self.obstacleCells  = list(set(self.obstacleCells))
-        self.exploredCells  = list(set(self.exploredCells))
+        self.cellsObstacle  = list(set(self.cellsObstacle))
+        self.cellsExplored = list(set(self.cellsExplored))
 
         # update dotBotsView
         dotBot['x']       = newX
@@ -156,12 +156,21 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['heading'] = heading
         dotBot['speed']   = speed
 
-
     #=== Map
 
-    def _computeCellsTraversed(self, ax, ay, bx, by):
+    def _computeExploredCells(self, ax, ay, bx, by):
         '''
         find cells passed through on trajectory between points a and b
+        example input - output :
+            {
+            'in': {
+                'ax': 1.00,
+                'ay': 1.00,
+                'bx': 2.20,
+                'by': 1.00,
+            },
+            'out': [(1.00,1.00), (1.50, 1.00), (2.00, 1.00), (2.50, 1.00) ],
+        }
         '''
         returnVal = []
 
@@ -176,33 +185,48 @@ class Orchestrator(Wireless.WirelessDevice):
             (startX, startY) = (ax, ay)
             (stopX, stopY)   = (bx, by)
 
+        # find current cell coordinates
         (cx,cy)      = self._xy2cell(startX, startY)
-        log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
-        returnVal += [(cx, cy)]
 
+        log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
         log.debug(f'next cell -> {(cx, cy)}')
 
-        maxCellNum = ((abs(math.ceil(stopX - startX)) + abs(math.ceil(stopY - startY)))*4) + 1
+        maxNumCells = ((abs(math.ceil(stopX - startX)) + abs(math.ceil(stopY - startY)))*4) + 1
 
-        if (((startY == stopY) and
-            (ax == cx or ax == cx+self.MINFEATURESIZE/2 or bx == cx or bx == cx+self.MINFEATURESIZE/2)) or
-            ((startX == stopX) and
-            (ay == cy or ay == cy+self.MINFEATURESIZE / 2 or by == cy or by == cy+self.MINFEATURESIZE/2))):
+        # movement between cells (on boundaries)
+        if (
+            (startX == stopX) and (startX == cx or startX == cx+self.MINFEATURESIZE/2) or
+            (startY == stopY) and (startY == cy or startX == cy+self.MINFEATURESIZE/2)
+        ):
             return []
 
-        if startX == stopX:
+        # check if current cell is start cell
+        if (
+            startY == cy    and
+            startX != stopX and
+            startY != stopY
+        ):
+            cy = cy - self.MINFEATURESIZE/2
 
+        returnVal += [(cx, cy)]
+
+        if startX == stopX:
             # vertical line, move down (increase y)
             while True:
-                cy += self.MINFEATURESIZE/2
-                returnVal += [(cx, cy)]
-                log.debug(f'next cell -> {(cx,cy)}')
+                xmax  = cx + self.MINFEATURESIZE/2
+                ymax  = cy + self.MINFEATURESIZE/2
 
-                if self._xy2cell(cx, cy) == self._xy2cell(stopX, stopY):
+                if (
+                    cx <= stopX <= xmax and
+                    cy <= stopY <= ymax
+                ):
                     break
 
-                log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxCellNum)}')
-                assert len(returnVal) <= maxCellNum
+                cy += self.MINFEATURESIZE/2
+                returnVal += [(cx, cy)]
+
+                log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
+                assert len(returnVal) <= maxNumCells
 
         else:
 
@@ -213,15 +237,18 @@ class Orchestrator(Wireless.WirelessDevice):
 
             while True:
 
-                if self._xy2cell(cx, cy) == self._xy2cell(stopX, stopY):
-                    break
-
                 xmax  = (cx + self.MINFEATURESIZE/2)
                 ynext = m*xmax + c
                 ymin  = cy
                 ymax  = cy + self.MINFEATURESIZE/2
                 log.debug(f'xmax,ymax {xmax}, {ymax}')
                 log.debug(f'ynext {ynext}')
+
+                if (
+                    cx <= stopX <= xmax and
+                    cy <= stopY <= ymax
+                ):
+                    break
 
                 if ynext < ymin:
                     # move up
@@ -235,22 +262,27 @@ class Orchestrator(Wireless.WirelessDevice):
                     returnVal += [(cx, cy)]
                     log.debug(f'move down to -> {(cx, cy)}')
 
-                elif (ynext == ymin or ynext == ymax):
-
-                    # move diagonally
-                    cy = cy + self.MINFEATURESIZE / 2
+                elif ynext == ymin:
+                    # move diagonally upwards
                     cx = cx + self.MINFEATURESIZE/2
+                    cy = cy - self.MINFEATURESIZE/2
                     returnVal += [(cx, cy)]
-                    log.debug(f'move diagonally to -> {(cx, cy)}')
+                    log.debug(f'move diagonally upwards to -> {(cx, cy)}')
 
+                elif ynext == ymax:
+                    # move diagonally downwards
+                    cx = cx + self.MINFEATURESIZE/2
+                    cy = cy + self.MINFEATURESIZE/2
+                    returnVal += [(cx, cy)]
+                    log.debug(f'move diagonally downwards to -> {(cx, cy)}')
                 else:
                     # move right
                     cx = cx + self.MINFEATURESIZE/2
                     returnVal += [(cx, cy)]
                     log.debug(f'move right to -> {(cx, cy)}')
 
-                log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxCellNum)}')
-                assert len(returnVal) <= maxCellNum
+                log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
+                assert len(returnVal) <= maxNumCells
 
         log.debug(f'new cells {returnVal}')
         return returnVal
@@ -278,8 +310,8 @@ class Orchestrator(Wireless.WirelessDevice):
             'dotBotpositions': self.getEvaluatedPositions(),
             'discomap':        {"complete": False, "dots": [], "lines": []},
             'exploredCells':   {
-                'cellsOpen':     [self._cell2SvgRect(*c) for c in self.exploredCells],
-                'cellsObstacle': [self._cell2SvgRect(*c) for c in self.obstacleCells],
+                'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
+                'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
             },
         }
         

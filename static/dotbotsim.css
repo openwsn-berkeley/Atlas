@@ -132,7 +132,7 @@
     stroke-width:     0px;
 }
 
-.exploredCellsOpen {
+.exploredCellsExplored {
     fill:             #28B463;
     opacity:          0.2;
     stroke:           #0B5345;
