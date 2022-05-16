@@ -303,5 +303,5 @@ def test_computeExploredCells(expectedInOut):
     orchestrator = Orchestrator.Orchestrator(1,1,1)
     orchestrator.MINFEATURESIZE = 1
 
-    assert sorted(orchestrator._computeExploredCells(*expectedInOut['in'].values() ))==sorted(expectedInOut['out'])
+    assert sorted(orchestrator._computeExploredCells(*expectedInOut['in'].values()))==sorted(expectedInOut['out'])
 

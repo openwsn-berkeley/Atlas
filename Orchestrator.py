@@ -174,24 +174,24 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         returnVal = []
 
-        # find start and stop cells
-        if ax > bx:
-            (startX, startY) = (bx, by)
-            (stopX, stopY)   = (ax, ay)
-        elif ax == bx and ay > by:
-            (startX, startY) = (bx, by)
-            (stopX, stopY)   = (ax, ay)
-        else:
-            (startX, startY) = (ax, ay)
-            (stopX, stopY)   = (bx, by)
+        # set start and stop cells
+        (startX, startY) = (ax, ay)
+        (stopX, stopY)   = (bx, by)
 
         # find current cell coordinates
         (cx,cy)      = self._xy2cell(startX, startY)
 
+        # check if current cell is start cell
+        if startX == cx or startY == cy:
+            if stopX < startX and startX == cx:
+                cx = cx - self.MINFEATURESIZE/2
+            if stopY < startY and startY == cy:
+                cy = cy - self.MINFEATURESIZE/2
+
         log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
         log.debug(f'next cell -> {(cx, cy)}')
 
-        maxNumCells = ((abs(math.ceil(stopX - startX)) + abs(math.ceil(stopY - startY)))*4) + 1
+        maxNumCells = ((abs(stopX - startX) + abs(stopY - startY))*4) + 2
 
         # movement between cells (on boundaries)
         if (
@@ -199,14 +199,6 @@ class Orchestrator(Wireless.WirelessDevice):
             (startY == stopY) and (startY == cy or startX == cy+self.MINFEATURESIZE/2)
         ):
             return []
-
-        # check if current cell is start cell
-        if (
-            startY == cy    and
-            startX != stopX and
-            startY != stopY
-        ):
-            cy = cy - self.MINFEATURESIZE/2
 
         returnVal += [(cx, cy)]
 
@@ -221,8 +213,10 @@ class Orchestrator(Wireless.WirelessDevice):
                     cy <= stopY <= ymax
                 ):
                     break
-
-                cy += self.MINFEATURESIZE/2
+                if startY < stopY:
+                    cy = cy + self.MINFEATURESIZE/2
+                else:
+                    cy = cy - self.MINFEATURESIZE/2
                 returnVal += [(cx, cy)]
 
                 log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
@@ -234,55 +228,103 @@ class Orchestrator(Wireless.WirelessDevice):
             m  = (by - ay)/(bx - ax)
             c  = startY - m*startX
             log.debug(f'stop condition is {self._xy2cell(stopX, stopY)}')
+            if stopX > startX:
+                while True:
 
-            while True:
+                    xmax  = (cx + self.MINFEATURESIZE/2)
+                    ynext = m*xmax + c
+                    ymin  = cy
+                    ymax  = cy + self.MINFEATURESIZE/2
+                    log.debug(f'xmax,ymax {xmax}, {ymax}')
+                    log.debug(f'ynext {ynext}')
 
-                xmax  = (cx + self.MINFEATURESIZE/2)
-                ynext = m*xmax + c
-                ymin  = cy
-                ymax  = cy + self.MINFEATURESIZE/2
-                log.debug(f'xmax,ymax {xmax}, {ymax}')
-                log.debug(f'ynext {ynext}')
+                    if (
+                        cx <= stopX <= xmax and
+                        cy <= stopY <= ymax
+                    ):
+                        break
 
-                if (
-                    cx <= stopX <= xmax and
-                    cy <= stopY <= ymax
-                ):
-                    break
+                    if ynext < ymin:
+                        # move up
+                        cy = cy - self.MINFEATURESIZE/2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move up to -> {(cx, cy)}')
 
-                if ynext < ymin:
-                    # move up
-                    cy = cy - self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move up to -> {(cx, cy)}')
+                    elif ynext > ymax:
+                        # move down
+                        cy = cy + self.MINFEATURESIZE/2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move down to -> {(cx, cy)}')
 
-                elif ynext > ymax:
-                    # move down
-                    cy = cy + self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move down to -> {(cx, cy)}')
+                    elif ynext == ymin:
+                        # move diagonally upwards
+                        cx = cx + self.MINFEATURESIZE/2
+                        cy = cy - self.MINFEATURESIZE/2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move diagonally upwards to -> {(cx, cy)}')
 
-                elif ynext == ymin:
-                    # move diagonally upwards
-                    cx = cx + self.MINFEATURESIZE/2
-                    cy = cy - self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move diagonally upwards to -> {(cx, cy)}')
+                    elif ynext == ymax:
+                        # move diagonally downwards
+                        cx = cx + self.MINFEATURESIZE/2
+                        cy = cy + self.MINFEATURESIZE/2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move diagonally downwards to -> {(cx, cy)}')
+                    else:
+                        # move right
+                        cx = cx + self.MINFEATURESIZE/2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move right to -> {(cx, cy)}')
 
-                elif ynext == ymax:
-                    # move diagonally downwards
-                    cx = cx + self.MINFEATURESIZE/2
-                    cy = cy + self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move diagonally downwards to -> {(cx, cy)}')
-                else:
-                    # move right
-                    cx = cx + self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move right to -> {(cx, cy)}')
+                    log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
+                    assert len(returnVal) <= maxNumCells
+            if stopX < startX:
+                while True:
+                    xmax = (cx + self.MINFEATURESIZE/2)
+                    ynext = m * cx + c
+                    ymin = cy
+                    ymax = cy + self.MINFEATURESIZE/2
+                    log.debug(f'xmax,ymax {xmax}, {ymax}')
+                    log.debug(f'ynext {ynext}')
 
-                log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
-                assert len(returnVal) <= maxNumCells
+                    if (
+                            cx <= stopX <= xmax and
+                            cy <= stopY <= ymax
+                    ):
+                        break
+
+                    if ynext < ymin:
+                        # move up
+                        cy = cy - self.MINFEATURESIZE/2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move up to -> {(cx, cy)}')
+
+                    elif ynext > ymax:
+                        # move down
+                        cy = cy + self.MINFEATURESIZE / 2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move down to -> {(cx, cy)}')
+
+                    elif ynext == ymin:
+                        # move diagonally upwards to left
+                        cx = cx - self.MINFEATURESIZE / 2
+                        cy = cy - self.MINFEATURESIZE / 2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move diagonally upwards to -> {(cx, cy)}')
+
+                    elif ynext == ymax:
+                        # move diagonally downwards to left
+                        cx = cx - self.MINFEATURESIZE / 2
+                        cy = cy + self.MINFEATURESIZE / 2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move diagonally downwards to -> {(cx, cy)}')
+                    else:
+                        # move left
+                        cx = cx - self.MINFEATURESIZE / 2
+                        returnVal += [(cx, cy)]
+                        log.debug(f'move right to -> {(cx, cy)}')
+
+                    log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
+                    assert len(returnVal) <= maxNumCells
 
         log.debug(f'new cells {returnVal}')
         return returnVal
