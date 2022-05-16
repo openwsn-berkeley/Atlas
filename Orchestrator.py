@@ -138,10 +138,11 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # update explored cells
-        self.cellsExplored  += self._computeExploredCells(dotBot['x'], dotBot['y'], newX, newY)
+        cellsExplored          = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
+        self.cellsExplored    += cellsExplored['cellsExplored']
 
-        # update obstacle cells
-        self.cellsObstacle  += [self._xy2cell(newX, newY)]
+        if cellsExplored['nextCell'] and self._xy2cell(newX, newY) != (newX, newY):
+            self.cellsObstacle  += [cellsExplored['nextCell']]
 
         # remove duplicate cells
         self.cellsObstacle  = list(set(self.cellsObstacle))
@@ -158,7 +159,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     #=== Map
 
-    def _computeExploredCells(self, ax, ay, bx, by):
+    def _computeCellsExplored(self, ax, ay, bx, by):
         '''
         find cells passed through on trajectory between points a and b
         example input - output :
@@ -183,9 +184,9 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # check if current cell is start cell
         if startX == cx or startY == cy:
-            if stopX < startX and startX == cx:
+            if (stopX < startX) and (startX == cx):
                 cx = cx - self.MINFEATURESIZE/2
-            if stopY < startY and startY == cy:
+            if (stopY < startY) and (startY == cy):
                 cy = cy - self.MINFEATURESIZE/2
 
         log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
@@ -198,13 +199,14 @@ class Orchestrator(Wireless.WirelessDevice):
             (startX == stopX) and (startX == cx or startX == cx+self.MINFEATURESIZE/2) or
             (startY == stopY) and (startY == cy or startX == cy+self.MINFEATURESIZE/2)
         ):
-            return []
+            return {'cellsExplored': [], 'nextCell': None}
 
         returnVal += [(cx, cy)]
+        exploredCellsComputed = False
 
         if startX == stopX:
             # vertical line, move down (increase y)
-            while True:
+            while exploredCellsComputed == False:
                 xmax  = cx + self.MINFEATURESIZE/2
                 ymax  = cy + self.MINFEATURESIZE/2
 
@@ -212,7 +214,8 @@ class Orchestrator(Wireless.WirelessDevice):
                     cx <= stopX <= xmax and
                     cy <= stopY <= ymax
                 ):
-                    break
+                    exploredCellsComputed = True
+
                 if startY < stopY:
                     cy = cy + self.MINFEATURESIZE/2
                 else:
@@ -229,8 +232,8 @@ class Orchestrator(Wireless.WirelessDevice):
             c  = startY - m*startX
             log.debug(f'stop condition is {self._xy2cell(stopX, stopY)}')
             if stopX > startX:
-                while True:
 
+                while exploredCellsComputed == False:
                     xmax  = (cx + self.MINFEATURESIZE/2)
                     ynext = m*xmax + c
                     ymin  = cy
@@ -242,7 +245,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         cx <= stopX <= xmax and
                         cy <= stopY <= ymax
                     ):
-                        break
+                        exploredCellsComputed = True
 
                     if ynext < ymin:
                         # move up
@@ -277,8 +280,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
                     log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
                     assert len(returnVal) <= maxNumCells
+
             if stopX < startX:
-                while True:
+
+                while exploredCellsComputed == False:
                     xmax = (cx + self.MINFEATURESIZE/2)
                     ynext = m * cx + c
                     ymin = cy
@@ -290,7 +295,7 @@ class Orchestrator(Wireless.WirelessDevice):
                             cx <= stopX <= xmax and
                             cy <= stopY <= ymax
                     ):
-                        break
+                        exploredCellsComputed = True
 
                     if ynext < ymin:
                         # move up
@@ -327,7 +332,9 @@ class Orchestrator(Wireless.WirelessDevice):
                     assert len(returnVal) <= maxNumCells
 
         log.debug(f'new cells {returnVal}')
-        return returnVal
+        nextCell = returnVal.pop(-1)
+
+        return {'cellsExplored': returnVal, 'nextCell': nextCell}
 
     #=== UI
 

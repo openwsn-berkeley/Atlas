@@ -1,5 +1,5 @@
 [atlas]
-    numRobots                = 1
+    numRobots                = 10
     floorplan                = "rooms.txt" # filename in maps
     initX                    = 5                         # (0,0) is top-left
     initY                    = 5
