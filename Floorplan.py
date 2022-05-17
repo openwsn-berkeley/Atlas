@@ -9,7 +9,7 @@ class Floorplan(object):
     
     def __init__(self, drawing):
         assert self._isMapValid(drawing)
-        self.width, self.height, self.obstacles = self._parseDrawing(drawing)
+        self.width, self.height, self.obstacles, self.initX, self.initY = self._parseDrawing(drawing)
 
     @classmethod
     def from_file(cls, filename):
@@ -27,6 +27,9 @@ class Floorplan(object):
             'obstacles': self.obstacles,
         }
 
+    def getInitialPosition(self):
+        return (self.initX, self.initY)
+
     #======================== static =========================================
 
     @staticmethod
@@ -39,7 +42,9 @@ class Floorplan(object):
             for (x, c) in enumerate(line):
                 if c == '#':
                     obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}] # TODO: could do line merging here to
-        return width, height, obstacles
+                if c == 's':
+                    (initX, initY) = (x,y)
+        return width, height, obstacles, initX, initY
 
     def _isMapValid(self, drawing):
         '''
