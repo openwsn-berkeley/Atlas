@@ -8,10 +8,10 @@ EXPECTEDINOUT = [
     # diagonally (45 degree angle) left to right
     {
         'in': {
-            'ax':  0.10,
-            'ay':  0.10,
-            'bx':  1.40,
-            'by':  1.40,
+            'startX':  0.10,
+            'startY':  0.10,
+            'stopX':   1.40,
+            'stopY':   1.40,
         },
         'out': {
             'cellsExplored': [
@@ -26,10 +26,10 @@ EXPECTEDINOUT = [
     # diagonally (45 degree angle) right to left
     {
         'in': {
-            'ax':  1.40,
-            'ay':  1.40,
-            'bx':  0.10,
-            'by':  0.10,
+            'startX':  1.40,
+            'startY':  1.40,
+            'stopX':   0.10,
+            'stopY':   0.10,
         },
         'out': {
             'cellsExplored': [
@@ -44,10 +44,10 @@ EXPECTEDINOUT = [
     # x increasing, y increasing
     {
         'in': {
-            'ax':  3.45,
-            'ay':  0.10,
-            'bx':  4.25,
-            'by':  2.35,
+            'startX':  3.45,
+            'startY':  0.10,
+            'stopX':   4.25,
+            'stopY':   2.35,
         },
         'out': {
             'cellsExplored': [
@@ -66,10 +66,10 @@ EXPECTEDINOUT = [
     # x decreasing, y decreasing
     {
         'in': {
-            'ax':  4.25,
-            'ay':  2.35,
-            'bx':  3.45,
-            'by':  0.10,
+            'startX':  4.25,
+            'startY':  2.35,
+            'stopX':   3.45,
+            'stopY':   0.10,
         },
         'out': {
             'cellsExplored': [
@@ -88,10 +88,10 @@ EXPECTEDINOUT = [
     # x decreasing, y increasing
     {
         'in': {
-            'ax':  5.25,
-            'ay':  1.25,
-            'bx':  3.60,
-            'by':  2.20,
+            'startX':  5.25,
+            'startY':  1.25,
+            'stopX':   3.60,
+            'stopY':   2.20,
         },
         'out': {
             'cellsExplored': [
@@ -109,10 +109,10 @@ EXPECTEDINOUT = [
     # x increasing, y decreasing
     {
         'in': {
-            'ax':  3.60,
-            'ay':  2.20,
-            'bx':  5.25,
-            'by':  1.25,
+            'startX':  3.60,
+            'startY':  2.20,
+            'stopX':   5.25,
+            'stopY':   1.25,
         },
         'out': {
             'cellsExplored' : [
@@ -130,10 +130,10 @@ EXPECTEDINOUT = [
     # horizontal line, left to right
     {
         'in': {
-            'ax':  1.60,
-            'ay':  3.30,
-            'bx':  2.70,
-            'by':  3.30,
+            'startX':  1.60,
+            'startY':  3.30,
+            'stopX':   2.70,
+            'stopY':   3.30,
         },
         'out': {
             'cellsExplored': [
@@ -148,10 +148,10 @@ EXPECTEDINOUT = [
     # horizontal line, right to left
     {
         'in': {
-            'ax':  2.70,
-            'ay':  3.30,
-            'bx':  1.60,
-            'by':  3.30,
+            'startX':  2.70,
+            'startY':  3.30,
+            'stopX':   1.60,
+            'stopY':   3.30,
         },
         'out': {
             'cellsExplored': [
@@ -166,10 +166,10 @@ EXPECTEDINOUT = [
     # vertical line, y increasing
     {
         'in': {
-            'ax':  3.81,
-            'ay':  3.70,
-            'bx':  3.81,
-            'by':  5.90,
+            'startX':  3.81,
+            'startY':  3.70,
+            'stopX':   3.81,
+            'stopY':   5.90,
         },
         'out': {
             'cellsExplored': [
@@ -186,10 +186,10 @@ EXPECTEDINOUT = [
     # vertical line, y decreasing
     {
         'in': {
-            'ax':  3.81,
-            'ay':  5.90,
-            'bx':  3.81,
-            'by':  3.70,
+            'startX':  3.81,
+            'startY':  5.90,
+            'stopX':   3.81,
+            'stopY':   3.70,
         },
         'out': {
             'cellsExplored': [
@@ -206,10 +206,10 @@ EXPECTEDINOUT = [
     # line within same cell
     {
         'in': {
-            'ax': 2.04,
-            'ay': 1.52,
-            'bx': 2.49,
-            'by': 1.67,
+            'startX': 2.04,
+            'startY': 1.52,
+            'stopX':  2.49,
+            'stopY':  1.67,
         },
         'out': {
             'cellsExplored': [
@@ -222,10 +222,10 @@ EXPECTEDINOUT = [
     # two cells next to each other (movement across x cell boundary)
     {
         'in': {
-            'ax': 2.00,
-            'ay': 1.00,
-            'bx': 2.50,
-            'by': 1.00,
+            'startX': 2.00,
+            'startY': 1.00,
+            'stopX':  2.50,
+            'stopY':  1.00,
         },
         'out': {
             'cellsExplored': [],
@@ -236,10 +236,10 @@ EXPECTEDINOUT = [
     # movement across y cell boundary
     {
         'in': {
-            'ax': 1.50,
-            'ay': 1.00,
-            'bx': 3.00,
-            'by': 1.00,
+            'startX': 1.50,
+            'startY': 1.00,
+            'stopX':  3.00,
+            'stopY':  1.00,
         },
         'out': {
             'cellsExplored': [],
@@ -250,10 +250,10 @@ EXPECTEDINOUT = [
     # border-to-border, horizontal
     {
         'in': {
-            'ax': 2.00,
-            'ay': 1.49,
-            'bx': 5.00,
-            'by': 1.49,
+            'startX': 2.00,
+            'startY': 1.49,
+            'stopX':  5.00,
+            'stopY':  1.49,
         },
         'out': {
             'cellsExplored': [
@@ -271,10 +271,10 @@ EXPECTEDINOUT = [
     # border-to-border, horizontal, single cell
     {
         'in': {
-            'ax': 2.00,
-            'ay': 1.45,
-            'bx': 2.50,
-            'by': 1.45,
+            'startX': 2.00,
+            'startY': 1.45,
+            'stopX':  2.50,
+            'stopY':  1.45,
         },
         'out': {
             'cellsExplored': [
@@ -286,10 +286,10 @@ EXPECTEDINOUT = [
     # border-to-border, vertical
     {
         'in': {
-            'ax': 1.52,
-            'ay': 1.00,
-            'bx': 1.52,
-            'by': 4.00,
+            'startX': 1.52,
+            'startY': 1.00,
+            'stopX':  1.52,
+            'stopY':  4.00,
         },
         'out': {
             'cellsExplored': [
@@ -306,10 +306,10 @@ EXPECTEDINOUT = [
     # border-to-border, diagonal
     {
         'in': {
-            'ax': 2.00,
-            'ay': 4.00,
-            'bx': 5.00,
-            'by': 1.00,
+            'startX': 2.00,
+            'startY': 4.00,
+            'stopX':  5.00,
+            'stopY':  1.00,
         },
         'out': {
             'cellsExplored': [
@@ -327,10 +327,10 @@ EXPECTEDINOUT = [
     # inside cell to top left border
     {
         'in': {
-            'ax': 1.6,
-            'ay': 1.3,
-            'bx': 2.5,
-            'by': 2.00,
+            'startX': 1.6,
+            'startY': 1.3,
+            'stopX':  2.5,
+            'stopY':  2.00,
         },
         'out': {
             'cellsExplored': [
@@ -355,7 +355,7 @@ def test_computeCellsExplored(expectedInOut):
     and next cell beyond that
     '''
 
-    orchestrator = Orchestrator.Orchestrator(1,1,1)
+    orchestrator = Orchestrator.Orchestrator(1, 1, 1)
     orchestrator.MINFEATURESIZE = 1
 
     assert sorted(orchestrator._computeCellsExplored(*expectedInOut['in'].values())) == sorted(expectedInOut['out'])

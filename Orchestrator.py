@@ -160,28 +160,25 @@ class Orchestrator(Wireless.WirelessDevice):
 
     #=== Map
 
-    def _computeCellsExplored(self, ax, ay, bx, by):
+    def _computeCellsExplored(self, startX, startY, stopX, stopY):
         '''
         find cells passed through on trajectory between points a and b
         example input - output :
             {
             'in': {
-                'ax': 1.10,
-                'ay': 1.20,
-                'bx': 2.20,
-                'by': 1.01,
+                'startX': 1.10,
+                'startY': 1.20,
+                'stopX': 2.20,
+                'stopY': 1.01,
             },
             'out': {
                 'cellsExplored': [(1.00,1.00), (1.50, 1.00), (2.00, 1.00)],
-                nextCell: (2.50, 1.00)
-                }
+                 nextCell: (2.50, 1.00)
+            }
         }
         '''
-        returnVal = []
 
-        # set start and stop cells
-        (startX, startY) = (ax, ay)
-        (stopX, stopY)   = (bx, by)
+        returnVal = {'cellsExplored': [], 'nextCell': None}
 
         # find current cell coordinates
         (cx,cy)      = self._xy2cell(startX, startY)
@@ -196,108 +193,112 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
         log.debug(f'next cell -> {(cx, cy)}')
 
-        maxNumCells = ((abs(stopX - startX) + abs(stopY - startY))*4) + 2
+        # maxNumCells is length of line *2 as each cell is 1/2 the size of a unit step
+        # we add an extra 2 cells: 1 - in case start cell is not the initial cell and
+        # 1 - for when we calculate the next cell beyond the trajectory
+        maxNumCells = u.distance((startX, startY), (stopX, stopY))*2 + 2
 
-        # movement between cells (on boundaries)
-        if (
+        # movement is not on boundaries
+        if not(
             (startX == stopX) and (startX == cx or startX == cx+self.MINFEATURESIZE/2) or
             (startY == stopY) and (startY == cy or startX == cy+self.MINFEATURESIZE/2)
         ):
-            return {'cellsExplored': [], 'nextCell': None}
+            returnVal['cellsExplored'] += [(cx, cy)]
+            cellsExploredComputed = False
 
-        returnVal += [(cx, cy)]
-        exploredCellsComputed = False
+            if startX == stopX:
 
-        if startX == stopX:
-            # vertical line, move up or down
-            while exploredCellsComputed == False:
-                xmax  = cx + self.MINFEATURESIZE/2
-                ymax  = cy + self.MINFEATURESIZE/2
+                # vertical line, move up or down
+                while cellsExploredComputed == False:
+                    xmax  = cx + self.MINFEATURESIZE/2
+                    ymax  = cy + self.MINFEATURESIZE/2
 
-                if (
-                    cx <= stopX <= xmax and
-                    cy <= stopY <= ymax
-                ):
-                    exploredCellsComputed = True
+                    if (
+                        cx <= stopX <= xmax and
+                        cy <= stopY <= ymax
+                    ):
+                        cellsExploredComputed = True
 
-                if startY < stopY:
-                    cy = cy + self.MINFEATURESIZE/2
-                else:
-                    cy = cy - self.MINFEATURESIZE/2
-                returnVal += [(cx, cy)]
+                    if startY < stopY:
+                        cy = cy + self.MINFEATURESIZE/2
+                    else:
+                        cy = cy - self.MINFEATURESIZE/2
+                    returnVal['cellsExplored'] += [(cx, cy)]
 
-                log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
-                assert len(returnVal) <= maxNumCells
+                    log.debug('num cells {} and maxCellNum = {}'.format(len(returnVal['cellsExplored']),abs(maxNumCells)))
+                    assert len(returnVal) <= maxNumCells
 
-        else:
+            else:
 
-            # move according to line equation y = mx + c
-            m  = (by - ay)/(bx - ax)
-            c  = startY - m*startX
-            log.debug(f'stop condition is {self._xy2cell(stopX, stopY)}')
+                # move according to line equation y = mx + c
+                m  = (stopY - startY)/(stopX - startX)
+                c  = startY - m*startX
+                log.debug(f'stop condition is {self._xy2cell(stopX, stopY)}')
 
-            while exploredCellsComputed == False:
+                while cellsExploredComputed == False:
 
-                ymin = cy
-                ymax = cy + self.MINFEATURESIZE/2
-                xmax = (cx + self.MINFEATURESIZE/2)
+                    ymin = cy
+                    ymax = cy + self.MINFEATURESIZE/2
+                    xmax = (cx + self.MINFEATURESIZE/2)
 
-                if stopX > startX:
-                    # movement towards right side
-                    ynext = m*xmax + c
-                    xdirection = 1
-                else:
-                    # movement towards left side
-                    ynext = m * cx + c
-                    xdirection = -1
+                    if startX < stopX:
+                        # movement towards right side
+                        ynext = m*xmax + c
+                        slope = 1
+                    else:
+                        # movement towards left side
+                        ynext = m * cx + c
+                        slope = -1
 
-                log.debug(f'xmax,ymax {xmax}, {ymax}')
-                log.debug(f'ynext {ynext}')
+                    log.debug(f'xmax,ymax {xmax}, {ymax}')
+                    log.debug(f'ynext {ynext}')
 
-                if (
-                    cx <= stopX <= xmax and
-                    cy <= stopY <= ymax
-                ):
-                    exploredCellsComputed = True
+                    if (
+                        cx <= stopX <= xmax and
+                        cy <= stopY <= ymax
+                    ):
+                        cellsExploredComputed = True
 
-                if ynext < ymin:
-                    # move up
-                    cy = cy - self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move up to -> {(cx, cy)}')
+                    if ynext < ymin:
+                        # move up
+                        cy = cy - self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move up to -> {(cx, cy)}')
 
-                elif ynext > ymax:
-                    # move down
-                    cy = cy + self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move down to -> {(cx, cy)}')
+                    elif ymax < ynext:
+                        # move down
+                        cy = cy + self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move down to -> {(cx, cy)}')
 
-                elif ynext == ymin:
-                    # move diagonally upwards
-                    cx = cx + (self.MINFEATURESIZE/2)*xdirection
-                    cy = cy -  self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move diagonally upwards to -> {(cx, cy)}')
+                    elif ynext == ymin:
+                        # move diagonally upwards
+                        cx = cx + (self.MINFEATURESIZE/2)*slope
+                        cy = cy -  self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move diagonally upwards to -> {(cx, cy)}')
 
-                elif ynext == ymax:
-                    # move diagonally downwards
-                    cx = cx + (self.MINFEATURESIZE/2)*xdirection
-                    cy = cy +  self.MINFEATURESIZE/2
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move diagonally downwards to -> {(cx, cy)}')
-                else:
-                    # move sideways
-                    cx = cx + (self.MINFEATURESIZE/2)*xdirection
-                    returnVal += [(cx, cy)]
-                    log.debug(f'move right to -> {(cx, cy)}')
+                    elif ynext == ymax:
+                        # move diagonally downwards
+                        cx = cx + (self.MINFEATURESIZE/2)*slope
+                        cy = cy +  self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move diagonally downwards to -> {(cx, cy)}')
+                    else:
+                        # move sideways
+                        cx = cx + (self.MINFEATURESIZE/2)*slope
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move right to -> {(cx, cy)}')
 
-                log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
-                assert len(returnVal) <= maxNumCells
+                    log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
+                    assert len(returnVal) <= maxNumCells
+
+            returnVal['nextCell'] = returnVal['cellsExplored'].pop(-1)
 
         log.debug(f'new cells {returnVal}')
-        nextCell = returnVal.pop(-1)
 
-        return {'cellsExplored': returnVal, 'nextCell': nextCell}
+
+        return returnVal
 
     #=== UI
 
