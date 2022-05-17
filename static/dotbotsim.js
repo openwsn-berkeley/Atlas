@@ -1,5 +1,5 @@
 var scaleFactor    = 1;
-var dotbotcolors   = d3.scaleOrdinal(d3.schemeCategory10).range();
+var dotBotcolors   = d3.scaleOrdinal(d3.schemeCategory10).range();
 
 var playbuttonMinX     = 175
 var playbuttonMaxX     = 285
@@ -76,7 +76,7 @@ function drawFloorplan(floorplan) {
 }
 
 function getDotBots() {
-    $.getJSON( "/dotbots.json", function( data ) {
+    $.getJSON( "/data.json", function( data ) {
         drawDotBots(data);
     });
 }
@@ -95,7 +95,7 @@ function drawDotBots(data) {
     
     // positionerror
     var positionerror  = svg.selectAll(".positionerror")
-        .data(data.dotbots);
+        .data(data.dotBots);
     positionerror
         .attr("x1", function(d) { return scaleFactor*d.x; })
         .attr("y1", function(d) { return scaleFactor*d.y; })
@@ -111,7 +111,7 @@ function drawDotBots(data) {
     
     // orchestratorview
     var orchestratorview = svg.selectAll(".orchestratorview")
-        .data(data.dotbots);
+        .data(data.dotBots);
     orchestratorview
         .transition()
             .attr("cx", function(d) { return scaleFactor*d.orchestratorview_x; })
@@ -125,7 +125,7 @@ function drawDotBots(data) {
     
     // collisionpath
     var collisionpaths  = svg.selectAll(".collisionpath")
-        .data(data.dotbots);
+        .data(data.dotBots);
     collisionpaths
         .attr("x1", function(d) { return scaleFactor*d.x; })
         .attr("y1", function(d) { return scaleFactor*d.y; })
@@ -138,21 +138,21 @@ function drawDotBots(data) {
             .attr("x2", function(d) { return d.next_bump_x === null ? scaleFactor*d.x : scaleFactor*d.next_bump_x; })
             .attr("y2", function(d) { return d.next_bump_y === null ? scaleFactor*d.y : scaleFactor*d.next_bump_y; })
             .attr("class", "collisionpath")
-            .attr("stroke",function(d,i){return dotbotcolors[i%10];});
+            .attr("stroke",function(d,i){return dotBotcolors[i%10];});
     
-    // dotbots
-    var dotbots = svg.selectAll(".dotbot")
-        .data(data.dotbots);
-    dotbots
+    // dotBots
+    var dotBots = svg.selectAll(".dotBot")
+        .data(data.dotBots);
+    dotBots
         .transition()
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; });
-    dotbots
+    dotBots
         .enter().append("circle")
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; })
-            .attr("class", "dotbot")
-            .attr("fill",function(d,i){return dotbotcolors[i%10];})
+            .attr("class", "dotBot")
+            .attr("fill",function(d,i){return dotBotcolors[i%10];})
             .attr("r", 6);
     
     // discomapcomplete
@@ -198,20 +198,24 @@ function drawDotBots(data) {
             .remove();
     
     // explored cells
-    var exploredCells  = svg.selectAll(".exploredCells")
+
+    var exploredCellsExplored  = svg.selectAll(".exploredCellsExplored")
         .data(data.exploredCells.cellsExplored);
-    exploredCells
+    exploredCellsExplored
+
         .attr("x",      function(d) { return scaleFactor*d.x; })
         .attr("y",      function(d) { return scaleFactor*d.y; })
         .attr("width",  function(d) { return scaleFactor*d.width; })
         .attr("height", function(d) { return scaleFactor*d.height; });
-    exploredCells.enter().append("rect")
+
+    exploredCellsExplored.enter().append("rect")
+
             .attr("x",      function(d) { return scaleFactor*d.x; })
             .attr("y",      function(d) { return scaleFactor*d.y; })
             .attr("width",  function(d) { return scaleFactor*d.width; })
             .attr("height", function(d) { return scaleFactor*d.height; })
-            .attr("class",  "exploredCells");
-    exploredCells
+            .attr("class",  "exploredCellsExplored");
+    exploredCellsExplored
         .exit()
             .remove();
     var exploredCellsObstacle  = svg.selectAll(".exploredCellsObstacle")

@@ -1,12 +1,6 @@
 # built-in
-import abc
 import random
-import threading
-import copy
-import sys
 import math
-import typing
-import time
 # third-party
 # local
 import SimEngine
@@ -93,18 +87,18 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
-        log.debug(f'dotbotsView -> {self.dotBotsView}')
+        log.debug(f'dotBotsView -> {self.dotBotsView}')
 
         frameToTx = {
             'frameType': self.FRAMETYPE_COMMAND,
             'movements': dict([
-                    (
-                        dotBotId,
-                        {
-                           'heading': dotbot['heading'],
-                           'speed':   dotbot['speed'],
-                        }
-                    ) for (dotBotId, dotbot) in self.dotBotsView.items()]
+                (
+                    dotBotId,
+                    {
+                        'heading': dotBot['heading'],
+                        'speed':   dotBot['speed'],
+                    }
+                ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
         }
 
@@ -116,7 +110,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _pickNewMovement(self, dotBotId):
         '''
-        modifies the movement in dotbotsview
+        modifies the movement in dotBotsview
         '''
 
         heading = 360 * random.random()
@@ -132,149 +126,179 @@ class Orchestrator(Wireless.WirelessDevice):
         assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
 
         # shorthand
-        dotbot       = self.dotBotsView[frame['source']]
-        log.debug('dotbot {} was at ( {},{} ) '.format(dotbot, dotbot['x'], dotbot['y']))
+        dotBot       = self.dotBotsView[frame['source']]
 
         # update DotBot's position
         (newX, newY) = u.computeCurrentPosition(
-            currentX = dotbot['x'],
-            currentY = dotbot['y'],
-            heading  = dotbot['heading'],
-            speed    = dotbot['speed'],
+            currentX = dotBot['x'],
+            currentY = dotBot['y'],
+            heading  = dotBot['heading'],
+            speed    = dotBot['speed'],
             duration = frame['movementDuration'],
         )
 
         # update explored cells
-        self.cellsObstacle  += [self._xy2hCell(newX, newY)]
-        cellsTraversed       = self._computeCellsTraversed(dotbot['x'], dotbot['y'], newX, newY)
-        self.cellsExplored  += [c for c in cellsTraversed if c not in self.cellsObstacle]
+        cellsExplored          = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
+        self.cellsExplored    += cellsExplored['cellsExplored']
 
-        # if a cell is obstacle, remove from open cells
-        try:
-            self.cellsExplored.remove(self._xy2hCell(newX, newY))
-        except ValueError:
-            pass
+        if cellsExplored['nextCell'] and self._xy2cell(newX, newY) != (newX, newY):
+            self.cellsObstacle  += [cellsExplored['nextCell']]
 
         # remove duplicate cells
         self.cellsObstacle  = list(set(self.cellsObstacle))
-        self.cellsExplored      = list(set(self.cellsExplored))
+        self.cellsExplored = list(set(self.cellsExplored))
 
         # update dotBotsView
-        dotbot['x']       = newX
-        dotbot['y']       = newY
+        dotBot['x']       = newX
+        dotBot['y']       = newY
+        log.debug(f'dotbot {dotBot} is at ( {newX},{newY} ) ')
 
-        # pick new speed and heading for dotbot
+        # pick new speed and heading for dotBot
         (heading, speed)  = self._pickNewMovement(frame['source'])
-        dotbot['heading'] = heading
-        dotbot['speed']   = speed
-
+        dotBot['heading'] = heading
+        dotBot['speed']   = speed
 
     #=== Map
 
-    def _computeCellsTraversed(self, ax, ay, bx, by):
+    def _computeCellsExplored(self, startX, startY, stopX, stopY):
         '''
-        find cells on trajectory between points a and b
+        find cells passed through on trajectory between points a and b
+        example input - output :
+            {
+            'in': {
+                'startX': 1.10,
+                'startY': 1.20,
+                'stopX': 2.20,
+                'stopY': 1.01,
+            },
+            'out': {
+                'cellsExplored': [(1.00,1.00), (1.50, 1.00), (2.00, 1.00)],
+                 nextCell: (2.50, 1.00)
+            }
+        }
         '''
-        returnVal = []
 
-        # find start and stop cells
-        if ax > bx:
-            (startX, startY) = (bx, by)
-            (stopX, stopY)   = (ax, ay)
-        elif ax == bx and ay > by:
-            (startX, startY) = (bx, by)
-            (stopX, stopY)   = (ax, ay)
-        else:
-            (startX, startY) = (ax, ay)
-            (stopX, stopY)   = (bx, by)
+        returnVal = {'cellsExplored': [], 'nextCell': None}
 
-        (x,y)      = self._xy2hCell(startX, startY)
+        # find current cell coordinates
+        (cx,cy)      = self._xy2cell(startX, startY)
+
+        # check if current cell is start cell
+        if startX == cx or startY == cy:
+            if (stopX < startX) and (startX == cx):
+                cx = cx - self.MINFEATURESIZE/2
+            if (stopY < startY) and (startY == cy):
+                cy = cy - self.MINFEATURESIZE/2
+
         log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
-        returnVal += [(x, y)]
+        log.debug(f'next cell -> {(cx, cy)}')
 
-        # return current cell if still in same cell
-        if self._xy2hCell(startX, startY) == self._xy2hCell(stopX, stopY):
-            return returnVal
+        # maxNumCells is length of line *2 as each cell is 1/2 the size of a unit step
+        # we add an extra 2 cells: 1 - in case start cell is not the initial cell and
+        # 1 - for when we calculate the next cell beyond the trajectory
+        maxNumCells = u.distance((startX, startY), (stopX, stopY))*2 + 2
 
-        log.debug(f'next cell -> {(x, y)}')
+        # movement is not on boundaries
+        if not(
+            (startX == stopX) and (startX == cx or startX == cx+self.MINFEATURESIZE/2) or
+            (startY == stopY) and (startY == cy or startX == cy+self.MINFEATURESIZE/2)
+        ):
+            returnVal['cellsExplored'] += [(cx, cy)]
+            cellsExploredComputed = False
 
-        if startX == stopX:
+            if startX == stopX:
 
-            # vertical line, move down (increase y)
-            while True:
-                y += self.MINFEATURESIZE/2
-                returnVal += [(x, y)]
-                log.debug(f'next cell -> {(x,y)}')
+                # vertical line, move up or down
+                while cellsExploredComputed == False:
+                    xmax  = cx + self.MINFEATURESIZE/2
+                    ymax  = cy + self.MINFEATURESIZE/2
 
-                if self._xy2hCell(x, y) == self._xy2hCell(stopX, stopY):
-                    break
+                    if (
+                        cx <= stopX <= xmax and
+                        cy <= stopY <= ymax
+                    ):
+                        cellsExploredComputed = True
 
-                maxLength = abs(math.ceil(stopY - startY))
-                log.debug(f'num cells {len(returnVal)} and maxlength = {abs(maxLength)}')
-                assert len(returnVal) <= (maxLength) * 4
+                    if startY < stopY:
+                        cy = cy + self.MINFEATURESIZE/2
+                    else:
+                        cy = cy - self.MINFEATURESIZE/2
+                    returnVal['cellsExplored'] += [(cx, cy)]
 
-        else:
+                    log.debug('num cells {} and maxCellNum = {}'.format(len(returnVal['cellsExplored']),abs(maxNumCells)))
+                    assert len(returnVal) <= maxNumCells
 
-            # move according to line equation y = mx + c
-            m  = (by - ay)/(bx - ax)
-            c  = startY - m*startX
-            log.debug(f'stop condition is {self._xy2hCell(stopX, stopY)}')
+            else:
 
-            while True:
-                xmax  = (x + self.MINFEATURESIZE/2)
-                ynext = m*xmax + c
-                ymin  = y
-                ymax  = y + self.MINFEATURESIZE/2
-                log.debug(f'xmax,ymax {xmax}, {ymax}')
-                log.debug(f'ynext {ynext}')
+                # move according to line equation y = mx + c
+                m  = (stopY - startY)/(stopX - startX)
+                c  = startY - m*startX
+                log.debug(f'stop condition is {self._xy2cell(stopX, stopY)}')
 
-                if ynext < ymin:
-                    # move up
-                    y = y - self.MINFEATURESIZE/2
-                    returnVal += [(x, y)]
-                    log.debug(f'move up to -> {(x, y)}')
+                while cellsExploredComputed == False:
 
-                elif ynext > ymax:
-                    # move down
-                    y = y + self.MINFEATURESIZE/2
-                    returnVal += [(x, y)]
-                    log.debug(f'move down to -> {(x, y)}')
+                    ymin = cy
+                    ymax = cy + self.MINFEATURESIZE/2
+                    xmax = (cx + self.MINFEATURESIZE/2)
 
-                elif ymin < ynext < ymax:
-                    # move right
-                    x = x + self.MINFEATURESIZE/2
-                    returnVal += [(x, y)]
-                    log.debug(f'move right to -> {(x, y)}')
+                    if startX < stopX:
+                        # movement towards right side
+                        ynext = m*xmax + c
+                        slope = 1
+                    else:
+                        # movement towards left side
+                        ynext = m * cx + c
+                        slope = -1
 
-                elif (ynext == ymin or ynext == ymax):
-                    # move diagonally if trajectory isnt on cell border
-                    if stopY != startY:
-                        y = y + self.MINFEATURESIZE / 2
-                    x = x + self.MINFEATURESIZE/2
+                    log.debug(f'xmax,ymax {xmax}, {ymax}')
+                    log.debug(f'ynext {ynext}')
 
-                    returnVal += [(x, y)]
-                    log.debug(f'move diagonally to -> {(x, y)}')
+                    if (
+                        cx <= stopX <= xmax and
+                        cy <= stopY <= ymax
+                    ):
+                        cellsExploredComputed = True
 
-                if self._xy2hCell(x, y) == self._xy2hCell(stopX, stopY):
-                    break
+                    if ynext < ymin:
+                        # move up
+                        cy = cy - self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move up to -> {(cx, cy)}')
 
-                maxLength = abs(math.ceil(stopX - startX))+abs(math.ceil(stopY-startY))
-                log.debug(f'num cells {len(returnVal)} and maxlength = {abs(maxLength)}')
-                assert len(returnVal) <= (maxLength)*4
+                    elif ymax < ynext:
+                        # move down
+                        cy = cy + self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move down to -> {(cx, cy)}')
 
+                    elif ynext == ymin:
+                        # move diagonally upwards
+                        cx = cx + (self.MINFEATURESIZE/2)*slope
+                        cy = cy -  self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move diagonally upwards to -> {(cx, cy)}')
+
+                    elif ynext == ymax:
+                        # move diagonally downwards
+                        cx = cx + (self.MINFEATURESIZE/2)*slope
+                        cy = cy +  self.MINFEATURESIZE/2
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move diagonally downwards to -> {(cx, cy)}')
+                    else:
+                        # move sideways
+                        cx = cx + (self.MINFEATURESIZE/2)*slope
+                        returnVal['cellsExplored'] += [(cx, cy)]
+                        log.debug(f'move right to -> {(cx, cy)}')
+
+                    log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
+                    assert len(returnVal) <= maxNumCells
+
+            returnVal['nextCell'] = returnVal['cellsExplored'].pop(-1)
 
         log.debug(f'new cells {returnVal}')
+
+
         return returnVal
-
-    def _xy2hCell(self, x, y):
-
-        # convert x,y coordinates to cell (top left coordinate)
-        xsteps = int(math.floor((x)/ (self.MINFEATURESIZE/2)))
-        cx     = xsteps*(self.MINFEATURESIZE/2)
-        ysteps = int(math.floor((y)/ (self.MINFEATURESIZE/2)))
-        cy     = ysteps*(self.MINFEATURESIZE/2)
-
-        return (cx, cy)
 
     #=== UI
 
@@ -284,28 +308,11 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         returnVal = [
             {
-                'x':         dotbot['x'],
-                'y':         dotbot['y'],
-            } for idx, dotbot in self.dotBotsView.items()
+                'x':         dotBot['x'],
+                'y':         dotBot['y'],
+            } for dotBotId, dotBot in self.dotBotsView.items()
         ]
         return returnVal
-
-    def _hCell2SvgRect(self,cx,cy):
-        returnVal = {
-            'x':        cx,
-            'y':        cy,
-            'width':    self.MINFEATURESIZE/2,
-            'height':   self.MINFEATURESIZE/2,
-        }
-        return returnVal
-
-    def getExploredCells(self):
-        returnVal = {
-                'cellsExplored': [self._hCell2SvgRect(*c) for c in self.cellsExplored],
-                'cellsObstacle': [self._hCell2SvgRect(*c) for c in self.cellsObstacle],
-            }
-        return returnVal
-
 
     def getView(self):
         '''
@@ -313,11 +320,33 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
 
         returnVal = {
-            'dotbotpositions': self.getEvaluatedPositions(),
-            'discomap': {"complete": False, "dots": [], "lines": []},
-            'exploredCells': self.getExploredCells(),
+            'dotBotpositions': self.getEvaluatedPositions(),
+            'discomap':        {"complete": False, "dots": [], "lines": []},
+            'exploredCells':   {
+                'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
+                'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
+            },
         }
         
         return returnVal
     
     #======================== private =========================================
+
+    def _xy2cell(self, x, y):
+
+        # convert x,y coordinates to cell (top left coordinate)
+        xsteps = int(math.floor((x)/ (self.MINFEATURESIZE/2)))
+        cx     = xsteps*(self.MINFEATURESIZE/2)
+        ysteps = int(math.floor((y)/ (self.MINFEATURESIZE/2)))
+        cy     = ysteps*(self.MINFEATURESIZE/2)
+
+        return (cx, cy)
+
+    def _cell2SvgRect(self,cx,cy):
+        returnVal = {
+            'x':        cx,
+            'y':        cy,
+            'width':    self.MINFEATURESIZE/2,
+            'height':   self.MINFEATURESIZE/2,
+        }
+        return returnVal
