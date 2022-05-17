@@ -35,6 +35,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.datacollector      = DataCollector.DataCollector()
         self.cellsExplored      = []
         self.cellsObstacle      = []
+        self.cellsFrontier      = []
 
         self.dotBotsView        = dict([
             (
@@ -145,7 +146,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.cellsObstacle  += [cellsExplored['nextCell']]
 
         # remove duplicate cells
-        self.cellsObstacle  = list(set(self.cellsObstacle))
+        self.cellsObstacle = list(set(self.cellsObstacle))
         self.cellsExplored = list(set(self.cellsExplored))
 
         # update dotBotsView
@@ -325,6 +326,7 @@ class Orchestrator(Wireless.WirelessDevice):
             'exploredCells':   {
                 'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
                 'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
+                'cellsFrontier': [self._cell2SvgRect(*c) for c in self.cellsFrontier],
             },
         }
         

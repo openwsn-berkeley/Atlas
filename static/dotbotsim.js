@@ -234,6 +234,22 @@ function drawDotBots(data) {
     exploredCellsObstacle
         .exit()
             .remove();
+    var exploredCellsFrontier = svg.selectAll(".exploredCellsFrontier")
+        .data(data.exploredCells.cellsFrontier);
+    exploredCellsFrontier
+        .attr("x",      function(d) { return scaleFactor*d.x; })
+        .attr("y",      function(d) { return scaleFactor*d.y; })
+        .attr("width",  function(d) { return scaleFactor*d.width; })
+        .attr("height", function(d) { return scaleFactor*d.height; });
+    exploredCellsFrontier.enter().append("rect")
+            .attr("x",      function(d) { return scaleFactor*d.x; })
+            .attr("y",      function(d) { return scaleFactor*d.y; })
+            .attr("width",  function(d) { return scaleFactor*d.width; })
+            .attr("height", function(d) { return scaleFactor*d.height; })
+            .attr("class",  "exploredCellsFrontier");
+    exploredCellsFrontier
+        .exit()
+            .remove();
 }
 
 
