@@ -5,6 +5,7 @@ import datetime
 import traceback
 # third-party
 # local
+import DataCollector
 # setup logging
 import logging.config
 import LoggingConfig
@@ -43,6 +44,7 @@ class SimEngine(threading.Thread):
         self._startTsReal         = None
         self._playSpeed           = 1.00
         self.events               = []
+        self.dataCollector        = DataCollector.DataCollector()
         self.semNumEvents         = threading.Semaphore(0)
         self.dataLock             = threading.Lock()
         self.semIsRunning         = threading.Lock()
@@ -93,6 +95,16 @@ class SimEngine(threading.Thread):
             log.critical(f"Simulation failed with error {traceback.format_exc().splitlines()}")
         else:
             log.info("Simulation Completed")
+
+            # collect completion time
+            self.dataCollector.collect(
+                {
+                    'type': 'timeToCompletion',
+                    'simSetting': self._currentTime,
+                },
+            )
+
+
 
     #======================== public ==========================================
     

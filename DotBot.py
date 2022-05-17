@@ -321,7 +321,7 @@ class DotBot(Wireless.WirelessDevice):
                 else:
                     (bump_x, bump_y) = (x_int1, y_int1)
         elif len(valid_intersections) == 1:
-            # dotbot in corner
+            # dotBot in corner
             (bump_x, bump_y) = (valid_intersections[0][0], valid_intersections[0][1])
 
         # compute time to bump

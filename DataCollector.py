@@ -89,6 +89,8 @@ class DataCollector(threading.Thread):
                 jsontocollect = self.writebuffer.pop(0)
                 f.write(jsontocollect)
 
+
+
 # ============================ main ============================================
 
 def main():
