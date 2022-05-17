@@ -41,7 +41,7 @@ class Floorplan(object):
         for (y, line) in enumerate(lines):
             for (x, c) in enumerate(line):
                 if c == '#':
-                    obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}] # TODO: could do line merging here to
+                    obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}]
                 if c == 's':
                     (initX, initY) = (x,y)
         return width, height, obstacles, initX, initY
@@ -66,7 +66,7 @@ class Floorplan(object):
 
         returnVal       = True
 
-        # split drawing into matrix of characters
+        # split drawing into matrix of characters indexed by row, column indices
         matrixOfChars   = [line for line in drawing.splitlines() if line]
         charsChecked    = []     # character positions in map of which surrounding frontiers have been determined
         charsToCheck    = []     # character positions in map of which surrounding frontiers are to be determined
@@ -95,7 +95,7 @@ class Floorplan(object):
             ]
 
             for nx, ny in neighbourChars:
-
+                
                 try:
                     # if drawing contains characters that aren't '#,.,s' map is invalid
                     assert matrixOfChars[nx][ny] == '#' or matrixOfChars[nx][ny] == '.' or matrixOfChars[nx][ny] == 's'

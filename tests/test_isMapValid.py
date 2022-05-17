@@ -95,7 +95,6 @@ def test_isMapValid(expectedInOut):
         ######
     '''
     floorplan = Floorplan.Floorplan(defaultDrawing)
-
     assert floorplan._isMapValid(*expectedInOut['in'].values()) == expectedInOut['out']
 
 
