@@ -8,7 +8,7 @@ class Floorplan(object):
     '''
     
     def __init__(self, drawing):
-        assert self._isMapValid(drawing) == True
+        assert self._isMapValid(drawing)
         self.width, self.height, self.obstacles = self._parseDrawing(drawing)
 
     @classmethod
@@ -63,9 +63,6 @@ class Floorplan(object):
 
         # split drawing into matrix of characters
         matrixOfChars   = [line for line in drawing.splitlines() if line]
-        w = max([len(row) for row in matrixOfChars])
-        h = len(matrixOfChars)
-
         charsChecked    = []     # character positions in map of which surrounding frontiers have been determined
         charsToCheck    = []     # character positions in map of which surrounding frontiers are to be determined
 
