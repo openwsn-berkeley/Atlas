@@ -47,14 +47,15 @@ def runOneSim(simSetting, atlasUI=None):
     
     # create the simulation environment
     floorplan      = Floorplan.Floorplan(simSetting['floorplan'])
+    (initX, initY) = floorplan.getInitialPosition()
     simEngine      = SimEngine.SimEngine()
     orchestrator   = Orchestrator.Orchestrator(
         simSetting['numRobots'],
-        simSetting['initX'],
-        simSetting['initY'],
+        initX,
+        initY,
     )
     dotBots        = [
-        DotBot.DotBot(dotBotId, simSetting['initX'], simSetting['initY'], floorplan)
+        DotBot.DotBot(dotBotId, initX, initY, floorplan)
         for dotBotId in range(1,simSetting['numRobots']+1)
     ]
     wireless       = Wireless.Wireless()
