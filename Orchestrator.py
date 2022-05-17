@@ -144,11 +144,25 @@ class Orchestrator(Wireless.WirelessDevice):
 
         if cellsExplored['nextCell'] and self._xy2cell(newX, newY) != (newX, newY):
             self.cellsObstacle  += [cellsExplored['nextCell']]
+            if cellsExplored['nextCell'] in self.cellsFrontier:
+                self.cellsFrontier.remove(cellsExplored['nextCell'])
+
+        for cell in self.cellsExplored:
+            if cell in self.cellsFrontier:
+                self.cellsFrontier.remove(cell)
+
+        for (cx, cy) in cellsExplored['cellsExplored']:
+            for n in self._computeCellNeighbours(cx, cy):
+                if (
+                    (n not in self.cellsExplored) and
+                    (n not in self.cellsObstacle)
+                ):
+                    self.cellsFrontier += [n]
 
         # remove duplicate cells
         self.cellsObstacle = list(set(self.cellsObstacle))
         self.cellsExplored = list(set(self.cellsExplored))
-
+        self.cellsFrontier = list(set(self.cellsFrontier))
         # update dotBotsView
         dotBot['x']       = newX
         dotBot['y']       = newY
@@ -351,4 +365,16 @@ class Orchestrator(Wireless.WirelessDevice):
             'width':    self.MINFEATURESIZE/2,
             'height':   self.MINFEATURESIZE/2,
         }
+        return returnVal
+
+    def _computeCellNeighbours(self, cx, cy):
+        cellSize = self.MINFEATURESIZE/2
+
+        returnVal = [
+            (cx+cellSize, cy),          (cx-cellSize, cy),
+            (cx,          cy-cellSize), (cx,          cy+cellSize),
+            (cx-cellSize, cy-cellSize), (cx+cellSize, cy+cellSize),
+            (cx-cellSize, cy+cellSize), (cx+cellSize, cy-cellSize)
+        ]
+
         return returnVal
