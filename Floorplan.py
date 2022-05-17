@@ -8,6 +8,7 @@ class Floorplan(object):
     '''
     
     def __init__(self, drawing):
+        assert self._isMapValid(drawing) == True
         self.width, self.height, self.obstacles = self._parseDrawing(drawing)
 
     @classmethod
