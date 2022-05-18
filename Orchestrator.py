@@ -143,13 +143,15 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored    += cellsExplored['cellsExplored']
 
         if cellsExplored['nextCell'] and self._xy2cell(newX, newY) != (newX, newY):
-            self.cellsObstacle  += [cellsExplored['nextCell']]
-            if cellsExplored['nextCell'] in self.cellsFrontier:
-                self.cellsFrontier.remove(cellsExplored['nextCell'])
 
-        for cell in self.cellsExplored:
-            if cell in self.cellsFrontier:
-                self.cellsFrontier.remove(cell)
+            # add obstacle if stop coordinate isn't exactly on cell corner
+            self.cellsObstacle  += [cellsExplored['nextCell']]
+
+        self.cellsFrontier = [
+            cell for cell in self.cellsFrontier
+            if (cell not in self.cellsExplored and
+                cell not in self.cellsObstacle)
+        ]
 
         for (cx, cy) in cellsExplored['cellsExplored']:
             for n in self._computeCellNeighbours(cx, cy):
@@ -163,6 +165,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsObstacle = list(set(self.cellsObstacle))
         self.cellsExplored = list(set(self.cellsExplored))
         self.cellsFrontier = list(set(self.cellsFrontier))
+        
         # update dotBotsView
         dotBot['x']       = newX
         dotBot['y']       = newY
