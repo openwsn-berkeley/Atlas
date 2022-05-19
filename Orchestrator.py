@@ -142,7 +142,7 @@ class Orchestrator(Wireless.WirelessDevice):
         cellsExplored          = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
         self.cellsExplored    += cellsExplored['cellsExplored']
 
-        if cellsExplored['nextCell'] and self._xy2cell(newX, newY) != (newX, newY):
+        if cellsExplored['nextCell']:
 
             # add obstacle if stop coordinate isn't exactly on cell corner
             self.cellsObstacle  += [cellsExplored['nextCell']]

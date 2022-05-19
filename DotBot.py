@@ -212,8 +212,9 @@ class DotBot(Wireless.WirelessDevice):
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
 
-        bump_x = round(bump_x, 3)
-        bump_y = round(bump_y, 3)
+        bump_x = round(bump_x, 5)
+        bump_y = round(bump_y, 5)
+
         log.debug(f'Dotbot {self.dotBotId} at ({self.x},{self.y}) next bump at ({bump_x},{bump_y}) at {self.next_bump_ts}')
         assert bump_x >= 0 and bump_y >= 0
 
@@ -250,12 +251,6 @@ class DotBot(Wireless.WirelessDevice):
             south_x     = (self.floorplan.height - b) / a  # intersection with South wall (y=self.floorplan.height)
             west_y      = 0 * a + b                        # intersection with West  wall (x=0)
             east_y      = self.floorplan.width * a + b     # intersection with East  wall (x=self.floorplan.width)
-
-            # round
-            north_x = round(north_x, 10)
-            south_x = round(south_x, 10)
-            west_y  = round(west_y,  10)
-            east_y  = round(east_y,  10)
 
         log.debug(f'x intersection points {north_x}, {south_x}')
         log.debug(f'y intersection points {west_y}, {east_y}')
