@@ -67,7 +67,7 @@ EXPECTEDINOUT = [
         },
 
         # (bumpX, bumpY, bumpTime)
-        'out': (2.00, 1.00,   1.4142135623730954)
+        'out': (2.00, 1.00,   1.4142135623730951)
     },
 
     # diagonally away from obstacle (right to left)
@@ -222,27 +222,6 @@ EXPECTEDINOUT = [
 
         # (bumpX, bumpY, bumpTime)
         'out': (1.00, 1.50, 1.00)
-    },
-
-    # diagonally towards obstacle (very small difference in x)
-    {
-        'in': {
-            'currentX': 3.13,
-            'currentY': 1.00,
-            'heading':  180.00,
-            'speed':    1.00,
-            'obstacles': [
-                {
-                    'x':      3.00,
-                    'y':      6.00,
-                    'width':  1.00,
-                    'height': 1.00,
-                }
-            ]
-        },
-
-        # (bumpX, bumpY, bumpTime)
-        'out': (1.00, 1.00, 1.414213562373095)
     },
 
 ]
