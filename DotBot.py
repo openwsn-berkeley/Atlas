@@ -177,6 +177,11 @@ class DotBot(Wireless.WirelessDevice):
     #=== internal bump computation
     
     def _computeNextBump(self, currentX, currentY, heading, speed, obstacles):
+        '''
+        computes when/where dotbot bumps into obstacle next
+        '''
+
+        assert speed != 0
 
         bumpX           = None
         bumpY           = None
@@ -201,6 +206,8 @@ class DotBot(Wireless.WirelessDevice):
                     (heading == 90  and xmax <= currentX) or
                     (heading == 270 and currentX <= xmin)
                 ):
+                    # line is heading away from obstacle horizontally
+                    # skip this obstacle
                     continue
 
                 x = xmin if heading == 90 else xmax
@@ -216,6 +223,8 @@ class DotBot(Wireless.WirelessDevice):
                     (heading == 0   and currentY <= ymin) or
                     (heading == 180 and ymax <= currentY)
                 ):
+                    # line is heading away from obstacle vertically
+                    # skip this obstacle
                     continue
 
                 x = currentX
@@ -230,11 +239,16 @@ class DotBot(Wireless.WirelessDevice):
                 (topX, bottomX, leftY, rightY) = (None, None, None, None)
 
                 if (
+                    # line moving right upwards and starts to the right or top of obstacle
                     ((0   < heading < 90   and (xmax <= currentX or currentY <= ymin))) or
+                    # line moving right downwards and starts to the right or bottom of obstacle
                     ((90  < heading < 180  and (xmax <= currentX or ymax <= currentY))) or
+                    # line moving left downwards and starts to the left or bottom of obstacle
                     ((180 < heading < 270  and (currentX <= xmin or ymax <= currentY))) or
+                    # line moving left upwards and starts to the left or top of obstacle
                     ((270 < heading < 360  and (currentX <= xmin or currentY <= ymin)))
                 ):
+                    # skip this obstacle
                     continue
 
                 # compute intersection points with obstacles
@@ -280,13 +294,13 @@ class DotBot(Wireless.WirelessDevice):
             (bumpX, bumpY) = distances[0][0]
 
             # find bump time
-            timetobump     = u.distance((currentX, currentY), (bumpX, bumpY)) / speed if speed != 0 else None
+            timetobump     = u.distance((currentX, currentY), (bumpX, bumpY)) / speed
 
             assert bumpX  >= 0 and bumpY >= 0
 
             # round
-            bumpX          = round(bumpX, 5)
-            bumpY          = round(bumpY, 5)
+            bumpX          = round(bumpX, 3)
+            bumpY          = round(bumpY, 3)
         else:
             log.error("NO INTERSECT FOUND")
 
