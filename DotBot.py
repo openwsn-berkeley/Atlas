@@ -37,9 +37,9 @@ class DotBot(Wireless.WirelessDevice):
         self.tsMovementStart      = None
         self.tsMovementStop       = None
         # state maintained by internal bump computation
-        self.next_bump_x          = None  # coordinate the DotBot will bump into next
-        self.next_bump_y          = None
-        self.next_bump_ts         = None  # time at which DotBot will bump
+        self.nextBumpX            = None  # coordinate the DotBot will bump into next
+        self.nextBumpY            = None
+        self.nextBumpTime         = None  # time at which DotBot will bump
 
     # ======================== public ==========================================
 
@@ -75,17 +75,17 @@ class DotBot(Wireless.WirelessDevice):
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
 
         # compute when/where next bump will happen
-        (bump_x, bump_y, bump_ts) = self._computeNextBump()
-        log.debug(f'Dotbot {self.dotBotId} next bump at ({bump_x}, {bump_y}) at {bump_ts}')
+        (bumpX, bumpY, timetobump) = self._computeNextBump(self.x, self.y, self.currentHeading, self.currentSpeed, self.floorplan.obstacles)
 
         # remember
-        self.next_bump_x          = bump_x
-        self.next_bump_y          = bump_y
-        self.next_bump_ts         = bump_ts
+        self.nextBumpX           = bumpX
+        self.nextBumpY           = bumpY
+        self.nextBumpTime        = self.simEngine.currentTime() + timetobump
+        log.debug(f'Dotbot {self.dotBotId} next bump at ({bumpX}, {bumpY}) at {self.nextBumpTime}')
 
         # schedule the bump event
-        self.simEngine.schedule(self.next_bump_ts, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
-        log.debug(f'next bump for {self.dotBotId} scheduled for {self.next_bump_ts}')
+        self.simEngine.schedule(self.nextBumpTime, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
+        log.debug(f'next bump for {self.dotBotId} scheduled for {self.nextBumpTime}')
 
     def computeCurrentPosition(self):
         '''
@@ -115,7 +115,7 @@ class DotBot(Wireless.WirelessDevice):
         Retrieve the position of this DotBot's next bump.
         '''
 
-        return (self.next_bump_x, self.next_bump_y)
+        return (self.nextBumpX, self.nextBumpY)
 
     # ======================== private =========================================
 
@@ -126,14 +126,14 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
 
-        assert self.simEngine.currentTime() == self.next_bump_ts
+        assert self.simEngine.currentTime() == self.nextBumpTime
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
         log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
-        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
-        assert self.x == self.next_bump_x
-        assert self.y == self.next_bump_y
+        log.debug(f'DotBot {self.dotBotId} expected position at ({self.nextBumpX}, {self.nextBumpY}) at {self.nextBumpTime}')
+        assert self.x == self.nextBumpX
+        assert self.y == self.nextBumpY
 
         # stop moving
         self.currentSpeed        = 0
@@ -176,226 +176,133 @@ class DotBot(Wireless.WirelessDevice):
 
     #=== internal bump computation
     
-    def _computeNextBump(self):
+    def _computeNextBump(self, currentX, currentY, heading, speed, obstacles):
+        '''
+        computes when/where dotbot bumps into obstacle next
+        '''
 
-        # compute when/where next bump will happen with frame
-        (bump_x_frame, bump_y_frame, bump_ts_frame) = self._computeNextBumpFrame()
+        assert speed != 0
 
-        # start by considering you will bump into the frame
-        bump_x     = bump_x_frame
-        bump_y     = bump_y_frame
-        bump_ts    = bump_ts_frame
+        bumpX           = None
+        bumpY           = None
+        timetobump      = None
+        intersectPoints = []
 
-        # loop through obstables, looking for closer bump coordinates
-        for obstacle in self.floorplan.obstacles:
+        # find slope of movement trajectory
+        if heading not in [0, 90, 180, 270]:
+            slope = math.tan(math.radians(heading-90))
 
-            # coordinates of obstacle's upper-left and lower-right corner
-            ax     = obstacle['x']
-            ay     = obstacle['y']
-            bx     = ax + obstacle['width']
-            by     = ay + obstacle['height']
+        # find all valid intersections with obstacles
+        for obstacle in obstacles:
+            xmin = obstacle['x']
+            ymin = obstacle['y']
+            xmax = xmin + obstacle['width']
+            ymax = ymin + obstacle['height']
 
-            # compute bump coordinate for this obstacle (if exist)
-            # Note: return (None,None,None) if no bump
-            (bump_xo, bump_yo, bump_tso) = self._computeNextBumpObstacle(
-                self.x,
-                self.y,
-                bump_x_frame,
-                bump_y_frame,
-                ax,
-                ay,
-                bx,
-                by,
-            )
+            if heading in [90, 270]:
+                # horizontal edge case
 
-            # update bump coordinates if closer
-            if (bump_xo != None) and (bump_tso <= bump_ts):
-                (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
+                if (
+                    (heading == 90  and xmax <= currentX) or
+                    (heading == 270 and currentX <= xmin)
+                ):
+                    # line is heading away from obstacle horizontally
+                    # skip this obstacle
+                    continue
 
-        bump_x = round(bump_x, 3)
-        bump_y = round(bump_y, 3)
-        log.debug(f'Dotbot {self.dotBotId} at ({self.x},{self.y}) next bump at ({bump_x},{bump_y}) at {self.next_bump_ts}')
-        assert bump_x >= 0 and bump_y >= 0
+                x = xmin if heading == 90 else xmax
+                y = currentY
 
-        # return where and when robot will bump
-        return (bump_x, bump_y, bump_ts)
+                if xmin <= round(x, 10) <= xmax and ymin <= round(y, 10) <= ymax:
+                    intersectPoints += [(x, y)]
 
-    def _computeNextBumpFrame(self):
+            elif heading in [ 0, 180]:
+                # vertical edge case
 
-        if  self.currentHeading in [90, 270]:
-            # horizontal edge case
+                if (
+                    (heading == 0   and currentY <= ymin) or
+                    (heading == 180 and ymax <= currentY)
+                ):
+                    # line is heading away from obstacle vertically
+                    # skip this obstacle
+                    continue
 
-            north_x     = None  # doesn't cross
-            south_x     = None  # doesn't cross
-            west_y      = self.y
-            east_y      = self.y
+                x = currentX
+                y = ymax if heading == 0 else ymin
 
-        elif self.currentHeading in [ 0, 180]:
-            # vertical edge case
+                if xmin <= round(x, 10) <= xmax and ymin <= round(y, 10) <= ymax:
+                    intersectPoints += [(x, y)]
 
-            north_x     = self.x
-            south_x     = self.x
-            west_y      = None  # doesn't cross
-            east_y      = None  # doesn't cross
+            else:
+                # general case
 
-        else:
-            # general case
+                (topX, bottomX, leftY, rightY) = (None, None, None, None)
 
-            # find equation of trajectory as y = a*x + b
-            a           = math.tan(math.radians(self.currentHeading - 90))
-            b           = self.y - (a * self.x)
+                if (
+                    # line moving right upwards and starts to the right or top of obstacle
+                    ((0   < heading < 90   and (xmax <= currentX or currentY <= ymin))) or
+                    # line moving right downwards and starts to the right or bottom of obstacle
+                    ((90  < heading < 180  and (xmax <= currentX or ymax <= currentY))) or
+                    # line moving left downwards and starts to the left or bottom of obstacle
+                    ((180 < heading < 270  and (currentX <= xmin or ymax <= currentY))) or
+                    # line moving left upwards and starts to the left or top of obstacle
+                    ((270 < heading < 360  and (currentX <= xmin or currentY <= ymin)))
+                ):
+                    # skip this obstacle
+                    continue
 
-            # compute intersection points with 4 walls
-            north_x     = (0 - b) / a                      # intersection with North wall (y=0)
-            south_x     = (self.floorplan.height - b) / a  # intersection with South wall (y=self.floorplan.height)
-            west_y      = 0 * a + b                        # intersection with West  wall (x=0)
-            east_y      = self.floorplan.width * a + b     # intersection with East  wall (x=self.floorplan.width)
+                # compute intersection points with obstacles
+
+                if 0 < heading < 90:
+                    # top right quadrant
+
+                    bottomX = ((ymax - currentY) / slope) + currentX      # intersection with bottom obstacle border (y=ymax)
+                    leftY   = (xmin - currentX)*slope + currentY          # intersection with left obstacle border   (x=xmin)
+
+                if 90 < heading < 180:
+                    # bottom right quadrant
+
+                    topX    = ((ymin - currentY) / slope) + currentX       # intersection with top obstacle border    (y=ymin)
+                    leftY   = (xmin - currentX)*slope + currentY           # intersection with left obstacle border   (x=xmin)
+
+                if 180 < heading < 270:
+                    # bottom left quadrant
+
+                    topX    = ((ymin - currentY) / slope) + currentX        # intersection with top obstacle border    (y=ymin)
+                    rightY  = (xmax - currentX)*slope + currentY            # intersection with right obstacle border  (x=xmax)
+
+                if 270 < heading < 360:
+                    # top left quadrant
+                    bottomX = ((ymax - currentY) / slope) + currentX       # intersection with bottom obstacle border (y=ymax)
+                    rightY  = (xmax - currentX)*slope + currentY           # intersection with right obstacle border  (x=xmax)
+
+                # check if intersection points are on obstacle
+                if topX and xmin <= round(topX, 10) <= xmax:
+                    intersectPoints += [(topX, ymin)]
+                if bottomX and xmin <= round(bottomX, 10) <= xmax:
+                    intersectPoints += [(bottomX, ymax)]
+                if leftY and ymin <= round(leftY, 10) <= ymax:
+                    intersectPoints += [(xmin, leftY)]
+                if rightY and ymin <= round(rightY, 10) <= ymax:
+                    intersectPoints += [(xmax, rightY)]
+
+        if intersectPoints:
+
+            # find closest intersection point to current position
+            distances      = [((x,y), u.distance((currentX, currentY), (x, y))) for (x, y) in intersectPoints]
+            distances      = sorted(distances, key=lambda e: e[1])
+            (bumpX, bumpY) = distances[0][0]
+
+            # find bump time
+            timetobump     = u.distance((currentX, currentY), (bumpX, bumpY)) / speed
+
+            assert bumpX  >= 0 and bumpY >= 0
 
             # round
-            north_x = round(north_x, 10)
-            south_x = round(south_x, 10)
-            west_y  = round(west_y,  10)
-            east_y  = round(east_y,  10)
-
-        log.debug(f'x intersection points {north_x}, {south_x}')
-        log.debug(f'y intersection points {west_y}, {east_y}')
-        # pick the two intersection points on the floorplan perimeter
-        valid_intersections = []
-        if (north_x != None and 0 <= north_x and north_x <= self.floorplan.width):
-            valid_intersections += [(north_x, 0)]
-        if (south_x != None and 0 <= south_x and south_x <= self.floorplan.width):
-            valid_intersections += [(south_x, self.floorplan.height)]
-        if (west_y != None and 0 <= west_y and west_y <= self.floorplan.height):
-            valid_intersections += [(0, west_y)]
-        if (east_y != None and 0 <= east_y and east_y <= self.floorplan.height):
-            valid_intersections += [(self.floorplan.width, east_y)]
-
-        # if more than 2 valid points, pick the pair that is furthest apart
-        log.debug(f'valid intersections {valid_intersections}')
-        if len(valid_intersections) > 2:
-            distances = [
-                (u.distance(a, b), a, b)
-                    for (a, b) in
-                        itertools.product(valid_intersections, valid_intersections)
-            ]
-            distances = sorted(distances, key=lambda e: e[0])
-            valid_intersections = [distances[-1][1], distances[-1][2]]
-
-        log.debug(f'closest intersections {valid_intersections}')
-        assert  len(valid_intersections) == 2 or len(valid_intersections) == 1
-
-        if len(valid_intersections) == 2:
-            # pick the correct intersection point given the heading of the robot
-            (x_int0, y_int0) = valid_intersections[0]
-            (x_int1, y_int1) = valid_intersections[1]
-            if self.currentHeading == 0:
-                # going up
-
-                # pick top-most intersection
-                if y_int0 < y_int1:
-                    (bump_x, bump_y) = (x_int0, y_int0)
-                else:
-                    (bump_x, bump_y) = (x_int1, y_int1)
-            elif (0 < self.currentHeading and self.currentHeading < 180):
-                # going right
-
-                # pick right-most intersection
-                if x_int1 < x_int0:
-                    (bump_x, bump_y) = (x_int0, y_int0)
-                else:
-                    (bump_x, bump_y) = (x_int1, y_int1)
-            elif self.currentHeading == 180:
-                # going down
-
-                # pick bottom-most intersection
-                if y_int1 < y_int0:
-                    (bump_x, bump_y) = (x_int0, y_int0)
-                else:
-                    (bump_x, bump_y) = (x_int1, y_int1)
-            else:
-                # going left
-
-                # pick right-most intersection
-                if x_int0 < x_int1:
-                    (bump_x, bump_y) = (x_int0, y_int0)
-                else:
-                    (bump_x, bump_y) = (x_int1, y_int1)
-        elif len(valid_intersections) == 1:
-            # dotBot in corner
-            (bump_x, bump_y) = (valid_intersections[0][0], valid_intersections[0][1])
-
-        # compute time to bump
-        timetobump = u.distance((self.x, self.y), (bump_x, bump_y)) / self.currentSpeed
-        bump_ts    = self.tsMovementStart + timetobump
-        log.debug(f'Dotbot {self.dotBotId} frame bump at ({bump_x},{bump_y})')
-        assert bump_x >= 0 and bump_y >= 0
-        return (bump_x, bump_y, bump_ts)
-
-    def _computeNextBumpObstacle(self, rx, ry, x2, y2, ax, ay, bx, by):
-        '''
-        \param rx current robot coordinate x
-        \param ry
-        \param x2 second point on segment robot if traveling on
-        \param y2
-        \param ax upper-left corner of obstacle
-        \param ay
-        \param bx lower-right corner of obstacle
-        \param by
-        \return (bump_x, bump_y,bump_ts) if robot bumps into obstacle
-        \return (  None,   None,   None) if robot does NOT bump into obstacle
-        Function implements the Liang-Barsky algorithm algorithm
-        - https://www.ques10.com/p/22053/explain-liang-barsky-line-clipping-algorithm-with-/
-        - https://gist.github.com/ChickenProp/3194723
-        '''
-
-        # initial calculations (see algorithm)
-        deltax     = x2 - rx
-        deltay     = y2 - ry
-        #                left    right   bottom      top
-        p          = [-deltax,  deltax, -deltay,  deltay]
-        q          = [rx - ax, bx - rx, ry - ay, by - ry]
-
-        # initialize u1 and u2
-        u1         = -math.inf
-        u2         =  math.inf
-
-        # iterating over the 4 boundaries of the obstacle in order to find the t value for each one.
-        #     if p = 0 then the trajectory is parallel to that boundary
-        #     if p = 0 and q<0 then line completly outside boundaries
-
-        # update u1 and u2
-        for i in range(4):
-
-            # abort if line outside of boundary
-
-            if p[i] == 0:
-                # line is parallel to boundary i
-
-                if q[i] < 0:
-                    return (None, None, None)
-                pass  # nothing to do
-            else:
-                t = q[i] / p[i]
-                if (p[i] < 0 and u1 < t):
-                    u1 = t
-                elif (p[i] > 0 and u2 > t):
-                    u2 = t
-
-        # if I get here, u1 and u2 should be set
-        assert u1 is not None
-        assert u2 is not None
-
-        # decide what to return
-        if (u1 >= 0 and u1 < u2 and u2 <= 1):
-
-            bump_x      = rx + u1 * deltax
-            bump_y      = ry + u1 * deltay
-            
-            timetobump  = u.distance((rx, ry), (bump_x, bump_y)) / self.currentSpeed
-            bump_ts     = self.tsMovementStart + timetobump
-            log.debug(f'Dotbot {self.dotBotId} obstacle bump at ({bump_x},{bump_y})')
-            assert bump_x >= 0 and bump_y >= 0
-            return (bump_x, bump_y, bump_ts)
+            bumpX          = round(bumpX, 3)
+            bumpY          = round(bumpY, 3)
         else:
+            log.error("NO INTERSECT FOUND")
 
-            return (None, None, None)
+        # return where and when robot will bump
+        return (bumpX, bumpY, timetobump)
