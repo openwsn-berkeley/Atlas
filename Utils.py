@@ -15,8 +15,8 @@ def distance(pos1, pos2):
 def computeCurrentPosition(currentX,currentY,heading,speed,duration):
     newX = currentX + duration * np.cos(np.radians(heading - 90)) * speed
     newY = currentY + duration * np.sin(np.radians(heading - 90)) * speed
-    newX = round(newX, 5)
-    newY = round(newY, 5)
+    newX = round(newX, 3)
+    newY = round(newY, 3)
     return (newX,newY)
 
 # ============= Data Structures

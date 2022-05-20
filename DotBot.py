@@ -212,8 +212,8 @@ class DotBot(Wireless.WirelessDevice):
             if (bump_xo != None) and (bump_tso <= bump_ts):
                 (bump_x, bump_y, bump_ts) = (bump_xo, bump_yo, bump_tso)
 
-        bump_x = round(bump_x, 5)
-        bump_y = round(bump_y, 5)
+        bump_x = round(bump_x, 3)
+        bump_y = round(bump_y, 3)
 
         log.debug(f'Dotbot {self.dotBotId} at ({self.x},{self.y}) next bump at ({bump_x},{bump_y}) at {self.next_bump_ts}')
         assert bump_x >= 0 and bump_y >= 0
