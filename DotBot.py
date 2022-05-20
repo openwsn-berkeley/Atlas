@@ -37,9 +37,9 @@ class DotBot(Wireless.WirelessDevice):
         self.tsMovementStart      = None
         self.tsMovementStop       = None
         # state maintained by internal bump computation
-        self.next_bump_x          = None  # coordinate the DotBot will bump into next
-        self.next_bump_y          = None
-        self.next_bump_ts         = None  # time at which DotBot will bump
+        self.nextBumpX            = None  # coordinate the DotBot will bump into next
+        self.nextBumpY            = None
+        self.nextBumpTime         = None  # time at which DotBot will bump
 
     # ======================== public ==========================================
 
@@ -75,17 +75,17 @@ class DotBot(Wireless.WirelessDevice):
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
 
         # compute when/where next bump will happen
-        (bump_x, bump_y, bump_ts) = self._computeNextBump(self.x, self.y, self.currentHeading, self.currentSpeed, self.floorplan.obstacles)
-        log.debug(f'Dotbot {self.dotBotId} next bump at ({bump_x}, {bump_y}) at {bump_ts}')
+        (bumpX, bumpY, timetobump) = self._computeNextBump(self.x, self.y, self.currentHeading, self.currentSpeed, self.floorplan.obstacles)
 
         # remember
-        self.next_bump_x          = bump_x
-        self.next_bump_y          = bump_y
-        self.next_bump_ts         = self.simEngine.currentTime() + bump_ts
+        self.nextBumpX           = bumpX
+        self.nextBumpY           = bumpY
+        self.nextBumpTime        = self.simEngine.currentTime() + timetobump
+        log.debug(f'Dotbot {self.dotBotId} next bump at ({bumpX}, {bumpY}) at {self.nextBumpTime}')
 
         # schedule the bump event
-        self.simEngine.schedule(self.next_bump_ts, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
-        log.debug(f'next bump for {self.dotBotId} scheduled for {self.next_bump_ts}')
+        self.simEngine.schedule(self.nextBumpTime, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
+        log.debug(f'next bump for {self.dotBotId} scheduled for {self.nextBumpTime}')
 
     def computeCurrentPosition(self):
         '''
@@ -115,7 +115,7 @@ class DotBot(Wireless.WirelessDevice):
         Retrieve the position of this DotBot's next bump.
         '''
 
-        return (self.next_bump_x, self.next_bump_y)
+        return (self.nextBumpX, self.nextBumpY)
 
     # ======================== private =========================================
 
@@ -126,14 +126,14 @@ class DotBot(Wireless.WirelessDevice):
         Bump sensor triggered
         '''
 
-        assert self.simEngine.currentTime() == self.next_bump_ts
+        assert self.simEngine.currentTime() == self.nextBumpTime
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
         log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
-        log.debug(f'DotBot {self.dotBotId} expected position at ({self.next_bump_x}, {self.next_bump_y}) at {self.next_bump_ts}')
-        assert self.x == self.next_bump_x
-        assert self.y == self.next_bump_y
+        log.debug(f'DotBot {self.dotBotId} expected position at ({self.nextBumpX}, {self.nextBumpY}) at {self.nextBumpTime}')
+        assert self.x == self.nextBumpX
+        assert self.y == self.nextBumpY
 
         # stop moving
         self.currentSpeed        = 0
@@ -178,14 +178,14 @@ class DotBot(Wireless.WirelessDevice):
     
     def _computeNextBump(self, currentX, currentY, heading, speed, obstacles):
 
-        bumpX         = None
-        bumpY         = None
-        timetobump    = None
+        bumpX           = None
+        bumpY           = None
+        timetobump      = None
         intersectPoints = []
 
-        # find equation of trajectory as y = a*x + b
+        # find slope of movement trajectory
         if heading not in [0, 90, 180, 270]:
-            a = math.tan(math.radians(heading-90))
+            slope = math.tan(math.radians(heading-90))
 
         # find all valid intersections with obstacles
         for obstacle in obstacles:
@@ -225,8 +225,10 @@ class DotBot(Wireless.WirelessDevice):
                     intersectPoints += [(x, y)]
 
             else:
-
                 # general case
+
+                (topX, bottomX, leftY, rightY) = (None, None, None, None)
+
                 if (
                     ((0   < heading < 90   and (xmax <= currentX or currentY <= ymin))) or
                     ((90  < heading < 180  and (xmax <= currentX or ymax <= currentY))) or
@@ -235,47 +237,40 @@ class DotBot(Wireless.WirelessDevice):
                 ):
                     continue
 
-                # compute intersection points with 4 walls
+                # compute intersection points with obstacles
 
-                # top right quarter
                 if 0 < heading < 90:
-                    bottomX = ((ymax - currentY) / a) + currentX      # intersection with bottom obstacle border (y=ymax)
-                    leftY   = (xmin - currentX)*a + currentY          # intersection with left obstacle border   (x=xmin)
+                    # top right quadrant
 
-                    if xmin <= round(bottomX, 10) <= xmax:
-                        intersectPoints += [(bottomX, ymax)]
-                    if ymin <= round(leftY, 10) <= ymax:
-                        intersectPoints += [(xmin, leftY)]
+                    bottomX = ((ymax - currentY) / slope) + currentX      # intersection with bottom obstacle border (y=ymax)
+                    leftY   = (xmin - currentX)*slope + currentY          # intersection with left obstacle border   (x=xmin)
 
-                # bottom right quarter
                 if 90 < heading < 180:
-                    topX    = ((ymin - currentY) / a) + currentX       # intersection with top obstacle border    (y=ymin)
-                    leftY   = (xmin - currentX)*a + currentY           # intersection with left obstacle border   (x=xmin)
+                    # bottom right quadrant
 
-                    if xmin <= round(topX, 10) <= xmax:
-                        intersectPoints += [(topX, ymin)]
-                    if ymin <= round(leftY, 10) <= ymax:
-                        intersectPoints += [(xmin, leftY)]
+                    topX    = ((ymin - currentY) / slope) + currentX       # intersection with top obstacle border    (y=ymin)
+                    leftY   = (xmin - currentX)*slope + currentY           # intersection with left obstacle border   (x=xmin)
 
-                # bottom left quarter
                 if 180 < heading < 270:
-                    topX    = ((ymin - currentY) / a) + currentX        # intersection with top obstacle border    (y=ymin)
-                    rightY  = (xmax - currentX)*a + currentY            # intersection with right obstacle border  (x=xmax)
+                    # bottom left quadrant
 
-                    if xmin <= round(topX, 10) <= xmax:
-                        intersectPoints += [(topX, ymin)]
-                    if ymin <= round(rightY, 10) <= ymax:
-                        intersectPoints += [(xmax, rightY)]
+                    topX    = ((ymin - currentY) / slope) + currentX        # intersection with top obstacle border    (y=ymin)
+                    rightY  = (xmax - currentX)*slope + currentY            # intersection with right obstacle border  (x=xmax)
 
-                # top left quarter
                 if 270 < heading < 360:
-                    bottomX = ((ymax - currentY) / a) + currentX      # intersection with bottom obstacle border (y=ymax)
-                    rightY  = (xmax - currentX)*a + currentY          # intersection with right obstacle border  (x=xmax)
+                    # top left quadrant
+                    bottomX = ((ymax - currentY) / slope) + currentX       # intersection with bottom obstacle border (y=ymax)
+                    rightY  = (xmax - currentX)*slope + currentY           # intersection with right obstacle border  (x=xmax)
 
-                    if xmin <= round(bottomX, 10) <= xmax:
-                        intersectPoints += [(bottomX, ymax)]
-                    if ymin <= round(rightY, 10) <= ymax:
-                        intersectPoints += [(xmax, rightY)]
+                # check if intersection points are on obstacle
+                if topX and xmin <= round(topX, 10) <= xmax:
+                    intersectPoints += [(topX, ymin)]
+                if bottomX and xmin <= round(bottomX, 10) <= xmax:
+                    intersectPoints += [(bottomX, ymax)]
+                if leftY and ymin <= round(leftY, 10) <= ymax:
+                    intersectPoints += [(xmin, leftY)]
+                if rightY and ymin <= round(rightY, 10) <= ymax:
+                    intersectPoints += [(xmax, rightY)]
 
         if intersectPoints:
 
@@ -285,14 +280,15 @@ class DotBot(Wireless.WirelessDevice):
             (bumpX, bumpY) = distances[0][0]
 
             # find bump time
-            timetobump = u.distance((currentX, currentY), (bumpX, bumpY)) / speed if speed != 0 else 0
+            timetobump     = u.distance((currentX, currentY), (bumpX, bumpY)) / speed if speed != 0 else None
 
-            assert bumpX >= 0 and bumpY >= 0
+            assert bumpX  >= 0 and bumpY >= 0
 
-            bumpX = round(bumpX, 5)
-            bumpY = round(bumpY, 5)
+            # round
+            bumpX          = round(bumpX, 5)
+            bumpY          = round(bumpY, 5)
         else:
-            log.debug("NO INTERSECT FOUND")
+            log.error("NO INTERSECT FOUND")
 
         # return where and when robot will bump
         return (bumpX, bumpY, timetobump)
