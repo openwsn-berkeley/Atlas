@@ -9,7 +9,7 @@ class Floorplan(object):
     
     def __init__(self, drawing):
         assert self._isMapValid(drawing)
-        self.width, self.height, self.obstacles, self.initX, self.initY = self._parseDrawing(drawing)
+        (self.width, self.height, self.obstacles, self.initX, self.initY) = self._parseDrawing(drawing)
 
     @classmethod
     def from_file(cls, filename):
@@ -44,7 +44,7 @@ class Floorplan(object):
                     obstacles += [{'x': x, 'y':  y, 'width': 1, 'height': 1}]
                 if c == 's':
                     (initX, initY) = (x,y)
-        return width, height, obstacles, initX, initY
+        return (width, height, obstacles, initX, initY)
 
     def _isMapValid(self, drawing):
         '''
@@ -66,43 +66,43 @@ class Floorplan(object):
 
         returnVal       = True
 
-        # split drawing into matrix of characters indexed by row, column indices
-        matrixOfChars   = [line for line in drawing.splitlines() if line]
-        charsChecked    = []     # character positions in map of which surrounding frontiers have been determined
-        charsToCheck    = []     # character positions in map of which surrounding frontiers are to be determined
+        # split drawing into matrix of character positions (cells) indexed by row, column indices
+        matrixOfCells   = [line for line in drawing.splitlines()]
+        cellsChecked    = []     # cells in map of which surrounding frontiers have been determined
+        cellsToCheck    = []     # cells in map of which surrounding frontiers are to be determined
 
         # if there is no starting position character 's' map is invalid
         try:
-            startPos    = [(lidx,line.index('s')) for (lidx,line) in enumerate(matrixOfChars) if 's' in line][0]
+            startPos    = [(lidx,line.index('s')) for (lidx,line) in enumerate(matrixOfCells) if 's' in line][0]
         except IndexError:
             startPos    = None
             returnVal   = False
 
-        charsToCheck   += [startPos]
+        cellsToCheck   += [startPos]
 
         # keep looping until there are no more froniters (all borders have been found)
-        while charsToCheck and startPos:
+        while cellsToCheck and startPos:
 
-            (charRow,charCol) = charsToCheck.pop(0)
-            charsChecked     += [(charRow,charCol)]
+            (cellRow,cellCol) = cellsToCheck.pop(0)
+            cellsChecked     += [(cellRow,cellCol)]
 
-            # set surrounding 8 character positions as frontiers to check next if they are not obstacles
-            neighbourChars    = [
-                (charRow+1,  charCol  ), (charRow-1,  charCol  ),
-                (charRow,    charCol-1), (charRow,    charCol+1),
-                (charRow-1,  charCol-1), (charRow+1,  charCol+1),
-                (charRow-1,  charCol+1), (charRow+1,  charCol-1)
+            # set surrounding 8 cells as frontiers to check next if they are not obstacles
+            neighbourCells    = [
+                (cellRow+1,  cellCol  ), (cellRow-1,  cellCol  ),
+                (cellRow,    cellCol-1), (cellRow,    cellCol+1),
+                (cellRow-1,  cellCol-1), (cellRow+1,  cellCol+1),
+                (cellRow-1,  cellCol+1), (cellRow+1,  cellCol-1)
             ]
 
-            for nx, ny in neighbourChars:
+            for nx, ny in neighbourCells:
                 
                 try:
                     # if drawing contains characters that aren't '#,.,s' map is invalid
-                    assert matrixOfChars[nx][ny] == '#' or matrixOfChars[nx][ny] == '.' or matrixOfChars[nx][ny] == 's'
+                    assert matrixOfCells[nx][ny] == '#' or matrixOfCells[nx][ny] == '.' or matrixOfCells[nx][ny] == 's'
 
                     # if next frontier position is not in matrix of characters map is invalid
-                    if matrixOfChars[nx][ny] != '#' and (nx, ny) not in charsToCheck  and (nx, ny) not in charsChecked:
-                        charsToCheck += [(nx, ny)]
+                    if matrixOfCells[nx][ny] != '#' and (nx, ny) not in cellsToCheck and (nx, ny) not in cellsChecked:
+                        cellsToCheck += [(nx, ny)]
 
                 except IndexError:
                     returnVal = False
