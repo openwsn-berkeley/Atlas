@@ -141,7 +141,13 @@
 
 .exploredCellsObstacle {
     fill:             #2E86C1;
-    opacity:          0.2;
+    opacity:          0.5;
     stroke:           #154360;
+    stroke-width:     1px;
+}
+.exploredCellsFrontier {
+    fill:             #DC143C;
+    opacity:          0.2;
+    stroke:           #FF0000;
     stroke-width:     1px;
 }

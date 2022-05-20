@@ -188,6 +188,7 @@ class DotBot(Wireless.WirelessDevice):
         timetobump      = None
         intersectPoints = []
 
+
         # find slope of movement trajectory
         if heading not in [0, 90, 180, 270]:
             slope = math.tan(math.radians(heading-90))
