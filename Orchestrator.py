@@ -143,7 +143,26 @@ class Orchestrator(Wireless.WirelessDevice):
         cellsExplored          = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
         self.cellsExplored    += cellsExplored['cellsExplored']
 
-        if cellsExplored['nextCell'] and self._xy2cell(newX, newY) != (newX, newY):
+        # check if bump coordinates lie on corner
+        (cxmin, cymin)    = self._xy2cell(newX, newY)
+        (cxmax, cymax)    = (cxmin + self.MINFEATURESIZE/2, cymin + self.MINFEATURESIZE/2)
+
+        topLeftCorner     = (cxmin, cymin)
+        topRightCorner    = (cxmax, cymin)
+        bottomLeftCorner  = (cxmin, cymax)
+        bottomRightCorner = (cxmax, cymax)
+
+        dotBotOnCorner    = False
+
+        if (
+            (newX, newY) == topLeftCorner    or
+            (newX, newY) == topRightCorner   or
+            (newX, newY) == bottomLeftCorner or
+            (newX, newY) == bottomRightCorner
+        ):
+            dotBotOnCorner = True
+
+        if cellsExplored['nextCell'] and dotBotOnCorner == False:
 
             # add obstacle if stop coordinate isn't exactly on cell corner
             self.cellsObstacle  += [cellsExplored['nextCell']]
