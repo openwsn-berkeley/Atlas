@@ -1,5 +1,7 @@
 import DotBot
+import Floorplan
 import pytest
+import random
 
 # ============================ fixtures ==============================
 
@@ -23,7 +25,7 @@ EXPECTEDINOUT = [
         },
 
         # (bumpX, bumpY, bumpTime)
-        'out': (1.00, 1.00, 1.4142135623730951)
+        'out': (1.00, 1.00,  1.414213562373095)
     },
 
     # diagonally away from obstacle (left to right)
@@ -65,7 +67,7 @@ EXPECTEDINOUT = [
         },
 
         # (bumpX, bumpY, bumpTime)
-        'out': (2.00, 1.00,  1.4142135623730951)
+        'out': (2.00, 1.00,   1.4142135623730954)
     },
 
     # diagonally away from obstacle (right to left)
@@ -222,6 +224,27 @@ EXPECTEDINOUT = [
         'out': (1.00, 1.50, 1.00)
     },
 
+    # diagonally towards obstacle (very small difference in x)
+    {
+        'in': {
+            'currentX': 3.13,
+            'currentY': 1.00,
+            'heading':  180.00,
+            'speed':    1.00,
+            'obstacles': [
+                {
+                    'x':      3.00,
+                    'y':      6.00,
+                    'width':  1.00,
+                    'height': 1.00,
+                }
+            ]
+        },
+
+        # (bumpX, bumpY, bumpTime)
+        'out': (1.00, 1.00, 1.414213562373095)
+    },
+
 ]
 
 @pytest.fixture(params=EXPECTEDINOUT)
@@ -232,8 +255,7 @@ def expectedInOut(request):
 
 def test_computeNextBump(expectedInOut):
     '''
-    testing if map given to floorplan is valid
-    aka. has borders and valid characters (#,., s)
+    testing computation of next bump with obstacle coordinates and time
     '''
 
     floorplan = '''
@@ -243,3 +265,16 @@ def test_computeNextBump(expectedInOut):
     '''
     dotBot = DotBot.DotBot(1,0,0, floorplan)
     assert dotBot._computeNextBump(*expectedInOut['in'].values()) == expectedInOut['out']
+
+def test_intersectionPointsExist():
+    floorplan = '''
+#####
+#...#
+#.s.#
+#...#
+#####
+    '''
+    floorplan = Floorplan.Floorplan(floorplan)
+    dotBot = DotBot.DotBot(1,0,0, floorplan)
+    for i in range(100):
+        assert dotBot._computeNextBump(floorplan.initX, floorplan.initY, (360 * random.random()), 1, floorplan.obstacles) != (None, None, None)
