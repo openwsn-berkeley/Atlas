@@ -280,10 +280,10 @@ def test_computeNextBump(expectedInOut):
         ######
     '''
     dotBot = DotBot.DotBot(
-                dotBotId=1,
-                x=0,
-                y=0,
-                floorplan=floorplan
+                dotBotId  = 1,
+                x         = 0,
+                y         = 0,
+                floorplan = floorplan
             )
 
     assert dotBot._computeNextBump(*expectedInOut['in'].values()) == tuple(expectedInOut['out'].values())
@@ -299,10 +299,10 @@ def test_intersectionPointsExist(randomAngle):
     floorplan  = Floorplan.Floorplan(floorplan)
 
     dotBot     = DotBot.DotBot(
-                    dotBotId=1,
-                    x=0,
-                    y=0,
-                    floorplan=floorplan
+                    dotBotId  = 1,
+                    x         = 0,
+                    y         = 0,
+                    floorplan = floorplan
                 )
 
     assert dotBot._computeNextBump(floorplan.initX, floorplan.initY, randomAngle, 1, floorplan.obstacles) != (None, None, None)
