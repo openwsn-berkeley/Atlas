@@ -257,11 +257,11 @@ EXPECTEDINOUT = [
 
 ]
 
-RANDOMANGLES = [360 * random.random() for i in range(1000)]
-
 @pytest.fixture(params=EXPECTEDINOUT)
 def expectedInOut(request):
     return request.param
+
+RANDOMANGLES = [360 * random.random() for i in range(1000)]
 
 @pytest.fixture(params=RANDOMANGLES)
 def randomAngle(request):
