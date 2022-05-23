@@ -98,8 +98,8 @@ class SimEngine(threading.Thread):
             # collect completion time
             self.dataCollector.collect(
                 {
-                    'type': 'timeToCompletion',
-                    'simSetting': self._currentTime,
+                    'type':             'KPI',
+                    'timeToCompletion': self._currentTime,
                 },
             )
 
