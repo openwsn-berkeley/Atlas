@@ -36,7 +36,6 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored      = []
         self.cellsObstacle      = []
         self.cellsFrontier      = []
-        self.cellsUnreachable   = []
 
         self.dotBotsView        = dict([
             (
@@ -143,79 +142,24 @@ class Orchestrator(Wireless.WirelessDevice):
         cellsExplored          = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
         self.cellsExplored    += cellsExplored['cellsExplored']
 
-        if cellsExplored['nextCell'] and self._xy2cell(newX, newY) != (newX, newY):
-
-            # add obstacle if stop coordinate isn't exactly on cell corner
+        # update obstacle cells
+        if cellsExplored['nextCell']:
             self.cellsObstacle  += [cellsExplored['nextCell']]
-            (cx, cy) = cellsExplored['nextCell']
 
-            # check for unreachable frontiers behind obstacle corners (two diagonal obstacle cells)
-            for (nx, ny) in self._computeCellNeighbours(*cellsExplored['nextCell']):
-
-                if (nx, ny) not in self.cellsObstacle or nx == cx or ny == cy:
-                    # this obstacle is not diagonal to our current obstacle
-                    # skip this obstacle
-                    continue
-
-                # by this point we have two diagonal obstacles
-                # verify that there is only one frontier cell connected to both obstacles and that both
-                # and that it is the same frontier for both
-
-                # find frontiers around first obstacle
-                neighbourFrontiers = []
-                for cell in self._computeCellNeighbours(cx, cy):
-                    if cell in self.cellsFrontier:
-                        neighbourFrontiers += [cell]
-
-                if len(neighbourFrontiers) != 1:
-                    continue
-
-                possibleCornerFrontier = neighbourFrontiers[0]
-
-                # find frontiers around second obstacle
-                neighbourFrontiers = []
-                for cell in self._computeCellNeighbours(nx, ny):
-                    if cell in self.cellsFrontier:
-                        neighbourFrontiers += [cell]
-
-                if len(neighbourFrontiers) != 1:
-                    continue
-
-                # check that same frontier is connected both obstacles
-                if neighbourFrontiers[0] != possibleCornerFrontier:
-                    continue
-
-                # if we have reached here we have a frontier cell that is potentially unreachable
-                # verify by checking if frontier is connected to any explored cells other than the
-                # cell dotBot is currently in.
-                for (fnx, fny) in self._computeCellNeighbours(*possibleCornerFrontier):
-                    if (fnx, fny) in self.cellsExplored:
-                        if not (fnx <= newX <= fnx+self.MINFEATURESIZE/2 and fny <= newY <= fny + self.MINFEATURESIZE/2):
-                            # this explored cell is not the cell we are currently on (borders included)
-                            # this frontier is not a corner frontier
-                            possibleCornerFrontier = None
-                            break
-
-                if not possibleCornerFrontier:
-                    continue
-
-                # if we reach here we have verified that we have a frontier cell that is unreachable.
-                # remove from frontier cells and add to unreachable cells to avoid it being added again.
-                self.cellsFrontier.remove(possibleCornerFrontier)
-                self.cellsUnreachable += [possibleCornerFrontier]
-
+        # remove explored frontiers
         self.cellsFrontier = [
             cell for cell in self.cellsFrontier
             if (cell not in self.cellsExplored and
                 cell not in self.cellsObstacle)
         ]
 
+        # compute new frontiers
         for (cx, cy) in cellsExplored['cellsExplored']:
             for n in self._computeCellNeighbours(cx, cy):
                 if (
                     (n not in self.cellsExplored) and
                     (n not in self.cellsObstacle) and
-                    (n not in self.cellsUnreachable)
+                    self._isCornerFrontier(n) == False     # check that cell isn't a corner frontier
                 ):
                     self.cellsFrontier += [n]
 
@@ -223,7 +167,11 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsObstacle = list(set(self.cellsObstacle))
         self.cellsExplored = list(set(self.cellsExplored))
         self.cellsFrontier = list(set(self.cellsFrontier))
-        
+
+        # simulation complete when there are no more frontier cells left
+        if not self.cellsFrontier:
+            self.simEngine.completeRun()
+
         # update dotBotsView
         dotBot['x']       = newX
         dotBot['y']       = newY
@@ -244,8 +192,8 @@ class Orchestrator(Wireless.WirelessDevice):
             'in': {
                 'startX': 1.10,
                 'startY': 1.20,
-                'stopX': 2.20,
-                'stopY': 1.01,
+                'stopX':  2.20,
+                'stopY':  1.01,
             },
             'out': {
                 'cellsExplored': [(1.00,1.00), (1.50, 1.00), (2.00, 1.00)],
@@ -371,6 +319,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
             returnVal['nextCell'] = returnVal['cellsExplored'].pop(-1)
 
+            # if stop coordinates are exactly on a corner (connecting 4 cells), next cell is not certain
+            if (stopX, stopY) in self._computeCellCorners(stopX, stopY):
+                returnVal['nextCell'] = None
+
         log.debug(f'new cells {returnVal}')
 
 
@@ -437,5 +389,78 @@ class Orchestrator(Wireless.WirelessDevice):
             (cx-cellSize, cy-cellSize), (cx+cellSize, cy+cellSize),
             (cx-cellSize, cy+cellSize), (cx+cellSize, cy-cellSize)
         ]
+
+        return returnVal
+
+    def _computeCellCorners(self, x, y):
+
+        (cxmin, cymin)    = self._xy2cell(x, y)
+        (cxmax, cymax)    = (cxmin + self.MINFEATURESIZE/2, cymin + self.MINFEATURESIZE/2)
+
+        topLeftCorner     = (cxmin, cymin)
+        topRightCorner    = (cxmax, cymin)
+        bottomLeftCorner  = (cxmin, cymax)
+        bottomRightCorner = (cxmax, cymax)
+
+        return [topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner]
+
+    def _isCornerFrontier(self, cell):
+        '''
+        evaluates if potential frontier cell is corner frontier or not.
+        example input-output:
+            {
+            'in': {
+                'cell': (0.50, 5.00)
+            },
+            'out': True
+        },
+        '''
+
+        returnVal     = False
+        firstObstacle = None
+
+        # check for obstacle in 1-hop neighbourhood of frontier
+        for n in self._computeCellNeighbours(*cell):
+            if n in self.cellsObstacle:
+                firstObstacle = n
+                break
+
+        if firstObstacle:
+
+            (cx, cy) = firstObstacle
+
+            # check for second obstacle diagonal to the first one
+            for (nx, ny) in self._computeCellNeighbours(cx, cy):
+
+                if (nx, ny) not in self.cellsObstacle or nx == cx or ny == cy:
+                    # cell not diagonal obstacle to first obstacle detected
+                    # skip this cell
+                    continue
+
+                # if reached here, 2 diagonal obstacles have been detected
+                # find corner where obstacles connect diagonally (common corner)
+                firstObstacleCorners  = set(self._computeCellCorners(cx, cy))
+                secondObstacleCorners = set(self._computeCellCorners(nx, ny))
+
+                commonCorner = firstObstacleCorners.intersection(secondObstacleCorners)
+                (ccx, ccy) = list(commonCorner)[0]
+
+                cellSize       = self.MINFEATURESIZE / 2
+                connectedCells = [
+                    (ccx - cellSize, ccy - cellSize),
+                    (ccx, ccy - cellSize),
+                    (ccx, ccy),
+                    (ccx - cellSize, ccy)
+                ]
+
+                # check that there is one explored cell connected to diagonal obstacles and frontier
+                # at same connecting corner
+                for c in connectedCells:
+                    if c in self.cellsExplored:
+                        # remove cell from frontiers if it is already set as one
+                        if cell in self.cellsFrontier:
+                            self.cellsFrontier.remove(cell)
+                        returnVal = True
+                        break
 
         return returnVal

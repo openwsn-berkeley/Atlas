@@ -94,7 +94,6 @@ class SimEngine(threading.Thread):
         except:
             log.critical(f"Simulation failed with error {traceback.format_exc().splitlines()}")
         else:
-            log.info("Simulation Completed")
 
             # collect completion time
             self.dataCollector.collect(
@@ -103,6 +102,11 @@ class SimEngine(threading.Thread):
                     'simSetting': self._currentTime,
                 },
             )
+
+            self.dataCollector.flush()
+
+            log.info("Simulation Completed")
+
 
 
 
