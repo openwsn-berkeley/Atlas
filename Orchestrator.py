@@ -159,7 +159,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 if (
                     (n not in self.cellsExplored) and
                     (n not in self.cellsObstacle) and
-                    self._checkForCornerFrontier(n) == False     # check that cell isn't a corner frontier
+                    self._isCornerFrontier(n) == False     # check that cell isn't a corner frontier
                 ):
                     self.cellsFrontier += [n]
 
@@ -404,13 +404,23 @@ class Orchestrator(Wireless.WirelessDevice):
 
         return [topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner]
 
-    def _checkForCornerFrontier(self, frontier):
+    def _isCornerFrontier(self, cell):
+        '''
+        evaluates if potential frontier cell is corner frontier or not.
+        example input-output:
+            {
+            'in': {
+                'cell': (0.50, 5.00)
+            },
+            'out': True
+        },
+        '''
 
         returnVal     = False
         firstObstacle = None
 
         # check for obstacle in 1-hop neighbourhood of frontier
-        for n in self._computeCellNeighbours(*frontier):
+        for n in self._computeCellNeighbours(*cell):
             if n in self.cellsObstacle:
                 firstObstacle = n
                 break
@@ -443,15 +453,13 @@ class Orchestrator(Wireless.WirelessDevice):
                     (ccx - cellSize, ccy)
                 ]
 
-                connectedExploredCell = None
-
                 # check that there is one explored cell connected to diagonal obstacles and frontier
                 # at same connecting corner
-                for cell in connectedCells:
-                    if cell in self.cellsExplored:
+                for c in connectedCells:
+                    if c in self.cellsExplored:
                         # remove cell from frontiers if it is already set as one
-                        if frontier in self.cellsFrontier:
-                            self.cellsFrontier.remove(frontier)
+                        if cell in self.cellsFrontier:
+                            self.cellsFrontier.remove(cell)
                         returnVal = True
                         break
 
