@@ -18,7 +18,7 @@ class DotBot(Wireless.WirelessDevice):
     A single DotBot.
     '''
 
-    RETRY_TRANSMIT_PERIOD_S      = 1
+    RETRY_TIMEOUT_S               = 1
 
     def __init__(self, dotBotId, x, y, floorplan):
 
@@ -39,7 +39,7 @@ class DotBot(Wireless.WirelessDevice):
         self.tsMovementStart      = None
         self.tsMovementStop       = None
         # sequence numbers (to filter out duplicate commands and notifications)
-        self.seqNumCommand       = None
+        self.seqNumCommand        = None
         self.seqNumNotification   = 0
         # state maintained by internal bump computation
         self.nextBumpX            = None  # coordinate the DotBot will bump into next
@@ -79,17 +79,17 @@ class DotBot(Wireless.WirelessDevice):
         log.debug(f'Dotbot {self.dotBotId} heading is {self.currentHeading} and speed is {self.currentSpeed}')
 
         # remember when I started moving, will be indicated in notification
-        self.tsMovementStart      = self.simEngine.currentTime()
-        self.tsMovementStop       = None
+        self.tsMovementStart       = self.simEngine.currentTime()
+        self.tsMovementStop        = None
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
 
         # compute when/where next bump will happen
         (bumpX, bumpY, timetobump) = self._computeNextBump(self.x, self.y, self.currentHeading, self.currentSpeed, self.floorplan.obstacles)
 
         # remember
-        self.nextBumpX           = bumpX
-        self.nextBumpY           = bumpY
-        self.nextBumpTime        = self.simEngine.currentTime() + timetobump
+        self.nextBumpX             = bumpX
+        self.nextBumpY             = bumpY
+        self.nextBumpTime          = self.simEngine.currentTime() + timetobump
         log.debug(f'Dotbot {self.dotBotId} next bump at ({bumpX}, {bumpY}) at {self.nextBumpTime}')
 
         # schedule the bump event
@@ -106,9 +106,9 @@ class DotBot(Wireless.WirelessDevice):
         
         # compute current position based on where it was and where it's going
         if self.currentSpeed==0:
-            (newX,newY) = (self.x,self.y)
+            (newX,newY)  = (self.x,self.y)
         else:
-            (newX,newY) = u.computeCurrentPosition(
+            (newX,newY)  = u.computeCurrentPosition(
                 currentX = self.x,
                 currentY = self.y,
                 heading  = self.currentHeading,
@@ -177,7 +177,7 @@ class DotBot(Wireless.WirelessDevice):
 
         # schedule retransmission
         self.simEngine.schedule(
-            ts        = self.simEngine.currentTime() + self.RETRY_TRANSMIT_PERIOD_S,
+            ts        = self.simEngine.currentTime() + self.RETRY_TIMEOUT_S,
             cb        = self._transmit,
             tag       = "retransmission_DotBot_{}".format(self.dotBotId),
         )
