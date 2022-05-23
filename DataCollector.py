@@ -81,6 +81,9 @@ class DataCollector(threading.Thread):
         with self.dataLock:
             self.writebuffer += [json.dumps(jsontocollect) + '\n']
 
+    def flush(self):
+        self._writeToFile()
+
     # ======================== private =========================================
 
     def _writeToFile(self):
@@ -88,7 +91,7 @@ class DataCollector(threading.Thread):
             while self.writebuffer:
                 jsontocollect = self.writebuffer.pop(0)
                 f.write(jsontocollect)
-
+            f.flush()
 
 
 # ============================ main ============================================

@@ -103,7 +103,10 @@ class SimEngine(threading.Thread):
                 },
             )
 
+            self.dataCollector.flush()
+
             log.info("Simulation Completed")
+
 
 
 

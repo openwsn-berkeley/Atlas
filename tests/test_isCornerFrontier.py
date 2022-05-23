@@ -64,6 +64,23 @@ def expectedInOut(request):
 def test_isCornerFrontier(expectedInOut):
     '''
     testing if corner cells are identified correctly
+
+    test floorplan:
+
+    c: cell being evaluated as corner frontier
+    e: explored
+    o: obstacle
+
+    ###############
+    #cooc#######oc#
+    #oeee.......eo#
+    ##......##...##
+    ##.....co#...##
+    ##..co#oe....##
+    ##..o###.....##
+    #oe..........##
+    #co############
+    ###############
     '''
 
     orchestrator  = Orchestrator.Orchestrator(
