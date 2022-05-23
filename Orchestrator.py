@@ -48,7 +48,7 @@ class Orchestrator(Wireless.WirelessDevice):
                    'heading':            0,
                    'speed':              0,
                     # sequence numbers (to filter out duplicate commands and notifications)
-                   'seqNumMovement':     0,
+                   'seqNumCommand':      0,
                    'seqNumNotification': None,
                 }
             ) for i in range(1, self.numRobots+1)
@@ -103,7 +103,7 @@ class Orchestrator(Wireless.WirelessDevice):
                     {
                         'heading':        dotBot['heading'],
                         'speed':          dotBot['speed'],
-                        'seqNumMovement': dotBot['seqNumMovement'],
+                        'seqNumCommand':  dotBot['seqNumCommand'],
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -193,7 +193,7 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['heading']         = heading
         dotBot['speed']           = speed
         # update sequence number of movement instruction
-        dotBot['seqNumMovement'] += 1
+        dotBot['seqNumCommand'] += 1
 
     #=== Map
 
