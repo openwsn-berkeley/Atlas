@@ -30,7 +30,7 @@ class Wireless(object):
 
     Note: Not thread-safe.
     '''
-    DFLT_PDR  = 1.0
+    DFLT_PDR  = 0.8
 
     # singleton pattern
     _instance = None

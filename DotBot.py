@@ -18,6 +18,8 @@ class DotBot(Wireless.WirelessDevice):
     A single DotBot.
     '''
 
+    RETRY_TIMEOUT_S               = 1
+
     def __init__(self, dotBotId, x, y, floorplan):
 
         # store params
@@ -36,6 +38,9 @@ class DotBot(Wireless.WirelessDevice):
         # timestamps of when movement starts/stops
         self.tsMovementStart      = None
         self.tsMovementStop       = None
+        # sequence numbers (to filter out duplicate commands and notifications)
+        self.seqNumCommand        = None
+        self.seqNumNotification   = 0
         # state maintained by internal bump computation
         self.nextBumpX            = None  # coordinate the DotBot will bump into next
         self.nextBumpY            = None
@@ -53,13 +58,17 @@ class DotBot(Wireless.WirelessDevice):
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
 
-        # drop frame if heading and speed are same as last frame
-        if (frame['movements'][self.dotBotId]['heading'] == self.currentHeading and
-            frame['movements'][self.dotBotId]['speed'] == self.currentSpeed):
+        # filter out duplicates
+        if frame['movements'][self.dotBotId]['seqNumCommand'] == self.seqNumCommand:
             return
+
+        self.seqNumCommand       = frame['movements'][self.dotBotId]['seqNumCommand']
 
         # cancel scheduled bump when new packet is received
         self.simEngine.cancelEvent(tag=f'{self.dotBotId}_bumpSensorCb')
+
+        # cancel notification retransmission
+        self.simEngine.cancelEvent(tag="retransmission_DotBot_{}".format(self.dotBotId))
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
@@ -70,17 +79,17 @@ class DotBot(Wireless.WirelessDevice):
         log.debug(f'Dotbot {self.dotBotId} heading is {self.currentHeading} and speed is {self.currentSpeed}')
 
         # remember when I started moving, will be indicated in notification
-        self.tsMovementStart      = self.simEngine.currentTime()
-        self.tsMovementStop       = None
+        self.tsMovementStart       = self.simEngine.currentTime()
+        self.tsMovementStop        = None
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
 
         # compute when/where next bump will happen
         (bumpX, bumpY, timetobump) = self._computeNextBump(self.x, self.y, self.currentHeading, self.currentSpeed, self.floorplan.obstacles)
 
         # remember
-        self.nextBumpX           = bumpX
-        self.nextBumpY           = bumpY
-        self.nextBumpTime        = self.simEngine.currentTime() + timetobump
+        self.nextBumpX             = bumpX
+        self.nextBumpY             = bumpY
+        self.nextBumpTime          = self.simEngine.currentTime() + timetobump
         log.debug(f'Dotbot {self.dotBotId} next bump at ({bumpX}, {bumpY}) at {self.nextBumpTime}')
 
         # schedule the bump event
@@ -97,9 +106,9 @@ class DotBot(Wireless.WirelessDevice):
         
         # compute current position based on where it was and where it's going
         if self.currentSpeed==0:
-            (newX,newY) = (self.x,self.y)
+            (newX,newY)  = (self.x,self.y)
         else:
-            (newX,newY) = u.computeCurrentPosition(
+            (newX,newY)  = u.computeCurrentPosition(
                 currentX = self.x,
                 currentY = self.y,
                 heading  = self.currentHeading,
@@ -135,6 +144,9 @@ class DotBot(Wireless.WirelessDevice):
         assert self.x == self.nextBumpX
         assert self.y == self.nextBumpY
 
+        # update notification ID
+        self.seqNumNotification += 1
+
         # stop moving
         self.currentSpeed        = 0
 
@@ -153,13 +165,21 @@ class DotBot(Wireless.WirelessDevice):
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
             'source':             self.dotBotId,
-            'movementDuration':   self.tsMovementStop - self.tsMovementStart
+            'movementDuration':   self.tsMovementStop - self.tsMovementStart,
+            'seqNumNotification': self.seqNumNotification,
         }
 
         # hand over to wireless
         self.wireless.transmit(
-            frame       = frameToTx,
-            sender      = self,
+            frame     = frameToTx,
+            sender    = self,
+        )
+
+        # schedule retransmission
+        self.simEngine.schedule(
+            ts        = self.simEngine.currentTime() + self.RETRY_TIMEOUT_S,
+            cb        = self._transmit,
+            tag       = "retransmission_DotBot_{}".format(self.dotBotId),
         )
 
     #=== motor control

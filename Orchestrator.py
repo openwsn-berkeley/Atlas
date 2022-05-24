@@ -41,10 +41,15 @@ class Orchestrator(Wireless.WirelessDevice):
             (
                 i,
                 {
-                   'x':                initX,
-                   'y':                initY,
-                   'heading':          0,
-                   'speed':            0,
+                    # current position of dotBot
+                   'x':                  initX,
+                   'y':                  initY,
+                    # current heading and speed
+                   'heading':            0,
+                   'speed':              0,
+                    # sequence numbers (to filter out duplicate commands and notifications)
+                   'seqNumCommand':      0,
+                   'seqNumNotification': None,
                 }
             ) for i in range(1, self.numRobots+1)
         ])
@@ -96,8 +101,9 @@ class Orchestrator(Wireless.WirelessDevice):
                 (
                     dotBotId,
                     {
-                        'heading': dotBot['heading'],
-                        'speed':   dotBot['speed'],
+                        'heading':        dotBot['heading'],
+                        'speed':          dotBot['speed'],
+                        'seqNumCommand':  dotBot['seqNumCommand'],
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -128,6 +134,11 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # shorthand
         dotBot       = self.dotBotsView[frame['source']]
+
+        # filter out duplicates
+        if frame['seqNumNotification'] == dotBot['seqNumNotification']:
+            return
+        dotBot['seqNumNotification'] = frame['seqNumNotification']
 
         # update DotBot's position
         (newX, newY) = u.computeCurrentPosition(
@@ -178,9 +189,11 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'dotbot {dotBot} is at ( {newX},{newY} ) ')
 
         # pick new speed and heading for dotBot
-        (heading, speed)  = self._pickNewMovement(frame['source'])
-        dotBot['heading'] = heading
-        dotBot['speed']   = speed
+        (heading, speed)          = self._pickNewMovement(frame['source'])
+        dotBot['heading']         = heading
+        dotBot['speed']           = speed
+        # update sequence number of movement instruction
+        dotBot['seqNumCommand'] += 1
 
     #=== Map
 
