@@ -152,13 +152,8 @@ function drawDotBots(data) {
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; })
             .attr("class", "dotBot")
-            .attr("fill",function(d,i){return dotBotcolors[i%10];})
+            .attr("fill",function(d,i) {return d.relay === true ? 'yellow' : dotBotcolors[i%10];})
             .attr("r", 6);
-
-    // dotBot is relay
-    if (data.dotBots.relay==true) {
-        $(".dotbot").css( { fill: 'yellow' } );
-    }
 
     // explored cells
     var exploredCellsExplored  = svg.selectAll(".exploredCellsExplored")
