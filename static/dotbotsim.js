@@ -154,51 +154,13 @@ function drawDotBots(data) {
             .attr("class", "dotBot")
             .attr("fill",function(d,i){return dotBotcolors[i%10];})
             .attr("r", 6);
-    
-    // discomapcomplete
-    if (data.discomap.complete==true) {
-        $(".discomapline").css( { stroke: 'green' } );
-    } else {
-        $(".discomapline").css( { stroke: 'red' } );
-    }
-    
-    // discomapdots
-    var discomapdots = svg.selectAll(".discomapdot")
-        .data(data.discomap.dots);
-    discomapdots
-        .attr("cx", function(d) { return scaleFactor*d[0]; })
-        .attr("cy", function(d) { return scaleFactor*d[1]; });
-    discomapdots
-        .enter().append("circle")
-            .attr("cx", function(d) { return scaleFactor*d[0]; })
-            .attr("cy", function(d) { return scaleFactor*d[1]; })
-            .attr("class", "discomapdot")
-            .attr("r", 2);
-    discomapdots
-        .exit()
-            .remove();
-    
-    // discomaplines
-    var discomaplines  = svg.selectAll(".discomapline")
-        .data(data.discomap.lines);
-    discomaplines
-        .attr("x1", function(d) { return scaleFactor*d[0]; })
-        .attr("y1", function(d) { return scaleFactor*d[1]; })
-        .attr("x2", function(d) { return scaleFactor*d[2]; })
-        .attr("y2", function(d) { return scaleFactor*d[3]; });
-    discomaplines
-        .enter().append("line")
-            .attr("x1", function(d) { return scaleFactor*d[0]; })
-            .attr("y1", function(d) { return scaleFactor*d[1]; })
-            .attr("x2", function(d) { return scaleFactor*d[2]; })
-            .attr("y2", function(d) { return scaleFactor*d[3]; })
-            .attr("class", "discomapline");
-    discomaplines
-        .exit()
-            .remove();
-    
-    // explored cells
 
+    // dotBot is relay
+    if (data.dotBots.relay==true) {
+        $(".dotbot").css( { fill: 'yellow' } );
+    }
+
+    // explored cells
     var exploredCellsExplored  = svg.selectAll(".exploredCellsExplored")
         .data(data.exploredCells.cellsExplored);
     exploredCellsExplored

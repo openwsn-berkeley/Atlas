@@ -106,7 +106,9 @@ class AtlasUI(object):
                     'y': y,
                     'next_bump_x': next_bump_x,
                     'next_bump_y': next_bump_y,
+                    'relay':       self.orchestrator.dotBotsView[dotBot.dotBotId]['relay']
                 }]
+
             # orchestratorview_x,orchestratorview_y
             for (db,orchestratorview) in zip(returnValDotBots,orchestratorView['dotBotpositions']):
                 db['orchestratorview_x'] = orchestratorview['x']
@@ -116,13 +118,12 @@ class AtlasUI(object):
                 'mode':                self.simEngine.mode(),
                 'simulatedTime':       self.simEngine.formatSimulatedTime(),
                 'dotBots':             returnValDotBots,
-                'discomap':            orchestratorView['discomap'],
                 'exploredCells':       orchestratorView['exploredCells'],
             }
             
         except AttributeError:
             returnVal = ''
-        
+
         return returnVal
      
     def _webhandle_frameforward_POST(self):
