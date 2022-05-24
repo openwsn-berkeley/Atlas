@@ -1,7 +1,10 @@
 # built-in
 import random
+import math
 # built-in
+# third-party
 # local
+import Utils as u
 
 # setup logging
 import logging.config
@@ -30,11 +33,46 @@ class Wireless(object):
 
     Note: Not thread-safe.
     '''
-    DFLT_PDR  = 0.8
+
+    DFLT_PDR           = 1
+
+    TWO_DOT_FOUR_GHZ   = 2400000000    # Hz
+    SPEED_OF_LIGHT     = 299792458     # m/s
+
+    # RSSI and PDR relationship obtained by experiment; dataset was available
+    # at the link shown below:
+    # http://wsn.eecs.berkeley.edu/connectivity/?dataset=dust
+    RSSI_PDR_TABLE     = {
+        -97: 0.0000,  # this value is not from experiment
+        -96: 0.1494,
+        -95: 0.2340,
+        -94: 0.4071,
+        # <-- 50% PDR is here, at RSSI=-93.6
+        -93: 0.6359,
+        -92: 0.6866,
+        -91: 0.7476,
+        -90: 0.8603,
+        -89: 0.8702,
+        -88: 0.9324,
+        -87: 0.9427,
+        -86: 0.9562,
+        -85: 0.9611,
+        -84: 0.9739,
+        -83: 0.9745,
+        -82: 0.9844,
+        -81: 0.9854,
+        -80: 0.9903,
+        -79: 1.0000,  # this value is not from experiment
+    }
+
+    TX_POWER                = 0
+    ANTENNA_GAIN            = 0   # TX & RX
+
+    PISTER_HACK_LOWER_SHIFT = 40  # dB
 
     # singleton pattern
-    _instance = None
-    _init     = False
+    _instance        = None
+    _init            = False
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -68,9 +106,68 @@ class Wireless(object):
 
     def transmit(self, sender, frame):
         for receiver in self.devices:
+
             if receiver == sender:
                 continue  # transmitter doesn't receive
-            if random.uniform(0,1) < self.DFLT_PDR:
+
+            assert sender != receiver
+            sender_pos     = sender.computeCurrentPosition()
+            receiver_pos   = receiver.computeCurrentPosition()
+
+            pdr            = self._computePdrPisterHack(sender_pos, receiver_pos)
+            log.debug(f'PDR between {sender} and {receiver} is {pdr}')
+
+            if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
 
     # ======================== private =========================================
+
+    def _computePdrPisterHack(self, sender_pos, receiver_pos):
+        '''
+        Pister Hack model for PDR calculation based on distance/ signal attenuation
+        '''
+
+        distance        = u.distance(sender_pos, receiver_pos)
+
+        shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+        rssi        = self._friisModel(distance) - shift_value
+        pdr         = self._rssi_to_pdr(rssi)
+
+        return pdr
+
+    def _friisModel(self, distance):
+
+        # sqrt and inverse of the free space path loss (fspl)
+        free_space_path_loss = (
+                self.SPEED_OF_LIGHT / (4 * math.pi * distance * self.TWO_DOT_FOUR_GHZ)
+        )
+
+        # simple friis equation in Pr = Pt + Gt + Gr + 20log10(free_space_path_loss)
+        rssi = (
+                self.TX_POWER     +
+                self.ANTENNA_GAIN +  # tx
+                self.ANTENNA_GAIN +  # rx
+                (20 * math.log10(free_space_path_loss))
+        )
+
+        return rssi
+
+    def _rssi_to_pdr(self, rssi):
+
+        if rssi < min(self.RSSI_PDR_TABLE.keys()):
+            pdr = 0.0
+        elif rssi > max(self.RSSI_PDR_TABLE.keys()):
+            pdr = 1.0
+        else:
+            floor_rssi = int(math.floor(rssi))
+            pdr_low    = self.RSSI_PDR_TABLE[floor_rssi]
+            pdr_high   = self.RSSI_PDR_TABLE[floor_rssi + 1]
+            # linear interpolation
+            pdr        = (pdr_high - pdr_low) * (rssi - float(floor_rssi)) + pdr_low
+
+        assert pdr >= 0.0
+        assert pdr <= 1.0
+
+        return pdr
+
+
