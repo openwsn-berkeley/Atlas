@@ -195,6 +195,12 @@ class Orchestrator(Wireless.WirelessDevice):
         # update sequence number of movement instruction
         dotBot['seqNumCommand'] += 1
 
+    def computeCurrentPosition(self):
+        '''
+        for wireless calculations of PDR
+        '''
+        return (self.initX, self.initY)
+
     #=== Map
 
     def _computeCellsExplored(self, startX, startY, stopX, stopY):
