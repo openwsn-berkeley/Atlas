@@ -127,7 +127,7 @@ class Wireless(object):
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
 
-        distance        = u.distance(sender_pos, receiver_pos)
+        distance    = u.distance(sender_pos, receiver_pos)
 
         shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
         rssi        = self._friisModel(distance) - shift_value
