@@ -11,7 +11,7 @@ EXPECTEDINOUT = [
     {
         'in': {
             'sender_pos':     (0.00, 0.00),
-            'receiver_pos':   (0.50, 0.50),
+            'receiver_pos':   (0.00, 0.50),
         },
 
         'out': 1.00
@@ -21,7 +21,7 @@ EXPECTEDINOUT = [
     {
         'in': {
             'sender_pos':   (   0.00,    0.00),
-            'receiver_pos': (1000.00, 1000.00),
+            'receiver_pos': (   0.00, 1000.00),
         },
 
         'out': 0.00
@@ -33,8 +33,8 @@ def expectedInOut(request):
     return request.param
 
 RANDOMPOSITIONS = [{
-    'sender_pos':   (random.uniform(0.00,1000.00), random.uniform(0.00,1000.00)),
-    'receiver_pos': (random.uniform(0.00,1000.00), random.uniform(0.00,1000.00)),
+    'sender_pos':   (random.uniform(0.00, 1000.00), random.uniform(0.00, 1000.00)),
+    'receiver_pos': (random.uniform(0.00, 1000.00), random.uniform(0.00, 1000.00)),
     }
     for i in range(1000)
 ]

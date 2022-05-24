@@ -110,28 +110,17 @@ class Wireless(object):
             if receiver == sender:
                 continue  # transmitter doesn't receive
 
-            pdr = self._getPDR(sender, receiver)
+            assert sender != receiver
+            sender_pos = sender.computeCurrentPosition()
+            receiver_pos = receiver.computeCurrentPosition()
+
+            pdr = self._computePdrPisterHack(sender_pos, receiver_pos)
             log.debug(f'PDR between {sender} and {receiver} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
 
     # ======================== private =========================================
-    def _getPDR(self, sender, receiver):
-
-        assert sender != receiver
-
-        sender_pos     = sender.computeCurrentPosition()
-        receiver_pos   = receiver.computeCurrentPosition()
-
-        distance       = u.distance(sender_pos, receiver_pos)
-
-        if distance == 0:
-            returnVal  = 1
-        else:
-            returnVal  = self._computePdrPisterHack(sender_pos, receiver_pos)
-
-        return returnVal
 
     def _computePdrPisterHack(self, sender_pos, receiver_pos):
         '''
@@ -140,15 +129,11 @@ class Wireless(object):
 
         distance        = u.distance(sender_pos, receiver_pos)
 
-        if distance == 0:
-            returnVal   = 1
-        else:
-            shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
-            rssi        = self._friisModel(distance) - shift_value
-            pdr         = self._rssi_to_pdr(rssi)
-            returnVal   = pdr
+        shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+        rssi        = self._friisModel(distance) - shift_value
+        pdr         = self._rssi_to_pdr(rssi)
 
-        return returnVal
+        return pdr
 
     def _friisModel(self, distance):
 
@@ -169,12 +154,9 @@ class Wireless(object):
 
     def _rssi_to_pdr(self, rssi):
 
-        minRssi = min(self.RSSI_PDR_TABLE.keys())
-        maxRssi = max(self.RSSI_PDR_TABLE.keys())
-
-        if rssi < minRssi:
+        if rssi < min(self.RSSI_PDR_TABLE.keys()):
             pdr = 0.0
-        elif rssi > maxRssi:
+        elif rssi > max(self.RSSI_PDR_TABLE.keys()):
             pdr = 1.0
         else:
             floor_rssi = int(math.floor(rssi))
