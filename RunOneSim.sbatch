@@ -1,8 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=Atlas                         # Job name
-#SBATCH --mail-type=ALL                          # Mail events (NONE, BEGIN, END, FAIL, ALL)
-#SBATCH --mail-user=razane.abu-aisheh@inria.fr   # Where to send mail
-#SBATCH --output=output%A_%a.log                 # Standard output and error log
+#SBATCH --job-name=Atlas                          # Job name
+#SBATCH --mail-type=FAIL                          # Mail events (NONE, BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=razane.abu-aisheh@inria.fr    # Where to send mail
+#SBATCH --output=output%A_%a.log                  # Standard output and error log
+#SBATCH --partition=gpu                           # partition of nodes used (cpu_devel, cpu_homogen,gpu)
 
 # If you use conda
 source /home/$USER/.bashrc
