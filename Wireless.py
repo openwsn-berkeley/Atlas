@@ -111,10 +111,10 @@ class Wireless(object):
                 continue  # transmitter doesn't receive
 
             assert sender != receiver
-            sender_pos = sender.computeCurrentPosition()
-            receiver_pos = receiver.computeCurrentPosition()
+            sender_pos     = sender.computeCurrentPosition()
+            receiver_pos   = receiver.computeCurrentPosition()
 
-            pdr = self._computePdrPisterHack(sender_pos, receiver_pos)
+            pdr            = self._computePdrPisterHack(sender_pos, receiver_pos)
             log.debug(f'PDR between {sender} and {receiver} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
