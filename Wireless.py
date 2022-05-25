@@ -6,6 +6,7 @@ import math
 import numpy as np
 # local
 import Utils as u
+import DataCollector
 
 # setup logging
 import logging.config
@@ -89,6 +90,7 @@ class Wireless(object):
         self._init = True
         
         # local variables
+        self.dataCollector  = DataCollector.DataCollector()
         self.devices        = []
         self.lastRelays     = []
         self.lastTree       = None
@@ -186,7 +188,7 @@ class Wireless(object):
         # check which devices are relay nodes
         relays = []
         for device in self.devices[0:-1]:
-            if device.relay == True:
+            if device.isRelay == True:
                 relays += [device]
 
         # if no relays yet, get PDR through Pister-Hack
@@ -214,6 +216,8 @@ class Wireless(object):
         # store current relays and last tree
         self.lastRelays = relays
         self.lastTree   = tree
+
+        self.dataCollector.collect({"type": "DotBot Data", "data": {"PDR": sp, "dotBotId": movingNode.dotBotId, "isRelay": movingNode.isRelay}})
 
         return sp
 
@@ -252,11 +256,10 @@ class Wireless(object):
 
         if nodes[1:-1] != self.lastRelays:
             # current relays are not the same as last relays
-            (node_pdrs, self.edge_node_pdrs)  = self._recomputeAllPDRs(tree, movingNode)
+            (node_pdrs, self.edge_node_pdrs)  = self._recomputeAllPDRs(tree)
             self.last_pdrs                    = node_pdrs
         else:
             node_pdrs = self._updateNodesPDR(
-                tree           = tree,
                 last_pdrs      = self.last_pdrs,
                 movingNode     = nodes[-1],
                 edge_node_pdrs = self.edge_node_pdrs
@@ -272,7 +275,7 @@ class Wireless(object):
 
         return final_pdrs[str(movingNode)]  # overall PDR of moving node through CT
 
-    def _updateNodesPDR(self, tree, last_pdrs, movingNode, edge_node_pdrs):
+    def _updateNodesPDR(self, last_pdrs, movingNode, edge_node_pdrs):
         # for every edge node, find pdr with moving node then multiply by edge connecting node pdr
         # remove the final entry from node pdrs and replace with new entry for this moving node
         # the finding success probability will be done in the same way
@@ -287,7 +290,7 @@ class Wireless(object):
 
         return node_pdrs
 
-    def _recomputeAllPDRs(self, tree, movingNode):
+    def _recomputeAllPDRs(self, tree):
 
         # root is first link in first branch of tree
         root       = tree[0][0]

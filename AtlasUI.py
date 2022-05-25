@@ -106,7 +106,7 @@ class AtlasUI(object):
                     'y': y,
                     'next_bump_x': next_bump_x,
                     'next_bump_y': next_bump_y,
-                    'relay':       dotBot.relay
+                    'isRelay':     dotBot.isRelay
                 }]
 
             # orchestratorview_x,orchestratorview_y

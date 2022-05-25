@@ -61,5 +61,14 @@ def test_computePdrPisterHackRandom(randomPositions):
 
     wireless = Wireless.Wireless()
 
-    assert 0 <= wireless._computePdrPisterHack(*randomPositions.values()) <= 1
+    # friis pdr
+    wireless.PISTER_HACK_LOWER_SHIFT = 0
+    pdr_friis = wireless._computePdrPisterHack(*randomPositions.values())
+
+    # pister hack pdr
+    wireless.PISTER_HACK_LOWER_SHIFT = 40
+    pdr_pisterHack = wireless._computePdrPisterHack(*randomPositions.values())
+
+    assert 0 <= pdr_pisterHack <= 1
+    assert pdr_pisterHack <= pdr_friis
 

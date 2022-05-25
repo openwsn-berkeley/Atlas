@@ -51,7 +51,7 @@ class Orchestrator(Wireless.WirelessDevice):
                    'seqNumCommand':      0,
                    'seqNumNotification': None,
                     # if dotBot is relay or not
-                   'relay':              False
+                   'isRelay':            False
                 }
             ) for i in range(1, self.numRobots+1)
         ])
@@ -106,7 +106,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         'heading':        dotBot['heading'],
                         'speed':          dotBot['speed'],
                         'seqNumCommand':  dotBot['seqNumCommand'],
-                        'relay':          dotBot['relay']
+                        'isRelay':        dotBot['isRelay']
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -198,7 +198,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
         # set relay status
-        dotBot['relay']           = True if frame['source'] in [1,3,5] else False
+        dotBot['isRelay']         = True if frame['source'] in [1,5] else False  # temporary
 
     def computeCurrentPosition(self):
         '''
@@ -362,7 +362,7 @@ class Orchestrator(Wireless.WirelessDevice):
             {
                 'x':         dotBot['x'],
                 'y':         dotBot['y'],
-                'relay':     dotBot['relay'],
+                'isRelay':   dotBot['isRelay'],
             } for dotBotId, dotBot in self.dotBotsView.items()
         ]
         return returnVal
