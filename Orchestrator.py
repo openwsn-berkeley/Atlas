@@ -198,7 +198,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
         # set relay status
-        dotBot['relay']           = random.choice([True, False])
+        dotBot['relay']           = True if frame['source'] in [1,3,5] else False
 
     def computeCurrentPosition(self):
         '''
