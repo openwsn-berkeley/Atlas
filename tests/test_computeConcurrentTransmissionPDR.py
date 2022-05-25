@@ -44,12 +44,12 @@ def test_concurrentTransmission_addingRelays():
     pdr_no_relay     = wireless._computeConcurrentTransmissionPDR(dotBots[0], dotBots[3])
     assert round(pdr_no_relay, 2)  == 0.86
 
-    dotBots[1].relay = True
+    dotBots[1].isRelay = True
 
     pdr_one_relay    = wireless._computeConcurrentTransmissionPDR(dotBots[0], dotBots[3])
     assert round(pdr_one_relay, 2) == 0.99
 
-    dotBots[2].relay = True
+    dotBots[2].isRelay = True
 
     pdr_two_relays   = wireless._computeConcurrentTransmissionPDR(dotBots[0], dotBots[3])
     assert round(pdr_two_relays, 2) == 1.00
@@ -91,8 +91,8 @@ def test_concurrentTransmission_differentDistances():
 
     pdr_no_relay     = wireless._computeConcurrentTransmissionPDR(dotBots[0], dotBots[3])
 
-    dotBots[1].relay = True
-    dotBots[2].relay = True
+    dotBots[1].isRelay = True
+    dotBots[2].isRelay = True
 
     pdr_two_relays   = wireless._computeConcurrentTransmissionPDR(dotBots[0], dotBots[3])
 
