@@ -152,7 +152,7 @@ function drawDotBots(data) {
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; })
             .attr("class", "dotBot")
-            .attr("fill",function(d,i) {return d.relay === true ? 'yellow' : dotBotcolors[i%10];})
+            .attr("fill",function(d,i) {return d.isRelay === true ? 'yellow' : dotBotcolors[i%10];})
             .attr("r", 6);
 
     // explored cells
