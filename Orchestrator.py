@@ -51,7 +51,9 @@ class Orchestrator(Wireless.WirelessDevice):
                    'seqNumCommand':      0,
                    'seqNumNotification': None,
                     # if dotBot is relay or not
-                   'isRelay':            False
+                   'isRelay':            False,
+                    # duration of movement until robot stops
+                   'timeout':            None
                 }
             ) for i in range(1, self.numRobots+1)
         ])
@@ -106,7 +108,8 @@ class Orchestrator(Wireless.WirelessDevice):
                         'heading':        dotBot['heading'],
                         'speed':          dotBot['speed'],
                         'seqNumCommand':  dotBot['seqNumCommand'],
-                        'isRelay':        dotBot['isRelay']
+                        'isRelay':        dotBot['isRelay'],
+                        'timeout':        dotBot['timeout']
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -156,8 +159,8 @@ class Orchestrator(Wireless.WirelessDevice):
         cellsExplored          = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
         self.cellsExplored    += cellsExplored['cellsExplored']
 
-        # update obstacle cells
-        if cellsExplored['nextCell']:
+        # update obstacle cells if dotBot has bumped
+        if cellsExplored['nextCell'] and frame['bumped']:
             self.cellsObstacle  += [cellsExplored['nextCell']]
 
         # remove explored frontiers
@@ -197,8 +200,10 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['speed']           = speed
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
-        # set relay status
-        dotBot['isRelay']         = True if frame['source'] in [1,5] else False  # temporary
+        # set relay status (temporary)
+        dotBot['isRelay']         = True if frame['source'] in [1,5] else False
+        # set timeout (temporary)
+        dotBot['timeout']         = 2
 
     def computeCurrentPosition(self):
         '''
