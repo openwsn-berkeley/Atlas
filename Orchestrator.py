@@ -121,16 +121,6 @@ class Orchestrator(Wireless.WirelessDevice):
             sender = self,
         )
 
-    def _pickNewMovement(self, dotBotId):
-        '''
-        modifies the movement in dotBotsview
-        '''
-
-        heading = 360 * random.random()
-        speed   = 1
-
-        return (heading, speed)
-
     def receive(self,frame):
         '''
         Notification received from a DotBot, indicating it has just bumped
@@ -194,16 +184,23 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['y']       = newY
         log.debug(f'dotbot {dotBot} is at ( {newX},{newY} ) ')
 
-        # pick new speed and heading for dotBot
+        # select next cell to explore
+        targetCell        = self._selectCellToExplore()
+
+        # find path to target cell
+        path = self._computePathToTarget(self._xy2cell(newX, newY), targetCell)
+
+        # set new speed and heading and timeout for dotBot
         (heading, speed)          = self._pickNewMovement(frame['source'])
         dotBot['heading']         = heading
         dotBot['speed']           = speed
+        dotBot['timeout']         = 2
+
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
+
         # set relay status (temporary)
         dotBot['isRelay']         = True if frame['source'] in [1,5] else False
-        # set timeout (temporary)
-        dotBot['timeout']         = 2
 
     def computeCurrentPosition(self):
         '''
@@ -211,8 +208,40 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         return (self.initX, self.initY)
 
-    #=== Map
+    #=== UI
 
+    def getEvaluatedPositions(self):
+        '''
+        Retrieve the evaluated positions of each DotBot.
+        '''
+        returnVal = [
+            {
+                'x':         dotBot['x'],
+                'y':         dotBot['y'],
+                'isRelay':   dotBot['isRelay'],
+            } for dotBotId, dotBot in self.dotBotsView.items()
+        ]
+        return returnVal
+
+    def getView(self):
+        '''
+        Retrieves the approximate location of the DotBot for visualization.
+        '''
+
+        returnVal = {
+            'dotBotpositions':  self.getEvaluatedPositions(),
+            'exploredCells':   {
+                'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
+                'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
+                'cellsFrontier': [self._cell2SvgRect(*c) for c in self.cellsFrontier],
+            },
+        }
+
+        return returnVal
+    
+    #======================== private =========================================
+
+    #===== Map
     def _computeCellsExplored(self, startX, startY, stopX, stopY):
         '''
         find cells passed through on trajectory between points a and b
@@ -357,39 +386,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
         return returnVal
 
-    #=== UI
-
-    def getEvaluatedPositions(self):
-        '''
-        Retrieve the evaluated positions of each DotBot.
-        '''
-        returnVal = [
-            {
-                'x':         dotBot['x'],
-                'y':         dotBot['y'],
-                'isRelay':   dotBot['isRelay'],
-            } for dotBotId, dotBot in self.dotBotsView.items()
-        ]
-        return returnVal
-
-    def getView(self):
-        '''
-        Retrieves the approximate location of the DotBot for visualization.
-        '''
-
-        returnVal = {
-            'dotBotpositions':  self.getEvaluatedPositions(),
-            'exploredCells':   {
-                'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
-                'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
-                'cellsFrontier': [self._cell2SvgRect(*c) for c in self.cellsFrontier],
-            },
-        }
-
-        return returnVal
-    
-    #======================== private =========================================
-
     def _xy2cell(self, x, y):
 
         # convert x,y coordinates to cell (top left coordinate)
@@ -493,3 +489,87 @@ class Orchestrator(Wireless.WirelessDevice):
                         break
 
         return returnVal
+
+    # === Exploration
+    def _selectCellToExplore(self):
+
+        # find closest frontier to initial position
+        distances = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in self.cellsFrontier]
+        distances = sorted(distances, key=lambda e: e[1])
+
+        return distances[0][0]
+
+    # === Navigation
+    def _computePathToTarget(self, startCell, targetCell):
+
+        openCells   = []
+        openCells  += [{'parent': None, 'cell': startCell, 'gCost': 0, 'hCost': 0, 'fCost': 0}]
+        closedCells = []
+        path        = []
+
+        while openCells:
+
+            # find open cell with lowest F cost
+            openCells   = sorted(openCells, key=lambda item: item['fCost'])
+
+            currentCell = openCells.pop(0)
+
+            if currentCell is None:
+                log.warning("NO PATH!")
+                return
+
+            closedCells += [currentCell]
+
+            # backtrack direct path if we have reached target
+
+            if currentCell['cell'] == targetCell:
+
+                path = []
+
+                while currentCell['cell'] != startCell:
+
+                    path += [currentCell['cell']]
+                    currentCell = currentCell['parent']
+
+                path.reverse()
+                break
+
+            for childCell in self._computeCellNeighbours(*currentCell['cell']):
+                gCost = currentCell['gCost'] + 1
+                hCost = u.distance(childCell, targetCell)
+
+                # skip cell if it is an obstacle cell
+                if currentCell['cell'] in self.cellsObstacle:
+                    continue
+
+                # don't consider cell if same cell with lower fcost is already in open or closed cells
+                cellDataInOpenCells   = [cell['fCost'] for cell in openCells   if cell['cell'] == childCell]
+                cellDataInClosedCells = [cell['fCost'] for cell in closedCells if cell['cell'] == childCell]
+
+                if (
+                    (cellDataInOpenCells   and cellDataInOpenCells[0]   <= gCost + hCost) or
+                    (cellDataInClosedCells and cellDataInClosedCells[0] <= gCost + hCost)
+                ):
+                    continue
+
+                openCells += [
+                    {
+                    'parent': currentCell,
+                    'cell':   childCell,
+                    'gCost':  gCost,
+                    'hCost':  hCost,
+                    'fCost':  gCost + hCost
+                    }
+                ]
+
+        return path
+
+    def _pickNewMovement(self, dotBotId):
+        '''
+        modifies the movement in dotBotsview
+        '''
+
+        heading = 360 * random.random()
+        speed   = 1
+
+        return (heading, speed)

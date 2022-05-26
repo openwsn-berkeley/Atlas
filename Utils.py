@@ -55,4 +55,3 @@ def setLoggerUname(uname):
     )
     logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
-
