@@ -561,8 +561,43 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         modifies the movement in dotBotsview
         '''
-
         heading = 360 * random.random()
         speed   = 1
 
         return (heading, speed)
+
+    def _computeHeadingAndTimeout(self, path, dotBotId):
+
+        assert path
+        distToCellCenter      = self.MINFEATURESIZE/4        # value used to find coordinate of cell center
+        dotBot                = self.dotBotsView[dotBotId]
+        (currentX, currentY)  = (dotBot['x']+distToCellCenter, dotBot['y']+distToCellCenter)
+        (nextX,    nextY)     = (path[-1][0]+distToCellCenter, path[-1][1]+distToCellCenter)
+        heading               = (math.degrees(math.atan2(nextY - currentY, nextX - currentX)) + 90) % 360
+        distance              = u.distance((currentX,currentY), (nextX, nextY))
+
+        # check if moving directly to final target is viable
+        directTrajectoryCells = self._computeCellsExplored(currentX, currentY, nextX, nextY)
+        if [cell for cell in directTrajectoryCells['cellsExplored'] if cell in self.cellsObstacle]:
+            (nextX, nextY) = (path[0][0] + distToCellCenter, path[0][1] + distToCellCenter)
+            heading  = (math.degrees(math.atan2(nextY - currentY, nextX - currentX)) + 90) % 360
+            distance = 0
+            for idx, (cx,cy) in enumerate(path):
+                (cx,    cy)     = (cx+distToCellCenter, cy+distToCellCenter)
+                (nextX, nextY)  = (path[idx+1][0]+distToCellCenter, path[idx+1][1]+distToCellCenter)
+                nextHeading     = (math.degrees(math.atan2(nextY - cy, nextX - cx)) + 90) % 360
+                distance       += u.distance((cx, cy), (nextX, nextY))
+                if nextHeading != heading:
+                    break
+
+        else:
+            (nextX, nextY) = (path[-1][0] + distToCellCenter, path[-1][1] + distToCellCenter)
+            heading        = (math.degrees(math.atan2(nextY - currentY, nextX - currentX)) + 90) % 360
+            distance       = u.distance((currentX, currentY), (nextX, nextY))
+
+        speed   = 1
+        timeout = distance/speed
+
+        return (heading, speed, timeout)
+
+
