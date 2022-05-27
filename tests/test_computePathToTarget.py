@@ -1,6 +1,6 @@
 import Orchestrator
 import pytest
-
+import random
 # ============================ fixtures ==============================
 
 EXPECTEDINOUT = [
@@ -27,7 +27,6 @@ def expectedInOut(request):
     return request.param
 
 # ============================ tests =================================
-
 def test_computePathToTargetNoObstacles(expectedInOut):
     '''
     testing finding path between two cells using A* algorithm

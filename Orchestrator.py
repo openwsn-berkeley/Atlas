@@ -503,16 +503,15 @@ class Orchestrator(Wireless.WirelessDevice):
     def _computePathToTarget(self, startCell, targetCell):
 
         openCells   = []
-        openCells  += [{'parent': None, 'cell': startCell, 'gCost': 0, 'hCost': 0, 'fCost': 0}]
+        openCells  += [u.AstarNode(startCell, parent=None)]
         closedCells = []
         path        = []
 
         while openCells:
 
             # find open cell with lowest F cost
-            openCells   = sorted(openCells, key=lambda item: item['fCost'])
-
-            currentCell = openCells.pop(0)
+            currentCell   = min(openCells)
+            openCells.remove(currentCell)
 
             if currentCell is None:
                 log.warning("NO PATH!")
@@ -522,45 +521,39 @@ class Orchestrator(Wireless.WirelessDevice):
 
             # backtrack direct path if we have reached target
 
-            if currentCell['cell'] == targetCell:
+            if currentCell.cellPos == targetCell:
 
-                path = []
+                path     = []
 
-                while currentCell['cell'] != startCell:
+                while currentCell.cellPos != startCell:
 
-                    path += [currentCell['cell']]
-                    currentCell = currentCell['parent']
+                    path       += [currentCell.cellPos]
+                    currentCell = currentCell.parent
 
                 path.reverse()
                 break
 
-            for childCell in self._computeCellNeighbours(*currentCell['cell']):
-                gCost = currentCell['gCost'] + 1
-                hCost = u.distance(childCell, targetCell)
+            for childCell in self._computeCellNeighbours(*currentCell.cellPos):
+                childCell = u.AstarNode(childCell, currentCell)
+                gCost     = currentCell.gCost + 1
+                hCost     = u.distance(childCell.cellPos, targetCell)
 
                 # skip cell if it is an obstacle cell
-                if currentCell['cell'] in self.cellsObstacle:
+                if childCell.cellPos in self.cellsObstacle:
                     continue
 
-                # don't consider cell if same cell with lower fcost is already in open or closed cells
-                cellDataInOpenCells   = [cell['fCost'] for cell in openCells   if cell['cell'] == childCell]
-                cellDataInClosedCells = [cell['fCost'] for cell in closedCells if cell['cell'] == childCell]
-
                 if (
-                    (cellDataInOpenCells   and cellDataInOpenCells[0]   <= gCost + hCost) or
-                    (cellDataInClosedCells and cellDataInClosedCells[0] <= gCost + hCost)
+                    (childCell.cellPos in [cell.cellPos for cell in openCells]  or
+                    childCell.cellPos  in [cell.cellPos for cell in openCells]) and
+                    (childCell.fCost <= gCost + hCost)
                 ):
                     continue
 
-                openCells += [
-                    {
-                    'parent': currentCell,
-                    'cell':   childCell,
-                    'gCost':  gCost,
-                    'hCost':  hCost,
-                    'fCost':  gCost + hCost
-                    }
-                ]
+                childCell.gCost = gCost
+                childCell.hCost = hCost
+                childCell.fCost = gCost + hCost
+
+                openCells += [childCell]
 
         return path
 
