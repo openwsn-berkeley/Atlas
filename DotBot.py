@@ -113,6 +113,7 @@ class DotBot(Wireless.WirelessDevice):
         if stopTime < self.nextBumpTime:
             # schedule movement timeout
             self.simEngine.schedule(stopTime, self._movementTimeout, tag=f'{self.dotBotId}_movementTimeout')
+            log.debug(f'next stop for {self.dotBotId} scheduled for {self.simEngine.currentTime()+stopTime}')
         else:
             # schedule the bump event
             self.simEngine.schedule(self.nextBumpTime, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
@@ -161,7 +162,8 @@ class DotBot(Wireless.WirelessDevice):
 
         # update my position
         (self.x, self.y) = self.computeCurrentPosition()
-
+        log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
+        log.debug(f'DotBot {self.dotBotId} expected position at ({self.nextBumpX}, {self.nextBumpY}) at {self.nextBumpTime}')
         assert self.x == self.nextBumpX
         assert self.y == self.nextBumpY
 
@@ -364,8 +366,8 @@ class DotBot(Wireless.WirelessDevice):
             assert bumpX  >= 0 and bumpY >= 0
 
             # round
-            bumpX          = round(bumpX, 3)
-            bumpY          = round(bumpY, 3)
+            bumpX          = round(bumpX, 5)
+            bumpY          = round(bumpY, 5)
         else:
             log.error("NO INTERSECT FOUND")
 

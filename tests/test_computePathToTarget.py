@@ -58,12 +58,15 @@ def test_headingCalculationNoObstacles():
     orchestrator.MINFEATURESIZE = 1
 
     path = [(1,1), (1.5, 1), (2,1), (2.5, 1.5)]
-    orchestrator.dotBotsView[1]['x'] = 0.5
-    orchestrator.dotBotsView[1]['y'] = 0.5
+
+    orchestrator.dotBotsView['x'] = 0.5
+    orchestrator.dotBotsView['y'] = 0.5
+
     (heading, speed, timeout) = orchestrator._computeHeadingAndTimeout(path, 1)
+
     assert 0 <= heading <= 360
-    assert round(heading, 2) == 116.57
-    assert round(timeout, 2) == 2.24
+    assert round(heading, 2) == 113.2
+    assert round(timeout, 2) == 1.9
 
 def test_headingCalculationObstacles():
 
@@ -71,9 +74,11 @@ def test_headingCalculationObstacles():
     orchestrator.MINFEATURESIZE = 1
 
     path = [(1,1), (1.5, 0.5)]
-    orchestrator.dotBotsView[1]['x'] = 0.5
-    orchestrator.dotBotsView[1]['y'] = 0.5
+
     orchestrator.cellsObstacle += [(1, 0.5)]
+    orchestrator.dotBotsView['x'] = 0.5
+    orchestrator.dotBotsView['y'] = 0.5
+
     (heading, speed, timeout) = orchestrator._computeHeadingAndTimeout(path, 1)
 
     assert 0 <= heading <= 360
@@ -86,11 +91,13 @@ def test_headingCalculationWithTurn():
     orchestrator.MINFEATURESIZE = 1
 
     path = [(1.5, 1), (2,1), (2.5, 1.5), (3,1)]
-    orchestrator.dotBotsView[1]['x'] = 1
-    orchestrator.dotBotsView[1]['y'] = 1
+
     orchestrator.cellsObstacle += [(2.5, 1)]
+    orchestrator.dotBotsView['x'] = 1
+    orchestrator.dotBotsView['y'] = 1
+
     (heading, speed, timeout) = orchestrator._computeHeadingAndTimeout(path, 1)
     print(heading, speed, timeout)
     assert 0 <= heading <= 360
-    assert round(heading, 2) == 90
-    assert round(timeout, 2) == 1.21
+    assert round(heading, 2) == 108.43
+    assert round(timeout, 2) == 0.5
