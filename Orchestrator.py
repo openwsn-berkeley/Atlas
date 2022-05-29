@@ -55,7 +55,10 @@ class Orchestrator(Wireless.WirelessDevice):
                     # duration of movement until robot stops
                    'timeout':            None,
                     # if dotBot bumped last time it stopped
-                    'bumped':            False
+                    'bumped':            False,
+                    # frontier cell dotBot has been given to explore and path to it
+                    'targetCell':        None,
+                    'currentPath':       [],
                 }
             ) for i in range(1, self.numRobots+1)
         ])
@@ -113,7 +116,6 @@ class Orchestrator(Wireless.WirelessDevice):
                         'seqNumCommand':  dotBot['seqNumCommand'],
                         'isRelay':        dotBot['isRelay'],
                         'timeout':        dotBot['timeout'],
-                        'bumped':         dotBot['bumped']
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -190,21 +192,34 @@ class Orchestrator(Wireless.WirelessDevice):
 
         log.debug(f'dotbot {dotBot} is at ( {newX},{newY} ) ')
 
-        targetCell  = self._selectCellToExplore()
+        # assign dotBot a new target if it's previous target has been sucessfully explored
+        if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
+            targetCell           = self._selectCellToExplore()
+            dotBot['targetCell'] = targetCell
+        else:
+            targetCell           = dotBot['targetCell']
+
         log.debug('target cell for {} is {}'.format(frame['source'], targetCell))
 
         # find path to target cell from last explored cell dotBot passed through before bumping
         # if dotBot was moving on border we cant find a path as A* depends on knowledge of exact
         # starting cell.
         if cellsExplored['cellsExplored']:
-            path = self._computePathToTarget(cellsExplored['cellsExplored'][-1], targetCell)
+            excludeDiagonalCells = True if frame['bumped'] else False
+            path = self._computePathToTarget(cellsExplored['cellsExplored'][-1], targetCell, True)
         else:
             path = []
 
         log.debug('path for {} is {}'.format(frame['source'], path))
 
         # set new speed and heading and timeout for dotBot
-        (heading, speed, timeout) = self._computeHeadingAndTimeout(path, frame['source'])
+        if path:
+            (heading, speed, timeout) = self._computeHeadingAndTimeout(path, frame['source'])
+        else:
+            # last dotBot movement was on cell borders, no information about cells
+            # move in random direction to move into a cell
+            (heading, speed, timeout) = (360*random.random(), 1, 0.5)
+
         log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
 
         dotBot['heading']         = heading
@@ -515,7 +530,7 @@ class Orchestrator(Wireless.WirelessDevice):
         return distances[0][0]
 
     # === Navigation
-    def _computePathToTarget(self, startCell, targetCell):
+    def _computePathToTarget(self, startCell, targetCell, excludeDiagonalCells=False):
 
         openCells   = []
         openCells  += [u.AstarNode(startCell, parent=None)]
@@ -548,7 +563,17 @@ class Orchestrator(Wireless.WirelessDevice):
                 path.reverse()
                 break
 
-            for childCell in self._computeCellNeighbours(*currentCell.cellPos):
+            if excludeDiagonalCells:
+                (cx, cy)       = currentCell.cellPos
+                cellSize       = self.MINFEATURESIZE/2
+                cellNeighbours = [
+                    (cx+cellSize, cy),          (cx-cellSize, cy),
+                    (cx,          cy-cellSize), (cx,          cy+cellSize),
+                ]
+            else:
+                cellNeighbours = self._computeCellNeighbours(*currentCell.cellPos)
+
+            for childCell in cellNeighbours:
                 childCell = u.AstarNode(childCell, currentCell)
                 gCost     = currentCell.gCost + 1
                 hCost     = u.distance(childCell.cellPos, targetCell)
@@ -573,48 +598,42 @@ class Orchestrator(Wireless.WirelessDevice):
         return path
 
     def _computeHeadingAndTimeout(self, path, dotBotId):
+
+        assert path
         log.debug(f'finding heading for path of {path}')
 
-        dotBot   = self.dotBotsView[dotBotId]
-
-        if dotBot['bumped'] == True:
-            return (360*random.random(), 1, 1)
-        (tx, ty) = path[-1] if len(path) > 1 else path[0]
-
+        dotBot                = self.dotBotsView[dotBotId]
         distToCellCenter      = self.MINFEATURESIZE/4        # value used to find coordinate of cell center
 
-        # check if moving directly to final target is viable otherwise move according to path
-        (currentX, currentY)  = (dotBot['x'], dotBot['y'])
-        (nextX,    nextY)     = (tx+distToCellCenter, ty+distToCellCenter)
-        directTrajectoryCells = self._computeCellsExplored(currentX, currentY, nextX, nextY)
+        # find initial heading and distance to reach first cell in path (to use as reference)
+        heading         = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
 
-        if [cell for cell in directTrajectoryCells['cellsExplored'] if cell in self.cellsObstacle] and len(path)>1:
+        # destination cell is either target (if no obstacles on path) or last cell before changing heading
+        destinationCell = (path[0][0]+distToCellCenter, path[0][1]+distToCellCenter)
 
-            # obstacle on direct trajectory to target, use path generated by A* instead
-            (nextX, nextY) = (path[0][0] + distToCellCenter, path[0][1] + distToCellCenter)
+        # compute distance dotBot will move along same trajectory until heading changes from initial one
+        for idx, (cx,cy) in enumerate(path):
 
-            # find initial heading and distance to reach first cell in path (to use as refrence)
-            heading  = (math.degrees(math.atan2(nextY - currentY, nextX - currentX)) + 90) % 360
-            distance = 0
+            if (cx, cy) == path[-1]:
+                # target is the only cell in the path
+                break
 
-            # compute distance dotBot will move along same trajectory until heading changes from initial one
-            for idx, (cx,cy) in enumerate(path):
-                (cx,    cy)     = (cx+distToCellCenter, cy+distToCellCenter)
-                (nextX, nextY)  = (path[idx+1][0]+distToCellCenter, path[idx+1][1]+distToCellCenter)
-                nextHeading     = (math.degrees(math.atan2(nextY - cy, nextX - cx)) + 90) % 360
-                distance       += u.distance((cx, cy), (nextX, nextY))
+            # find center of this cell and next to assure passing through it (for exploration)
+            (nextX, nextY)  = (path[idx+1][0], path[idx+1][1])
+            nextHeading     = (math.degrees(math.atan2(nextY - cy, nextX - cx)) + 90) % 360
 
-                if (
-                    nextHeading != heading or      # heading changes
-                    idx+1       == len(path)-1     # looped through entire path
-                ):
-                    break
-        else:
-            # direct trajectory from current cell to target cell is clear of any obstacles
-            # find heading and angle to go staright to target.
-            (nextX, nextY) = (tx + distToCellCenter, ty + distToCellCenter)
-            heading        = (math.degrees(math.atan2(nextY - currentY, nextX - currentX)) + 90) % 360
-            distance       = u.distance((currentX, currentY), (nextX, nextY))
+            if nextHeading != heading:
+                # heading changes
+                destinationCell = (cx + distToCellCenter, cy + distToCellCenter)
+                break
+
+        # find distance to destination cell from dotBot position
+        distance = u.distance((dotBot['x'], dotBot['y']), destinationCell)
+
+        # heading to get to destination cell center (to assure exploration and avoid border to border movement)
+        heading = (
+            math.degrees(math.atan2(destinationCell[1] - dotBot['y'], destinationCell[0] - dotBot['x'])) + 90
+            ) % 360
 
         # set speed
         speed   = 1
