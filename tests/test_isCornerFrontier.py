@@ -53,6 +53,14 @@ EXPECTEDINOUT = [
         },
         'out': True
     },
+
+    # two diagonal obstacles to the right, connected to one obstacle only
+    {
+        'in': {
+            'cell': (1.50, 5.00)
+        },
+        'out': False
+    },
 ]
 
 @pytest.fixture(params=EXPECTEDINOUT)
@@ -79,7 +87,7 @@ def test_isCornerFrontier(expectedInOut):
     ##..co#oe....##
     ##..o###.....##
     #oe..........##
-    #co############
+    #coc###########
     ###############
     '''
 
