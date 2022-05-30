@@ -190,37 +190,58 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['y']       = newY
         dotBot['bumped']  = frame['bumped']
 
-        log.debug(f'dotbot {dotBot} is at ( {newX},{newY} ) ')
-
         assert cellsExplored['cellsExplored']
 
-        # assign dotBot a new target if it's previous target has been sucessfully explored
+        # assign dotBot a new target if it's previous target has successfully been explored
+        # otherwise continue moving towards same target.
         if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
-            targetCell           = self._selectCellToExplore()
-            excludeDiagonalCells = True if frame['bumped'] == True else False
 
-            # find shortest path to target
-            path                  = self._computePathToTarget(cellsExplored['cellsExplored'][-1], targetCell, excludeDiagonalCells)
-            dotBot['currentPath'] = path
-            dotBot['targetCell']  = targetCell
+            # assign a new target cell (destination) to dotBot
+            targetCell               = self._selectCellToExplore(frame['source'])
+
+            # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
+            path                     = self._computePathToTarget(
+                startCell            = cellsExplored['cellsExplored'][-1],
+                targetCell           = targetCell,
+                excludeDiagonalCells = True if frame['bumped'] else False
+            )
+            log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
+
+            # store update target cell and path in dotBots view
+            dotBot['currentPath']    = path
+            dotBot['targetCell']     = targetCell
+
         else:
-            targetCell            = dotBot['targetCell']
+
+            # continue going towards same target cell
+            targetCell               = dotBot['targetCell']
+
             if frame['bumped']:
+                # dotBot bumped on way to target
 
-                # find path around obstacle (no diagonal cells)
-                path                  = self._computePathToTarget(cellsExplored['cellsExplored'][-1], targetCell, True)
+                # find a new path around obstacle (no diagonal cells)
+                path                     = self._computePathToTarget(
+                    startCell            = cellsExplored['cellsExplored'][-1],
+                    targetCell           = targetCell,
+                    excludeDiagonalCells = True
+                )
+                log.debug('new path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
+
+                # update path in dotbots view
                 dotBot['currentPath'] = path
+
             else:
-                currentCell           = self._xy2cell(newX, newY)
-                path                  = dotBot['currentPath'][dotBot['currentPath'].index(currentCell)+1:]
+                # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
+                # remove cells already traversed from path
+                path                  = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY))+1:]
+
+                # update path in dotbots view
                 dotBot['currentPath'] = path
 
-        log.debug('target cell for {} is {}'.format(frame['source'], targetCell))
-        log.debug('path for {} is {}'.format(frame['source'], path))
+                log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
 
         # set new speed and heading and timeout for dotBot
         (heading, speed, timeout) = self._computeHeadingAndTimeout(path, frame['source'])
-
         log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
 
         dotBot['heading']         = heading
@@ -230,7 +251,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
 
-        # set relay status (temporary)
+        # set relay status (temporary until relay algorithms are added!!)
         dotBot['isRelay']         = True if frame['source'] in [2] else False
 
     def computeCurrentPosition(self):
@@ -522,13 +543,21 @@ class Orchestrator(Wireless.WirelessDevice):
         return returnVal
 
     # === Exploration
-    def _selectCellToExplore(self):
+    def _selectCellToExplore(self, dotBotId):
 
-        # find closest frontier to initial position
-        distances = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in self.cellsFrontier]
-        distances = sorted(distances, key=lambda e: e[1])
+        dotBot = self.dotBotsView[dotBotId]
 
-        return distances[0][0]
+        # find closest frontiers to initial position
+        cellsAndDistancesToStart  = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in self.cellsFrontier]
+        cellsAndDistancesToStart  = sorted(cellsAndDistancesToStart, key=lambda e: e[1])
+        closestFrontiersToStart   = [cell for (cell, distance) in cellsAndDistancesToStart if distance==cellsAndDistancesToStart[0][1]]
+
+        # find closest frontier to robot
+        cellsAndDistancesToDotBot  = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in closestFrontiersToStart]
+        cellsAndDistancesToDotBot  = sorted(cellsAndDistancesToDotBot, key=lambda e: e[1])
+        closestFrontiersToDotBot   = [cell for (cell, distance) in cellsAndDistancesToDotBot if distance==cellsAndDistancesToDotBot[0][1]]
+
+        return random.choice(closestFrontiersToDotBot)
 
     # === Navigation
     def _computePathToTarget(self, startCell, targetCell, excludeDiagonalCells=False):
@@ -595,7 +624,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 childCell.fCost = gCost + hCost
 
                 openCells += [childCell]
-
+        log.debug(f'A* path from {startCell} to {targetCell} is {path}')
         return path
 
     def _computeHeadingAndTimeout(self, path, dotBotId):
