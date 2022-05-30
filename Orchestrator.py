@@ -449,7 +449,11 @@ class Orchestrator(Wireless.WirelessDevice):
             (cx, cy) = firstObstacle
 
             # check for second obstacle diagonal to the first one
-            for (nx, ny) in self._computeCellNeighbours(cx, cy):
+            for (nx, ny) in self._computeCellNeighbours(*cell):
+
+                if (nx, ny) == cell:
+                    # this obstacle is the first obstacle
+                    continue
 
                 if (nx, ny) not in self.cellsObstacle or nx == cx or ny == cy:
                     # cell not diagonal obstacle to first obstacle detected
@@ -462,6 +466,10 @@ class Orchestrator(Wireless.WirelessDevice):
                 secondObstacleCorners = set(self._computeCellCorners(nx, ny))
 
                 commonCorner = firstObstacleCorners.intersection(secondObstacleCorners)
+
+                if not commonCorner:
+                    continue
+                    
                 (ccx, ccy) = list(commonCorner)[0]
 
                 cellSize       = self.MINFEATURESIZE / 2
