@@ -95,7 +95,7 @@ class Wireless(object):
         self.lastRelays     = []
         self.lastTree       = None
         self.last_pdrs      = None
-        self.edge_node_pdrs = None
+        self.edge_nodePdrs = None
     # ======================== public ==========================================
 
     def indicateDevices(self, devices):
@@ -198,20 +198,13 @@ class Wireless(object):
                 receiver_pos = receiver.computeCurrentPosition()
              )
 
-        nodes = [rootNode] + relays + [movingNode]
+        nodes    = [rootNode] + relays + [movingNode]
 
-        if relays != self.lastRelays:
-            # update tree of nodes
-            tree = self._updateTree(
-                nodes    = nodes,
-                lastTree = self.lastTree,
-                newRelay = list(set(relays).difference(set(self.lastRelays)))[0]
-            )
-        else:
-            # use last tree since all nodes are the same
-            tree = self.lastTree
+        tree     = self._updateTree(nodes, self.lastTree) if relays != self.lastRelays else self.lastTree
 
-        sp = self._computeSuccessProbabilityCT(tree, nodes)
+        nodePdrs = self._getPDRs(tree, nodes)
+
+        sp       = self._computeSuccessProbabilityCT(nodePdrs, movingNode)
 
         # store current relays and last tree
         self.lastRelays = relays
@@ -221,55 +214,61 @@ class Wireless(object):
 
         return sp
 
-    def _updateTree(self,nodes, lastTree, newRelay):
+    def _updateTree(self,nodes, lastTree):
 
         rootNode   = nodes[0]
-        movingNode = nodes[-1]
 
         if lastTree:
-            currentTree = lastTree
+            branches_to_extend = [branch[:-1] for branch in lastTree]
+
         else:
             # add branch of direct connection between root node and moving node
-            currentTree = [[rootNode, movingNode]]
+            branches_to_extend = [[rootNode]]
 
         # if we already have a tree take all the same branches except for the last moving node
         # add the new relay and continue extending tree from there
         # then keep expanding each branch from new relay up to moving node
 
-        branches_to_extend = [branch[0:-1] + [newRelay] for branch in currentTree]
-
         idx = 0
+        currentTree = []
         while branches_to_extend:
+
             branch          = branches_to_extend[idx]
             extension_nodes = list(set(nodes).difference(set(branch)))
             for node in extension_nodes:
                 if node != nodes[-1]:
-                    branches_to_extend += [branch + [node]]
+                    if branch + [node] not in branches_to_extend:
+                        branches_to_extend += [branch + [node]]
+
                 else:
                     currentTree        += [branch + [node]]
+
                     branches_to_extend.remove(branch)
 
         return currentTree
 
-    def _computeSuccessProbabilityCT(self, tree, nodes):
-        movingNode = nodes[-1]
+    def _getPDRs(self, tree, nodes):
 
         if nodes[1:-1] != self.lastRelays:
             # current relays are not the same as last relays
-            (node_pdrs, self.edge_node_pdrs)  = self._recomputeAllPDRs(tree)
-            self.last_pdrs                    = node_pdrs
+            (nodePdrs, self.edge_node_pdrs)  = self._recomputeAllPDRs(tree)
+            self.last_pdrs                    = nodePdrs
         else:
-            node_pdrs = self._updateNodesPDR(
+            nodePdrs = self._updateNodesPDR(
                 last_pdrs      = self.last_pdrs,
                 movingNode     = nodes[-1],
                 edge_node_pdrs = self.edge_node_pdrs
             )
 
-        nodes = node_pdrs.keys()
+        return nodePdrs
+
+    def _computeSuccessProbabilityCT(self, nodePdrs, movingNode):
+
+        nodes = nodePdrs.keys()
         final_pdrs = {}
 
         for node in nodes:
-            failure_probability = round(np.prod([1 - node_pdr for node_pdr in list(set(node_pdrs[node]))]), 4)
+            failure_probability = round(np.prod([1 - node_pdr for node_pdr in list(set(nodePdrs[node]))]), 4)
             success_probability = 1 - failure_probability
             final_pdrs[node]    = success_probability
 
@@ -280,21 +279,21 @@ class Wireless(object):
         # remove the final entry from node pdrs and replace with new entry for this moving node
         # the finding success probability will be done in the same way
 
-        node_pdrs                  = last_pdrs
-        node_pdrs[str(movingNode)] = []
+        nodePdrs                  = last_pdrs
+        nodePdrs[str(movingNode)] = []
         for node in edge_node_pdrs:
             if node[0] == str(movingNode) or node[0] == movingNode:
                 continue
             link_pdr = self._computePdrPisterHack(node[0].computeCurrentPosition(),movingNode.computeCurrentPosition())
-            node_pdrs[str(movingNode)].append(link_pdr * node[1])
+            nodePdrs[str(movingNode)].append(link_pdr * node[1])
 
-        return node_pdrs
+        return nodePdrs
 
     def _recomputeAllPDRs(self, tree):
 
         # root is first link in first branch of tree
         root       = tree[0][0]
-        node_pdrs  = {root: [1]}
+        nodePdrs   = {root: [1]}
         edge_nodes = []
 
         # recompute PDR between all links in tree
@@ -311,12 +310,12 @@ class Wireless(object):
                     receiver_pos = branch[i+1].computeCurrentPosition()   # node in link closer to moving node
                 )
 
-                if str(branch[i+1]) not in node_pdrs.keys():
-                    node_pdrs[str(branch[i+1])] = []
+                if str(branch[i+1]) not in nodePdrs.keys():
+                    nodePdrs[str(branch[i+1])] = []
 
                 # node PDR = link PDR * PDR of previous node (node closer to root node)
                 node_pdr = round(link_pdr * pdr_of_previous_node, 4)
-                node_pdrs[str(branch[i+1])] += [node_pdr]
+                nodePdrs[str(branch[i+1])] += [node_pdr]
 
                 # this is the edge node connected to the moving node
                 if branch[i] == branch[-2]:
@@ -324,5 +323,5 @@ class Wireless(object):
 
                 pdr_of_previous_node = node_pdr
 
-        return node_pdrs, edge_nodes
+        return nodePdrs, edge_nodes
 
