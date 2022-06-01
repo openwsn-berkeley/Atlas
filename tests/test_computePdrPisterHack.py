@@ -2,6 +2,7 @@
 import pytest
 import random
 import Wireless
+import DotBot
 
 # ============================ fixtures ==============================
 
@@ -10,8 +11,8 @@ EXPECTEDINOUT = [
     # two close positions ( <1 m apart)
     {
         'in': {
-            'sender_pos':     (0.00, 0.00),
-            'receiver_pos':   (0.00, 0.50),
+            'sender':     DotBot.DotBot(dotBotId=1,x=0.00, y=0.00,floorplan='#'),
+            'receiver':   DotBot.DotBot(dotBotId=1,x=0.00, y=0.50,floorplan='#')
         },
 
         'out': 1.00
@@ -20,8 +21,8 @@ EXPECTEDINOUT = [
     # two out of range positions (1000 m)
     {
         'in': {
-            'sender_pos':   (   0.00,    0.00),
-            'receiver_pos': (   0.00, 1000.00),
+            'sender':   DotBot.DotBot(dotBotId=1,x=0.00, y=0.00,floorplan='#'),
+            'receiver': DotBot.DotBot(dotBotId=1,x=0.00, y=1000.00,floorplan='#'),
         },
 
         'out': 0.00
@@ -33,8 +34,8 @@ def expectedInOut(request):
     return request.param
 
 RANDOMPOSITIONS = [{
-    'sender_pos':   (random.uniform(0.00, 1000.00), random.uniform(0.00, 1000.00)),
-    'receiver_pos': (random.uniform(0.00, 1000.00), random.uniform(0.00, 1000.00)),
+    'sender':   DotBot.DotBot(dotBotId=1,x=random.uniform(0.00, 1000.00), y=random.uniform(0.00, 1000.00),floorplan='#'),
+    'receiver': DotBot.DotBot(dotBotId=1,x=random.uniform(0.00, 1000.00), y=random.uniform(0.00, 1000.00),floorplan='#'),
     }
     for i in range(1000)
 ]
@@ -45,23 +46,15 @@ def randomPositions(request):
 
 #============================ tests =================================
 
-def test_computePdrPisterHack(expectedInOut):
-    '''
-    testing PDR computation based on set distances
-    '''
+# def test_computePdrPisterHack(expectedInOut):
+#     '''
+#     testing PDR computation based on set distances
+#     '''
+#
+#     wireless = Wireless.Wireless()
+#
+#     assert wireless._computePdrPisterHack(*expectedInOut['in'].values()) == expectedInOut['out']
 
-    wireless = Wireless.Wireless()
-
-    assert wireless._computePdrPisterHack(*expectedInOut['in'].values()) == expectedInOut['out']
-
-def test_validatePdrWithFixedDistance(expectedInOut):
-    '''
-    testing PDR computation based on set distances
-    '''
-
-    wireless = Wireless.Wireless()
-
-    assert wireless._computePdrPisterHack((0.00, 0.00), (0.00,400)) <= 0.8702
 
 def test_computePdrPisterHackRandom(randomPositions):
     '''

@@ -127,12 +127,12 @@ class Wireless(object):
 
     # ======================== private =========================================
 
-    def _computePdrPisterHack(self, sender_pos, receiver_pos):
+    def _computePdrPisterHack(self, sender, receiver):
         '''
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
 
-        distance    = u.distance(sender_pos, receiver_pos)
+        distance    = u.distance(sender.computeCurrentPosition(), receiver.computeCurrentPosition())
 
         shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
         rssi        = self._friisModel(distance) - shift_value
@@ -195,28 +195,48 @@ class Wireless(object):
                 relays += [device]
 
         if relays:
-
-            # update tree of nodes (all possible paths packet could reach sender through )
-            tree               = self._updateTree(relays, movingNode, self.lastTree) if relays != self.lastRelays else self.lastTree
-
-            # update PDR of all nodes
-            nodePdrs           = self._updatePDRs(tree, relays, movingNode)
-
-            # find success probability of packet reaching from sender to receiver
-            successProbability = self._computeSuccessProbabilityCT(nodePdrs, movingNode)
-
-            # store current relays and last tree
-            self.lastRelays = relays
-            self.lastTree   = tree
+            # find PDR though CT computations
+            pdr = self._getPdrCT(relays, movingNode)
 
         else:
             # no relays , success probability is link PDR between sender and receiver
-            successProbability  = self._computePdrPisterHack(
-                sender_pos      = sender.computeCurrentPosition(),
-                receiver_pos    = receiver.computeCurrentPosition()
+            pdr  = self._computePdrPisterHack(
+                sender      = sender,
+                receiver    = receiver
             )
 
-        self.dataCollector.collect({"type": "DotBot Data", "data": {"PDR": successProbability, "dotBotId": movingNode.dotBotId, "isRelay": movingNode.isRelay}})
+        self.dataCollector.collect({"type": "DotBot Data", "data": {"PDR": pdr, "dotBotId": movingNode.dotBotId, "isRelay": movingNode.isRelay}})
+
+        assert pdr >= 0.0
+        assert pdr <= 1.0
+
+        return pdr
+
+    def _getPdrCT(self, relays, movingNode):
+
+        # update tree of nodes (all possible paths packet could reach sender through )
+        tree = self._updateTree(relays, movingNode, self.lastTree) if relays != self.lastRelays else self.lastTree
+
+        # update PDR of all nodes
+        if relays != self.lastRelays:
+            # new relay, compute all node PDRs
+            (nodePdrs, self.edgeNodes) = self._computeNodePDRs(tree, movingNode)
+            self.lastNodePdrs = nodePdrs
+        else:
+            # same relays, just update PDR of moving node
+            nodePdrs = self._updateNodePDR(
+                lastNodePdrs=self.lastNodePdrs,
+                movingNode=movingNode,
+                edgeNodes=self.edgeNodes
+            )
+
+        # find success probability of packet reaching from sender to receiver
+        successProbability = self._computeSuccessProbabilityCT(nodePdrs, movingNode)
+
+        # store current relays and last tree
+        self.lastRelays = relays
+
+        self.lastTree = tree
 
         return successProbability
 
@@ -249,34 +269,6 @@ class Wireless(object):
 
         return currentTree
 
-    def _updatePDRs(self, tree, relays, movingNode):
-
-        if relays != self.lastRelays:
-            # new relay, compute all node PDRs
-            (nodePdrs, self.edgeNodes)  = self._computeNodePDRs(tree, movingNode)
-            self.lastNodePdrs           = nodePdrs
-        else:
-            # same relays, just update PDR of moving node
-            nodePdrs = self._updateNodePDR(
-                lastNodePdrs   = self.lastNodePdrs,
-                movingNode     = movingNode,
-                edgeNodes      = self.edgeNodes
-            )
-
-        return nodePdrs
-
-    def _computeSuccessProbabilityCT(self, nodePdrs, movingNode):
-
-        nodes                = nodePdrs.keys()
-        successProbabilities = {}
-
-        for node in nodes:
-            failure_probability           = round(np.prod([1 - node_pdr for node_pdr in list(set(nodePdrs[node]))]), 4)
-            success_probability           = 1 - failure_probability
-            successProbabilities[node]    = success_probability
-
-        return successProbabilities[movingNode]  # final PDR of moving node through CT
-
     def _updateNodePDR(self, lastNodePdrs, movingNode, edgeNodes):
         # for every edge node, find pdr with moving node then multiply by edge connecting node pdr
         # remove the final entry from node PDRss and replace with new entry for this moving node
@@ -286,9 +278,11 @@ class Wireless(object):
         nodePdrs[movingNode]      = []
 
         for node in edgeNodes:
-            if node[0] == movingNode:
+            if node[0] == movingNode and node[0] != self.rootNode:
                 continue
-            link_pdr = self._computePdrPisterHack(node[0].computeCurrentPosition(),movingNode.computeCurrentPosition())
+
+            link_pdr = self._computePdrPisterHack(node[0],movingNode)
+
             nodePdrs[movingNode].append(link_pdr * node[1])
 
         return nodePdrs
@@ -307,15 +301,15 @@ class Wireless(object):
         for branch in tree:
 
             # first link in branch is always starts at root (orchestrator)
-            previousNode    = self.rootNode
-            previousNodePdr = nodePdrs[previousNode][-1]
+            previousNode    = branch.pop(0)
+            previousNodePdr = 1
 
             for node in branch:
 
                 # find the PDR of the link between the two nodes
                 linkPdr = self._computePdrPisterHack(
-                    sender_pos   = previousNode.computeCurrentPosition(),    # node in link closer to root
-                    receiver_pos = node.computeCurrentPosition()             # node in link closer to moving node
+                    sender   = previousNode,    # node in link closer to root
+                    receiver = node            # node in link closer to moving node
                 )
 
                 if node not in nodePdrs.keys():
@@ -334,3 +328,15 @@ class Wireless(object):
 
         return nodePdrs, edgeNodes
 
+    def _computeSuccessProbabilityCT(self, nodePdrs, movingNode):
+
+        nodes                = nodePdrs.keys()
+        successProbabilities = {}
+
+        for node in nodes:
+            failure_probability           = round(np.prod([1 - node_pdr for node_pdr in list(set(nodePdrs[node]))]), 4)
+            success_probability           = 1 - failure_probability
+            successProbabilities[node]    = success_probability
+
+        return successProbabilities[movingNode]  # final PDR of moving node through CT
+    
