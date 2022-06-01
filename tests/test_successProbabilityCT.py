@@ -54,7 +54,7 @@ EXPECTEDINOUT = [
 def expectedInOut(request):
     return request.param
 
-# ============================ tests =================================
+#============================ tests =================================
 
 def test_successProbabilityCT(expectedInOut):
     '''

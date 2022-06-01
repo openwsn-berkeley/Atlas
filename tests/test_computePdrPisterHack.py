@@ -43,7 +43,7 @@ RANDOMPOSITIONS = [{
 def randomPositions(request):
     return request.param
 
-# ============================ tests =================================
+#============================ tests =================================
 
 def test_computePdrPisterHack(expectedInOut):
     '''
