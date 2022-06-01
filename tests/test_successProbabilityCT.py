@@ -75,34 +75,41 @@ def test_updateTreeCT():
 
     wireless = Wireless.Wireless()
     wireless.lastRelays = []
-
+    wireless.rootNode   = 'A'
     tree = wireless._updateTree(
-        nodes     = ['A', 'B', 'C'],
-        lastTree  = []
+        relays     = [ 'B'],
+        movingNode = 'C',
+        lastTree   = []
         )
 
     assert sorted(tree) == sorted([['A', 'C'], ['A', 'B', 'C']])
 
     wireless.lastRelays = ['B']
+    wireless.rootNode = 'A'
     tree = wireless._updateTree(
-        nodes    = ['A', 'B','D', 'F'],
-        lastTree = [['A','C'], ['A', 'B', 'C']]
+        relays     = ['B','D'],
+        movingNode ='F',
+        lastTree   = [['A','C'], ['A', 'B', 'C']]
         )
 
     assert  sorted(tree) == sorted([['A', 'F'], ['A', 'B', 'F'], ['A', 'D', 'F'], ['A', 'B', 'D', 'F'], ['A', 'D', 'B', 'F']])
 
     wireless.lastRelays = []
+    wireless.rootNode = 'A'
     tree = wireless._updateTree(
-        nodes    = ['A', 'B','D', 'F'],
-        lastTree = []
+        relays     = ['B','D'],
+        movingNode = 'F',
+        lastTree   = []
         )
 
     assert  sorted(tree) == sorted([['A', 'F'], ['A', 'B', 'F'], ['A', 'D', 'F'], ['A', 'B', 'D', 'F'], ['A', 'D', 'B', 'F']])
 
     wireless.lastRelays = []
+    wireless.rootNode = 'A'
     tree = wireless._updateTree(
-        nodes    = ['A', 'B','C','D','X'],
-        lastTree = []
+        relays     = ['B','C','D'],
+        movingNode = 'X',
+        lastTree   = []
         )
 
     assert sorted(tree) == sorted([
@@ -112,11 +119,5 @@ def test_updateTreeCT():
         ['A', 'X']
     ])
 
-def test_computeallPDRsCT():
-
-    wireless  = Wireless.Wireless()
-    pdr_nodes = wireless._recomputeAllPDRs([['A', 'F'], ['A', 'B', 'F'], ['A', 'D', 'F'], ['A', 'B', 'D', 'F'], ['A', 'D', 'B', 'F']])
-    print(pdr_nodes)
-    assert  1==2
 
 

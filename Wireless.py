@@ -94,8 +94,8 @@ class Wireless(object):
         self.devices        = []
         self.lastRelays     = []
         self.lastTree       = None
-        self.last_pdrs      = None
-        self.edge_nodePdrs = None
+        self.lastNodePdrs   = None
+        self.edge_nodePdrs  = None
     # ======================== public ==========================================
 
     def indicateDevices(self, devices):
@@ -178,65 +178,67 @@ class Wireless(object):
     def _computeConcurrentTransmissionPDR(self, sender, receiver):
 
         # orchestrator is always root node, PDR = 1 always
-        rootNode = self.devices[-1]
+        self.rootNode = self.devices[-1]
 
         # check which of the two given nodes is the moving Node
         for device in [sender, receiver]:
-            if device != rootNode:
+            if device != self.rootNode:
                 movingNode = device
 
         # check which devices are relay nodes
         relays = []
-        for device in self.devices[0:-1]:
+        for device in self.devices:
+            if device == self.rootNode:
+                continue     # not a dotBot
+
             if device.isRelay == True:
                 relays += [device]
 
-        # if no relays yet, get PDR through Pister-Hack
-        if not relays:
-            return self._computePdrPisterHack(
-                sender_pos   = sender.computeCurrentPosition(),
-                receiver_pos = receiver.computeCurrentPosition()
-             )
+        if relays:
 
-        nodes    = [rootNode] + relays + [movingNode]
+            # update tree of nodes (all possible paths packet could reach sender through )
+            tree               = self._updateTree(relays, movingNode, self.lastTree) if relays != self.lastRelays else self.lastTree
 
-        tree     = self._updateTree(nodes, self.lastTree) if relays != self.lastRelays else self.lastTree
+            # update PDR of all nodes
+            nodePdrs           = self._updatePDRs(tree, relays, movingNode)
 
-        nodePdrs = self._getPDRs(tree, nodes)
+            # find success probability of packet reaching from sender to receiver
+            successProbability = self._computeSuccessProbabilityCT(nodePdrs, movingNode)
 
-        sp       = self._computeSuccessProbabilityCT(nodePdrs, movingNode)
+            # store current relays and last tree
+            self.lastRelays = relays
+            self.lastTree   = tree
 
-        # store current relays and last tree
-        self.lastRelays = relays
-        self.lastTree   = tree
+        else:
+            # no relays , success probability is link PDR between sender and receiver
+            successProbability  = self._computePdrPisterHack(
+                sender_pos      = sender.computeCurrentPosition(),
+                receiver_pos    = receiver.computeCurrentPosition()
+            )
 
-        self.dataCollector.collect({"type": "DotBot Data", "data": {"PDR": sp, "dotBotId": movingNode.dotBotId, "isRelay": movingNode.isRelay}})
+        self.dataCollector.collect({"type": "DotBot Data", "data": {"PDR": successProbability, "dotBotId": movingNode.dotBotId, "isRelay": movingNode.isRelay}})
 
-        return sp
+        return successProbability
 
-    def _updateTree(self,nodes, lastTree):
-
-        rootNode   = nodes[0]
+    def _updateTree(self, relays, movingNode, lastTree):
 
         if lastTree:
+            # expand tree (take all the same branches except for the last node which is the previous moving node)
             branches_to_extend = [branch[:-1] for branch in lastTree]
 
         else:
-            # add branch of direct connection between root node and moving node
-            branches_to_extend = [[rootNode]]
+            # start tree from root node
+            branches_to_extend = [[self.rootNode]]
 
-        # if we already have a tree take all the same branches except for the last moving node
-        # add the new relay and continue extending tree from there
-        # then keep expanding each branch from new relay up to moving node
-
-        idx = 0
+        # keep expanding each branch up to current moving node
+        idx         = 0
         currentTree = []
-        while branches_to_extend:
 
+        while branches_to_extend:
             branch          = branches_to_extend[idx]
-            extension_nodes = list(set(nodes).difference(set(branch)))
+            extension_nodes = list(set(relays+[movingNode]).difference(set(branch)))
             for node in extension_nodes:
-                if node != nodes[-1]:
+                if node != movingNode:
                     if branch + [node] not in branches_to_extend:
                         branches_to_extend += [branch + [node]]
 
@@ -247,81 +249,88 @@ class Wireless(object):
 
         return currentTree
 
-    def _getPDRs(self, tree, nodes):
+    def _updatePDRs(self, tree, relays, movingNode):
 
-        if nodes[1:-1] != self.lastRelays:
-            # current relays are not the same as last relays
-            (nodePdrs, self.edge_node_pdrs)  = self._recomputeAllPDRs(tree)
-            self.last_pdrs                    = nodePdrs
+        if relays != self.lastRelays:
+            # new relay, compute all node PDRs
+            (nodePdrs, self.edgeNodes)  = self._computeNodePDRs(tree, movingNode)
+            self.lastNodePdrs           = nodePdrs
         else:
-            nodePdrs = self._updateNodesPDR(
-                last_pdrs      = self.last_pdrs,
-                movingNode     = nodes[-1],
-                edge_node_pdrs = self.edge_node_pdrs
+            # same relays, just update PDR of moving node
+            nodePdrs = self._updateNodePDR(
+                lastNodePdrs   = self.lastNodePdrs,
+                movingNode     = movingNode,
+                edgeNodes      = self.edgeNodes
             )
 
         return nodePdrs
 
     def _computeSuccessProbabilityCT(self, nodePdrs, movingNode):
 
-        nodes = nodePdrs.keys()
-        final_pdrs = {}
+        nodes                = nodePdrs.keys()
+        successProbabilities = {}
 
         for node in nodes:
-            failure_probability = round(np.prod([1 - node_pdr for node_pdr in list(set(nodePdrs[node]))]), 4)
-            success_probability = 1 - failure_probability
-            final_pdrs[node]    = success_probability
+            failure_probability           = round(np.prod([1 - node_pdr for node_pdr in list(set(nodePdrs[node]))]), 4)
+            success_probability           = 1 - failure_probability
+            successProbabilities[node]    = success_probability
 
-        return final_pdrs[str(movingNode)]  # overall PDR of moving node through CT
+        return successProbabilities[movingNode]  # final PDR of moving node through CT
 
-    def _updateNodesPDR(self, last_pdrs, movingNode, edge_node_pdrs):
+    def _updateNodePDR(self, lastNodePdrs, movingNode, edgeNodes):
         # for every edge node, find pdr with moving node then multiply by edge connecting node pdr
-        # remove the final entry from node pdrs and replace with new entry for this moving node
+        # remove the final entry from node PDRss and replace with new entry for this moving node
         # the finding success probability will be done in the same way
 
-        nodePdrs                  = last_pdrs
-        nodePdrs[str(movingNode)] = []
-        for node in edge_node_pdrs:
-            if node[0] == str(movingNode) or node[0] == movingNode:
+        nodePdrs                  = lastNodePdrs
+        nodePdrs[movingNode]      = []
+
+        for node in edgeNodes:
+            if node[0] == movingNode:
                 continue
             link_pdr = self._computePdrPisterHack(node[0].computeCurrentPosition(),movingNode.computeCurrentPosition())
-            nodePdrs[str(movingNode)].append(link_pdr * node[1])
+            nodePdrs[movingNode].append(link_pdr * node[1])
 
         return nodePdrs
 
-    def _recomputeAllPDRs(self, tree):
+    def _computeNodePDRs(self, tree, movingNode):
 
         # root is first link in first branch of tree
-        root       = tree[0][0]
+        root       = self.rootNode
         nodePdrs   = {root: [1]}
-        edge_nodes = []
 
-        # recompute PDR between all links in tree
+        # nodes at the ends of branches that connect to moving node
+        # this is used to update node PDRs when only moving node changes
+        edgeNodes  = []
+
+        # compute PDR between all links in tree
         for branch in tree:
-            pdr_of_previous_node = 1     # first link in branch is always connected to root (orchestrator)
 
-            for i in range(len(branch) - 1):
+            # first link in branch is always starts at root (orchestrator)
+            previousNode    = self.rootNode
+            previousNodePdr = nodePdrs[previousNode][-1]
 
-                assert branch[i] != branch[i+1]
+            for node in branch:
 
                 # find the PDR of the link between the two nodes
-                link_pdr = self._computePdrPisterHack(
-                    sender_pos   = branch[i].computeCurrentPosition(),    # node in link closer to root
-                    receiver_pos = branch[i+1].computeCurrentPosition()   # node in link closer to moving node
+                linkPdr = self._computePdrPisterHack(
+                    sender_pos   = previousNode.computeCurrentPosition(),    # node in link closer to root
+                    receiver_pos = node.computeCurrentPosition()             # node in link closer to moving node
                 )
 
-                if str(branch[i+1]) not in nodePdrs.keys():
-                    nodePdrs[str(branch[i+1])] = []
+                if node not in nodePdrs.keys():
+                    nodePdrs[node] = []
 
                 # node PDR = link PDR * PDR of previous node (node closer to root node)
-                node_pdr = round(link_pdr * pdr_of_previous_node, 4)
-                nodePdrs[str(branch[i+1])] += [node_pdr]
+                nodePdr         = round(linkPdr * previousNodePdr, 4)
+                nodePdrs[node] += [nodePdr]
 
                 # this is the edge node connected to the moving node
-                if branch[i] == branch[-2]:
-                    edge_nodes.append((branch[i], pdr_of_previous_node))
+                if node == movingNode:
+                    edgeNodes.append((previousNode, previousNodePdr))
 
-                pdr_of_previous_node = node_pdr
+                previousNode    = node
+                previousNodePdr =  nodePdr
 
-        return nodePdrs, edge_nodes
+        return nodePdrs, edgeNodes
 
