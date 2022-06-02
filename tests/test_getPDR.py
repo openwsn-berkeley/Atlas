@@ -37,7 +37,7 @@ class TestWireless(Wireless.Wireless):
         }
         return pdrs[(sender, receiver)]
 
-def test_CT(expectedInOut):
+def test_getPDR(expectedInOut):
     '''
     testing success probability of a packet going through to a moving node from a given
     root node given relays and link PDRs
