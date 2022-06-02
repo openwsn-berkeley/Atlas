@@ -45,6 +45,8 @@ class DotBot(Wireless.WirelessDevice):
         self.nextBumpX            = None  # coordinate the DotBot will bump into next
         self.nextBumpY            = None
         self.nextBumpTime         = None  # time at which DotBot will bump
+        # is dotBot a relay
+        self.isRelay              = False
 
     # ======================== public ==========================================
 
@@ -63,6 +65,13 @@ class DotBot(Wireless.WirelessDevice):
             return
 
         self.seqNumCommand       = frame['movements'][self.dotBotId]['seqNumCommand']
+
+        # set relay status
+        self.isRelay             = frame['movements'][self.dotBotId]['isRelay']
+
+        # temporary
+        if self.isRelay:
+            return
 
         # cancel scheduled bump when new packet is received
         self.simEngine.cancelEvent(tag=f'{self.dotBotId}_bumpSensorCb')

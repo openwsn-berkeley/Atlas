@@ -102,9 +102,10 @@ class Wireless(object):
         Singleton destructor.
         """
         self._instance = None
-        self._init = False
+        self._init     = False
 
     def transmit(self, sender, frame):
+        relays = [device for device in self.devices if device.isRelay]
         for receiver in self.devices:
 
             if receiver == sender:
@@ -113,7 +114,7 @@ class Wireless(object):
             assert sender != receiver
 
             # get pdr between sender and receiver
-            pdr            = self._getPDR(sender, receiver)
+            pdr            = self._getPDR(sender, receiver, relays)
             log.debug(f'PDR between {sender} and {receiver} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
