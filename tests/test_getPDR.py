@@ -6,19 +6,16 @@ import pytest
 EXPECTEDINOUT = [
 
     {
-        'linkStabilities': {
-            ('A', 'B'): 0.60,
-            ('A', 'C'): 0.90,
-            ('A', 'D'): 0.20,
-            ('B', 'D'): 0.70,
-            ('C', 'D'): 0.80,
-        },
-
         'in': {
-
+            'linkStabilities': {
+                ('A', 'B'): 0.60,
+                ('A', 'C'): 0.90,
+                ('A', 'D'): 0.20,
+                ('B', 'D'): 0.70,
+                ('C', 'D'): 0.80,
+            },
             'sender':       'A',
             'receiver':     'D',
-            'relays':      ['B', 'C'],
         },
         'out': 0.87008
     },
@@ -47,7 +44,11 @@ def test_getPDR(expectedInOut):
     root node given relays and link PDRs
     '''
 
-    testwireless = TestWireless(expectedInOut['linkStabilities'])
+    testwireless = TestWireless(expectedInOut['in']['linkStabilities'])
 
-    assert testwireless._getPDR(*expectedInOut['in'].values()) == expectedInOut['out']
+    assert testwireless._getPDR(
+        sender    =   expectedInOut['in']['sender'],
+        receiver  =   expectedInOut['in']['receiver'],
+        relays    =   [node[0] for node in expectedInOut['in']['linkStabilities'].keys() if node[0] != expectedInOut['in']['sender']]
+    ) == expectedInOut['out']
 
