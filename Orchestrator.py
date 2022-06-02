@@ -36,6 +36,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored      = []
         self.cellsObstacle      = []
         self.cellsFrontier      = []
+        self.isRelay            = False
 
         self.dotBotsView        = dict([
             (

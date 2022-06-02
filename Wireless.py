@@ -3,7 +3,6 @@ import random
 import math
 # built-in
 # third-party
-import numpy as np
 # local
 import Utils as u
 import DataCollector
@@ -109,9 +108,10 @@ class Wireless(object):
         Singleton destructor.
         """
         self._instance = None
-        self._init = False
+        self._init     = False
 
     def transmit(self, sender, frame):
+        relays = [device for device in self.devices if device.isRelay]
         for receiver in self.devices:
 
             if receiver == sender:
@@ -119,7 +119,7 @@ class Wireless(object):
 
             assert sender != receiver
 
-            pdr            = self._getPDR(sender, receiver)
+            pdr            = self._getPDR(sender, receiver, relays)
             log.debug(f'PDR between {sender} and {receiver} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
@@ -128,8 +128,62 @@ class Wireless(object):
     # ======================== private =========================================
 
     def _getPDR(self, sender, receiver, relays=None):
-        raise NotImplementedError
+        if relays:
+            failProbability = (1 - self._getStability(sender, receiver))
+            for relay in relays:
+                stabilitySenderRelay   = self._getStability(sender, relay)
+                stabilityRelayReceiver = self._getStability(relay,  receiver)
+                failProbability = failProbability * (1-(stabilitySenderRelay * stabilityRelayReceiver))
+            pdr = 1 - failProbability
+        else:
+            pdr = self._getStability(sender, receiver)
 
-    def _getStability(self, sender,  receiver):
-        raise NotImplementedError
-    
+        return pdr
+
+    def _getStability(self, sender, receiver):
+        '''
+        Pister Hack model for PDR calculation based on distance/ signal attenuation
+        '''
+
+        distance    = u.distance(sender.computeCurrentPosition(), receiver.computeCurrentPosition())
+
+        shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+        rssi        = self._friisModel(distance) - shift_value
+        pdr         = self._rssi_to_pdr(rssi)
+
+        return pdr
+
+    def _friisModel(self, distance):
+
+        # sqrt and inverse of the free space path loss (fspl)
+        free_space_path_loss = (
+                self.SPEED_OF_LIGHT / (4 * math.pi * distance * self.TWO_DOT_FOUR_GHZ)
+        )
+
+        # simple friis equation in Pr = Pt + Gt + Gr + 20log10(free_space_path_loss)
+        rssi = (
+                self.TX_POWER     +
+                self.ANTENNA_GAIN +  # tx
+                self.ANTENNA_GAIN +  # rx
+                (20 * math.log10(free_space_path_loss))
+        )
+
+        return rssi
+
+    def _rssi_to_pdr(self, rssi):
+
+        if rssi < min(self.RSSI_PDR_TABLE.keys()):
+            pdr = 0.0
+        elif rssi > max(self.RSSI_PDR_TABLE.keys()):
+            pdr = 1.0
+        else:
+            floor_rssi = int(math.floor(rssi))
+            pdr_low    = self.RSSI_PDR_TABLE[floor_rssi]
+            pdr_high   = self.RSSI_PDR_TABLE[floor_rssi + 1]
+            # linear interpolation
+            pdr        = (pdr_high - pdr_low) * (rssi - float(floor_rssi)) + pdr_low
+
+        assert pdr >= 0.0
+        assert pdr <= 1.0
+
+        return pdr
