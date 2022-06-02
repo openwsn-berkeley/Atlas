@@ -184,6 +184,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # simulation complete when there are no more frontier cells left
         if not self.cellsFrontier:
             self.simEngine.completeRun()
+            return
 
         # update dotBotsView
         dotBot['x']       = newX
@@ -197,9 +198,10 @@ class Orchestrator(Wireless.WirelessDevice):
         if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
 
             # assign a new target cell (destination) to dotBot
-            targetCell               = self._selectCellToExplore(frame['source'])
+            targetCell               = self._assignCellToExplore(frame['source'])
 
             # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
+            # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
             path                     = self._computePathToTarget(
                 startCell            = cellsExplored['cellsExplored'][-1],
                 targetCell           = targetCell,
@@ -543,7 +545,7 @@ class Orchestrator(Wireless.WirelessDevice):
         return returnVal
 
     # === Exploration
-    def _selectCellToExplore(self, dotBotId):
+    def _assignCellToExplore(self, dotBotId):
 
         dotBot = self.dotBotsView[dotBotId]
 
