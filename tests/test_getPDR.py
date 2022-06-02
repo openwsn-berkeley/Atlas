@@ -1,5 +1,7 @@
+
 import Wireless
 import pytest
+
 # ============================ fixtures ==============================
 EXPECTEDINOUT = [
 
@@ -16,6 +18,7 @@ EXPECTEDINOUT = [
 @pytest.fixture(params=EXPECTEDINOUT)
 def expectedInOut(request):
     return request.param
+
 # ============================ tests =================================
 
 class TestWireless(Wireless.Wireless):
@@ -44,6 +47,6 @@ def test_getPDR(expectedInOut):
     '''
 
     testwireless = TestWireless()
-    testwireless.rootNode = 'A'
 
     assert testwireless._getPDR(*expectedInOut['in'].values()) == expectedInOut['out']
+    
