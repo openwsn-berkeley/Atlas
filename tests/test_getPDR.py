@@ -44,11 +44,18 @@ def test_getPDR(expectedInOut):
     root node given relays and link PDRs
     '''
 
-    testwireless = TestWireless(expectedInOut['in']['linkStabilities'])
+    input         = expectedInOut['in']  # shorthand
+
+    testwireless  = TestWireless(input['linkStabilities'])
+
+    relays        = []
+    relays       += [node[0] for node in input['linkStabilities'].keys() if node[0] != input['sender']]
+    relays       += [node[1] for node in input['linkStabilities'].keys() if node[1] != input['receiver']]
+    relays        = list(set(relays))
 
     assert testwireless._getPDR(
-        sender    =   expectedInOut['in']['sender'],
-        receiver  =   expectedInOut['in']['receiver'],
-        relays    =   [node[0] for node in expectedInOut['in']['linkStabilities'].keys() if node[0] != expectedInOut['in']['sender']]
+        sender    =   input['sender'],
+        receiver  =   input['receiver'],
+        relays    =   relays
     ) == expectedInOut['out']
 
