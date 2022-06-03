@@ -88,7 +88,9 @@ class Wireless(object):
         self._init = True
         
         # local variables
-        self.devices = []
+        self.devices         = []
+        self.lastPositions   = {}
+        self.lastStabilities = {}
     # ======================== public ==========================================
 
     def indicateDevices(self, devices):
@@ -114,7 +116,7 @@ class Wireless(object):
             assert sender != receiver
 
             # get pdr between sender and receiver
-            pdr            = self._getPDR(sender, receiver, relays)
+            pdr            = self._getPDR(sender, relays, receiver)
             log.debug(f'PDR between {sender} and {receiver} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
@@ -122,30 +124,52 @@ class Wireless(object):
 
     # ======================== private =========================================
 
-    def _getPDR(self, sender, receiver, relays=None):
+    def _getPDR(self, sender, relays, receiver):
 
         # find probability of failure between sender and receiver with no relays
         failProbability = (1 - self._getStability(sender, receiver))
 
-        if relays:
-            for relay in relays:
+        for relay in relays:
 
-                # find probability of failure for every path of (sender -> relay -> receiver)
-                stabilitySenderRelay   = self._getStability(sender, relay)
-                stabilityRelayReceiver = self._getStability(relay,  receiver)
-                failProbability        = failProbability * (1-(stabilitySenderRelay * stabilityRelayReceiver))
+            # find probability of failure for every path of (sender -> relay -> receiver)
+            stabilitySenderRelay   = self._getStability(sender, relay)
+            stabilityRelayReceiver = self._getStability(relay,  receiver)
+            failProbability        = failProbability * (1-(stabilitySenderRelay * stabilityRelayReceiver))
 
-        return 1 - failProbability     # probability od success
+        return 1 - failProbability     # probability of success
 
     def _getStability(self, sender, receiver):
         '''
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
+        senderData   = sender.getDeviceData()
+        receiverData = receiver.getDeviceData()
 
-        distance    = u.distance(sender.computeCurrentPosition(), receiver.computeCurrentPosition())
-        shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
-        rssi        = self._friisModel(distance) - shift_value
-        pdr         = self._rssi_to_pdr(rssi)
+        key = {
+            (senderData['deviceId'], receiverData['deviceId']),
+            (receiverData['deviceId'], senderData['deviceId'])
+        }.intersection(self.lastStabilities.keys())
+
+        if (
+            senderData['deviceId'] in self.lastPositions.keys()                      and
+            receiverData['deviceId'] in self.lastPositions.keys()                    and
+            senderData['position'] == self.lastPositions[senderData['deviceId']]     and
+            receiverData['position'] == self.lastPositions[receiverData['deviceId']] and
+            key
+            ):
+
+            pdr = self.lastStabilities[list(key)[0]]
+
+        else:
+
+            distance    = u.distance(senderData['position'], receiverData['position'])
+            shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+            rssi        = self._friisModel(distance) - shift_value
+            pdr         = self._rssi_to_pdr(rssi)
+
+            self.lastPositions[senderData['deviceId']]   = senderData['position']
+            self.lastPositions[receiverData['deviceId']] = receiverData['position']
+            self.lastStabilities[(senderData['deviceId'], receiverData['deviceId'])] = pdr
 
         return pdr
 

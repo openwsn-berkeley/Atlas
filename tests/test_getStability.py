@@ -56,7 +56,7 @@ def test_computePdrPisterHack(expectedInOut):
     assert wireless._getStability(*expectedInOut['in'].values()) == expectedInOut['out']
 
 
-def test_computePdrPisterHackRandom(randomPositions):
+def test_getStabilityRandomPositions(randomPositions):
     '''
     testing PDR computation based on random distances
     '''
@@ -73,4 +73,24 @@ def test_computePdrPisterHackRandom(randomPositions):
 
     assert 0 <= pdr_pisterHack <= 1
     assert pdr_pisterHack <= pdr_friis
+
+def test_getStabilitySamePositions():
+    '''
+    testing that getStability() always returns same PDR if sender and receiver
+    are in the same positions as last time PDR was computed
+    '''
+
+    wireless = Wireless.Wireless()
+    sender   = DotBot.DotBot(dotBotId=1, x=0, y=0, floorplan='#')
+    receiver = DotBot.DotBot(dotBotId=2, x=10, y=10, floorplan='#')
+
+    pdr1     = wireless._getStability(sender, receiver)
+    pdr2     = wireless._getStability(sender, receiver)
+
+    assert pdr1 == pdr2
+
+    (receiver.x, receiver.y) = (50,50)
+    pdr3                     = wireless._getStability(sender, receiver)
+
+    assert pdr3 != pdr2
 

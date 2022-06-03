@@ -105,6 +105,12 @@ class DotBot(Wireless.WirelessDevice):
         self.simEngine.schedule(self.nextBumpTime, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
         log.debug(f'next bump for {self.dotBotId} scheduled for {self.nextBumpTime}')
 
+    def getDeviceData(self):
+        '''
+        for wireless PDR computations and caching
+        '''
+        return {'deviceId': self.dotBotId, 'position': (self.x, self.y)}
+
     def computeCurrentPosition(self):
         '''
         Compute the current position based on previous position and movement.

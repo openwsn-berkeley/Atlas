@@ -3,20 +3,19 @@ import Wireless
 import pytest
 
 # ============================ fixtures ==============================
+
 EXPECTEDINOUT = [
 
     {
         'in': {
             'linkStabilities': {
                 ('A', 'B'): 0.80,
-
             },
             'sender':       'A',
             'receiver':     'B',
         },
         'out': 0.80
     },
-
     {
         'in': {
             'linkStabilities': {
@@ -31,7 +30,6 @@ EXPECTEDINOUT = [
         },
         'out': 0.87008
     },
-
     {
         'in': {
             'linkStabilities': {
@@ -48,7 +46,6 @@ EXPECTEDINOUT = [
         },
         'out': 0.97423816
     },
-
 ]
 
 @pytest.fixture(params=EXPECTEDINOUT)
