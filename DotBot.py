@@ -69,7 +69,7 @@ class DotBot(Wireless.WirelessDevice):
         # set relay status
         self.isRelay             = frame['movements'][self.dotBotId]['isRelay']
 
-        # temporary
+        # if dotBot is set as relay don't adjust movement
         if self.isRelay:
             return
 
@@ -104,12 +104,6 @@ class DotBot(Wireless.WirelessDevice):
         # schedule the bump event
         self.simEngine.schedule(self.nextBumpTime, self._bumpSensorCb, tag=f'{self.dotBotId}_bumpSensorCb')
         log.debug(f'next bump for {self.dotBotId} scheduled for {self.nextBumpTime}')
-
-    def getDeviceData(self):
-        '''
-        for wireless PDR computations and caching
-        '''
-        return {'deviceId': self.dotBotId, 'position': (self.x, self.y)}
 
     def computeCurrentPosition(self):
         '''

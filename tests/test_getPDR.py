@@ -81,6 +81,7 @@ def test_getPDR(expectedInOut):
     relays        = list(set(relays))
 
     if relays:
+        # if we have relays remove sender and receiver from that list
         relays.remove(input['sender'])
         relays.remove(input['receiver'])
 

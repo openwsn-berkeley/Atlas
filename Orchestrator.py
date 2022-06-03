@@ -36,6 +36,9 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored      = []
         self.cellsObstacle      = []
         self.cellsFrontier      = []
+        self.x                  = self.initX
+        self.y                  = self.initY
+        self.dotBotId           = 0
 
         # for wireless to identify if this is a relay device or not
         self.isRelay            = False
@@ -204,12 +207,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # set relay status (temporary until relay algorithms are implemented!)
         dotBot['isRelay']         = True if frame['source'] in [1,5] else False     # FIXME: real algorithm
-
-    def getDeviceData(self):
-        '''
-        for wireless PDR computations and caching
-        '''
-        return {'deviceId': 0, 'position': (self.initX, self.initY)}
 
     #=== Map
 

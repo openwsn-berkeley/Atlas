@@ -91,6 +91,7 @@ class Wireless(object):
         self.devices         = []
         self.lastPositions   = {}
         self.lastStabilities = {}
+
     # ======================== public ==========================================
 
     def indicateDevices(self, devices):
@@ -146,34 +147,38 @@ class Wireless(object):
         '''
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
-        senderData   = sender.getDeviceData()
-        receiverData = receiver.getDeviceData()
 
-        key = {
-            (senderData['deviceId'], receiverData['deviceId']),
-            (receiverData['deviceId'], senderData['deviceId'])
+        # find if (nodeA, nodeB) or (nodeB, nodeA) are in the lastStabilities keys.
+        # set that as the key to use to find the value of the pdr
+        linkInLastStabilities = {
+            (sender.dotBotId,   receiver.dotBotId),
+            (receiver.dotBotId, sender.dotBotId)
         }.intersection(self.lastStabilities.keys())
 
         if (
-            senderData['deviceId'] in self.lastPositions.keys()                      and
-            receiverData['deviceId'] in self.lastPositions.keys()                    and
-            senderData['position'] == self.lastPositions[senderData['deviceId']]     and
-            receiverData['position'] == self.lastPositions[receiverData['deviceId']] and
-            key
-            ):
+            # both sender and receiver are in are in last positions and the link between
+            sender.dotBotId   in self.lastPositions.keys()                      and
+            receiver.dotBotId in self.lastPositions.keys()                      and
+            # sender and receiver haven't moved since last time their link stability was computed
+            (sender.x,   sender.y)   == self.lastPositions[sender.dotBotId]     and
+            (receiver.x, receiver.y) == self.lastPositions[receiver.dotBotId]   and
+            # the link between sender and receiver is in last stabilities
+            linkInLastStabilities
+        ):
 
-            pdr = self.lastStabilities[list(key)[0]]
+            # link stability between sender and receiver is the same as last time
+            pdr = self.lastStabilities[list(linkInLastStabilities)[0]]
 
         else:
 
-            distance    = u.distance(senderData['position'], receiverData['position'])
+            distance    = u.distance((sender.x, sender.y), (receiver.x, receiver.y))
             shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
             rssi        = self._friisModel(distance) - shift_value
             pdr         = self._rssi_to_pdr(rssi)
 
-            self.lastPositions[senderData['deviceId']]   = senderData['position']
-            self.lastPositions[receiverData['deviceId']] = receiverData['position']
-            self.lastStabilities[(senderData['deviceId'], receiverData['deviceId'])] = pdr
+            self.lastPositions[sender.dotBotId]   = (sender.x,   sender.y)
+            self.lastPositions[receiver.dotBotId] = (receiver.x, receiver.y)
+            self.lastStabilities[(sender.dotBotId, receiver.dotBotId)] = pdr
 
         return pdr
 

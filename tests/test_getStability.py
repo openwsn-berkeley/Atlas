@@ -89,8 +89,4 @@ def test_getStabilitySamePositions():
 
     assert pdr1 == pdr2
 
-    (receiver.x, receiver.y) = (50,50)
-    pdr3                     = wireless._getStability(sender, receiver)
-
-    assert pdr3 != pdr2
 
