@@ -108,6 +108,7 @@ class Wireless(object):
 
     def transmit(self, sender, frame):
         relays = [device for device in self.devices if device.isRelay]
+
         for receiver in self.devices:
 
             if receiver == sender:
@@ -130,6 +131,9 @@ class Wireless(object):
         failProbability = (1 - self._getStability(sender, receiver))
 
         for relay in relays:
+
+            if relay == receiver:
+                continue
 
             # find probability of failure for every path of (sender -> relay -> receiver)
             stabilitySenderRelay   = self._getStability(sender, relay)

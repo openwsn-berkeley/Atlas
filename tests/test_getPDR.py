@@ -1,7 +1,7 @@
 
 import Wireless
 import pytest
-
+import DotBot
 # ============================ fixtures ==============================
 
 EXPECTEDINOUT = [
@@ -90,3 +90,21 @@ def test_getPDR(expectedInOut):
         relays    =   relays
     ) == expectedInOut['out']
 
+def test_getPDRReceiverIsRelay():
+    '''
+    testing success probability of a packet going through to a moving node from a given
+    root node given relays and link PDRs
+    '''
+
+    wireless  = TestWireless({
+        ('A', 'B'): 0.60,
+        ('A', 'C'): 0.70,
+        ('C', 'B'): 0.90,
+    })
+
+    assert wireless._getPDR(
+        sender    =   'A',
+        relays    =  ['B', 'C'],
+        receiver  =   'B',
+
+    ) == 0.852
