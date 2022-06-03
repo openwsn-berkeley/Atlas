@@ -36,6 +36,12 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored      = []
         self.cellsObstacle      = []
         self.cellsFrontier      = []
+        self.x                  = self.initX
+        self.y                  = self.initY
+        self.dotBotId           = 0
+
+        # for wireless to identify if this is a relay device or not
+        self.isRelay            = False
 
         self.dotBotsView        = dict([
             (
@@ -50,6 +56,8 @@ class Orchestrator(Wireless.WirelessDevice):
                     # sequence numbers (to filter out duplicate commands and notifications)
                    'seqNumCommand':      0,
                    'seqNumNotification': None,
+                    # if dotBot is relay or not
+                   'isRelay':            False,
                 }
             ) for i in range(1, self.numRobots+1)
         ])
@@ -104,6 +112,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         'heading':        dotBot['heading'],
                         'speed':          dotBot['speed'],
                         'seqNumCommand':  dotBot['seqNumCommand'],
+                        'isRelay':        dotBot['isRelay'],
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -192,14 +201,12 @@ class Orchestrator(Wireless.WirelessDevice):
         (heading, speed)          = self._pickNewMovement(frame['source'])
         dotBot['heading']         = heading
         dotBot['speed']           = speed
+
         # update sequence number of movement instruction
         dotBot['seqNumCommand'] += 1
 
-    def computeCurrentPosition(self):
-        '''
-        for wireless calculations of PDR
-        '''
-        return (self.initX, self.initY)
+        # set relay status (temporary until relay algorithms are implemented!)
+        dotBot['isRelay']         = True if frame['source'] in [1,5] else False     # FIXME: real algorithm
 
     #=== Map
 
@@ -357,6 +364,7 @@ class Orchestrator(Wireless.WirelessDevice):
             {
                 'x':         dotBot['x'],
                 'y':         dotBot['y'],
+                'isRelay':   dotBot['isRelay'],
             } for dotBotId, dotBot in self.dotBotsView.items()
         ]
         return returnVal

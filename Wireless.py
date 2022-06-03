@@ -88,7 +88,10 @@ class Wireless(object):
         self._init = True
         
         # local variables
-        self.devices = []
+        self.devices         = []
+        self.lastPositions   = {}
+        self.lastStabilities = {}
+
     # ======================== public ==========================================
 
     def indicateDevices(self, devices):
@@ -102,19 +105,20 @@ class Wireless(object):
         Singleton destructor.
         """
         self._instance = None
-        self._init = False
+        self._init     = False
 
     def transmit(self, sender, frame):
+        relays = [device for device in self.devices if device.isRelay]
+
         for receiver in self.devices:
 
             if receiver == sender:
                 continue  # transmitter doesn't receive
 
             assert sender != receiver
-            sender_pos     = sender.computeCurrentPosition()
-            receiver_pos   = receiver.computeCurrentPosition()
 
-            pdr            = self._computePdrPisterHack(sender_pos, receiver_pos)
+            # get pdr between sender and receiver
+            pdr            = self._getPDR(sender, relays, receiver)
             log.debug(f'PDR between {sender} and {receiver} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
@@ -122,16 +126,59 @@ class Wireless(object):
 
     # ======================== private =========================================
 
-    def _computePdrPisterHack(self, sender_pos, receiver_pos):
+    def _getPDR(self, sender, relays, receiver):
+
+        # find probability of failure between sender and receiver with no relays
+        failProbability = (1 - self._getStability(sender, receiver))
+
+        for relay in relays:
+
+            if relay == receiver:
+                continue
+
+            # find probability of failure for every path of (sender -> relay -> receiver)
+            stabilitySenderRelay   = self._getStability(sender, relay)
+            stabilityRelayReceiver = self._getStability(relay,  receiver)
+            failProbability        = failProbability * (1-(stabilitySenderRelay * stabilityRelayReceiver))
+
+        return 1 - failProbability     # probability of success
+
+    def _getStability(self, sender, receiver):
         '''
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
 
-        distance    = u.distance(sender_pos, receiver_pos)
+        # find if (nodeA, nodeB) or (nodeB, nodeA) are in the lastStabilities keys.
+        # set that as the key to use to find the value of the pdr
+        linkInLastStabilities = {
+            (sender.dotBotId,   receiver.dotBotId),
+            (receiver.dotBotId, sender.dotBotId)
+        }.intersection(self.lastStabilities.keys())
 
-        shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
-        rssi        = self._friisModel(distance) - shift_value
-        pdr         = self._rssi_to_pdr(rssi)
+        if (
+            # both sender and receiver are in are in last positions and the link between
+            sender.dotBotId   in self.lastPositions.keys()                      and
+            receiver.dotBotId in self.lastPositions.keys()                      and
+            # sender and receiver haven't moved since last time their link stability was computed
+            (sender.x,   sender.y)   == self.lastPositions[sender.dotBotId]     and
+            (receiver.x, receiver.y) == self.lastPositions[receiver.dotBotId]   and
+            # the link between sender and receiver is in last stabilities
+            linkInLastStabilities
+        ):
+
+            # link stability between sender and receiver is the same as last time
+            pdr = self.lastStabilities[list(linkInLastStabilities)[0]]
+
+        else:
+
+            distance    = u.distance((sender.x, sender.y), (receiver.x, receiver.y))
+            shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
+            rssi        = self._friisModel(distance) - shift_value
+            pdr         = self._rssi_to_pdr(rssi)
+
+            self.lastPositions[sender.dotBotId]   = (sender.x,   sender.y)
+            self.lastPositions[receiver.dotBotId] = (receiver.x, receiver.y)
+            self.lastStabilities[(sender.dotBotId, receiver.dotBotId)] = pdr
 
         return pdr
 
@@ -169,5 +216,4 @@ class Wireless(object):
         assert pdr <= 1.0
 
         return pdr
-
 
