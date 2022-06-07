@@ -65,7 +65,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # initial movements
         for dotBotId in range(1,self.numRobots+1):
-            (heading, speed, timeout)             = (360*random.random(), 1, 0.5)
+            (heading, speed, timeout)             = self._computeHeadingSpeedTimeout(path=[], dotBotId=dotBotId)
             self.dotBotsView[dotBotId]['heading'] = heading
             self.dotBotsView[dotBotId]['speed']   = speed
             self.dotBotsView[dotBotId]['timeout'] = timeout
@@ -243,7 +243,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
 
         # set new speed and heading and timeout for dotBot
-        (heading, speed, timeout) = self._computeHeadingAndTimeout(path, frame['source'])
+        (heading, speed, timeout) = self._computeHeadingSpeedTimeout(path, frame['source'])
         log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
 
         dotBot['heading']         = heading
@@ -629,49 +629,54 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'A* path from {startCell} to {targetCell} is {path}')
         return path
 
-    def _computeHeadingAndTimeout(self, path, dotBotId):
+    def _computeHeadingSpeedTimeout(self, path, dotBotId):
 
-        assert path
-        log.debug(f'finding heading for path of {path}')
+        if path:
+            log.debug(f'finding heading for path of {path}')
 
-        dotBot                = self.dotBotsView[dotBotId]
-        distToCellCenter      = self.MINFEATURESIZE/4        # value used to find coordinate of cell center
+            dotBot                = self.dotBotsView[dotBotId]
 
-        # find initial heading and distance to reach first cell in path (to use as reference)
-        heading         = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
+            # find initial heading and distance to reach first cell in path (to use as reference)
+            initialHeading         = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
 
-        # destination cell is either target (if no obstacles on path) or last cell before changing heading
-        destinationCell = (path[0][0]+distToCellCenter, path[0][1]+distToCellCenter)
+            # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
+            # movement is from cell centre to cell centre to avoid movements across cell borders and assure
+            # passing though cells to explore them
+            destination            = (path[0][0]+self.MINFEATURESIZE/4, path[0][1]+self.MINFEATURESIZE/4)
 
-        # compute distance dotBot will move along same trajectory until heading changes from initial one
-        for idx, (cx,cy) in enumerate(path):
+            # compute distance dotBot will move along same trajectory until heading changes from initial one
+            for idx, (cx,cy) in enumerate(path):
 
-            if (cx, cy) == path[-1]:
-                # target is the only cell in the path
-                break
+                if (cx, cy) == path[-1]:
+                    # target is the only cell in the path
+                    break
 
-            # find center of this cell and next to assure passing through it (for exploration)
-            (nextX, nextY)  = (path[idx+1][0], path[idx+1][1])
-            nextHeading     = (math.degrees(math.atan2(nextY - cy, nextX - cx)) + 90) % 360
-            log.debug(f'current cell {(cx,cy)} next cell {nextX, nextY} and heading between {heading}')
-            if nextHeading != heading:
-                # heading changes
-                destinationCell = (cx + distToCellCenter, cy + distToCellCenter)
-                break
+                # find heading to center of next cell
+                headingToNext     = (math.degrees(math.atan2(path[idx+1][1] - cy, path[idx+1][0] - cx)) + 90) % 360
 
-        # find distance to destination cell from dotBot position
-        distance = u.distance((dotBot['x'], dotBot['y']), destinationCell)
+                if headingToNext != initialHeading:
+                    # heading changes
+                    destination = (cx + self.MINFEATURESIZE/4, cy + self.MINFEATURESIZE/4)
+                    break
 
-        # heading to get to destination cell center (to assure exploration and avoid border to border movement)
-        heading = (
-            math.degrees(math.atan2(destinationCell[1] - dotBot['y'], destinationCell[0] - dotBot['x'])) + 90
-            ) % 360
+            # find distance to destination cell from dotBot position
+            distance = u.distance((dotBot['x'], dotBot['y']), destination)
 
-        # set speed
-        speed   = 1
+            # heading to get to destination cell center (to assure exploration and avoid border to border movement)
+            heading = (
+                math.degrees(math.atan2(destination[1] - dotBot['y'], destination[0] - dotBot['x'])) + 90
+                ) % 360
 
-        # find timeout to stop at target cell
-        timeout = distance/speed
-        log.debug(f'destination cell is {destinationCell}, heading {heading}, time {timeout}')
+            # set speed
+            speed   = 1
+
+            # find timeout to stop at target cell
+            timeout = distance/speed
+
+            log.debug(f'destination cell is {destination}, heading {heading}, time {timeout}')
+
+        else:
+            (heading, speed, timeout) = (360*random.random(), 1, 0.5)
+
         return (heading, speed, timeout)
 
