@@ -1,6 +1,5 @@
 # built-in
 import math
-import itertools
 # third-party
 # local
 import SimEngine

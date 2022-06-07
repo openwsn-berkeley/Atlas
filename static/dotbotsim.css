@@ -132,20 +132,20 @@
     stroke-width:     0px;
 }
 
-.exploredCellsExplored {
+.cellsExplored {
     fill:             #28B463;
     opacity:          0.2;
     stroke:           #0B5345;
     stroke-width:     1px;
 }
 
-.exploredCellsObstacle {
+.cellsObstacle {
     fill:             #2E86C1;
     opacity:          0.5;
     stroke:           #154360;
     stroke-width:     1px;
 }
-.exploredCellsFrontier {
+.cellsFrontier {
     fill:             #DC143C;
     opacity:          0.2;
     stroke:           #FF0000;

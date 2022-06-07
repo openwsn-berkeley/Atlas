@@ -102,8 +102,8 @@ class AtlasUI(object):
                 (x,y)                     = dotBot.computeCurrentPosition()
                 (next_bump_x,next_bump_y) = dotBot.getNextBumpPosition()
                 returnValDotBots += [{
-                    'x': x,
-                    'y': y,
+                    'x':           x,
+                    'y':           y,
                     'next_bump_x': next_bump_x,
                     'next_bump_y': next_bump_y,
                     'isRelay':     self.orchestrator.dotBotsView[dotBot.dotBotId]['isRelay']
@@ -118,7 +118,9 @@ class AtlasUI(object):
                 'mode':                self.simEngine.mode(),
                 'simulatedTime':       self.simEngine.formatSimulatedTime(),
                 'dotBots':             returnValDotBots,
-                'exploredCells':       orchestratorView['exploredCells'],
+                'cellsExplored':       orchestratorView['cellsExplored'],
+                'cellsObstacle':       orchestratorView['cellsObstacle'],
+                'cellsFrontier':       orchestratorView['cellsFrontier'],
             }
             
         except AttributeError:
