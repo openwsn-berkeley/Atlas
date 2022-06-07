@@ -175,6 +175,8 @@ function drawDotBots(data) {
     cellsExplored
         .exit()
             .remove();
+
+    // Obstacle cells
     var cellsObstacle  = svg.selectAll(".cellsObstacle")
         .data(data.cellsObstacle);
     cellsObstacle
@@ -191,6 +193,8 @@ function drawDotBots(data) {
     cellsObstacle
         .exit()
             .remove();
+
+    // Frontier cells
     var cellsFrontier = svg.selectAll(".cellsFrontier")
         .data(data.cellsFrontier);
     cellsFrontier
