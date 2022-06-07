@@ -146,108 +146,69 @@ function drawDotBots(data) {
     dotBots
         .transition()
             .attr("cx", function(d) { return scaleFactor*d.x; })
-            .attr("cy", function(d) { return scaleFactor*d.y; });
+            .attr("cy", function(d) { return scaleFactor*d.y; })
+            .attr("fill",function(d,i) {return d.isRelay === true ? 'black' : dotBotcolors[i%10];});
     dotBots
         .enter().append("circle")
             .attr("cx", function(d) { return scaleFactor*d.x; })
             .attr("cy", function(d) { return scaleFactor*d.y; })
             .attr("class", "dotBot")
-            .attr("fill",function(d,i){return dotBotcolors[i%10];})
             .attr("r", 6);
-    
-    // discomapcomplete
-    if (data.discomap.complete==true) {
-        $(".discomapline").css( { stroke: 'green' } );
-    } else {
-        $(".discomapline").css( { stroke: 'red' } );
-    }
-    
-    // discomapdots
-    var discomapdots = svg.selectAll(".discomapdot")
-        .data(data.discomap.dots);
-    discomapdots
-        .attr("cx", function(d) { return scaleFactor*d[0]; })
-        .attr("cy", function(d) { return scaleFactor*d[1]; });
-    discomapdots
-        .enter().append("circle")
-            .attr("cx", function(d) { return scaleFactor*d[0]; })
-            .attr("cy", function(d) { return scaleFactor*d[1]; })
-            .attr("class", "discomapdot")
-            .attr("r", 2);
-    discomapdots
-        .exit()
-            .remove();
-    
-    // discomaplines
-    var discomaplines  = svg.selectAll(".discomapline")
-        .data(data.discomap.lines);
-    discomaplines
-        .attr("x1", function(d) { return scaleFactor*d[0]; })
-        .attr("y1", function(d) { return scaleFactor*d[1]; })
-        .attr("x2", function(d) { return scaleFactor*d[2]; })
-        .attr("y2", function(d) { return scaleFactor*d[3]; });
-    discomaplines
-        .enter().append("line")
-            .attr("x1", function(d) { return scaleFactor*d[0]; })
-            .attr("y1", function(d) { return scaleFactor*d[1]; })
-            .attr("x2", function(d) { return scaleFactor*d[2]; })
-            .attr("y2", function(d) { return scaleFactor*d[3]; })
-            .attr("class", "discomapline");
-    discomaplines
-        .exit()
-            .remove();
-    
+
     // explored cells
-
-    var exploredCellsExplored  = svg.selectAll(".exploredCellsExplored")
-        .data(data.exploredCells.cellsExplored);
-    exploredCellsExplored
+    var cellsExplored  = svg.selectAll(".cellsExplored")
+        .data(data.cellsExplored);
+    cellsExplored
 
         .attr("x",      function(d) { return scaleFactor*d.x; })
         .attr("y",      function(d) { return scaleFactor*d.y; })
         .attr("width",  function(d) { return scaleFactor*d.width; })
         .attr("height", function(d) { return scaleFactor*d.height; });
 
-    exploredCellsExplored.enter().append("rect")
+    cellsExplored.enter().append("rect")
 
             .attr("x",      function(d) { return scaleFactor*d.x; })
             .attr("y",      function(d) { return scaleFactor*d.y; })
             .attr("width",  function(d) { return scaleFactor*d.width; })
             .attr("height", function(d) { return scaleFactor*d.height; })
-            .attr("class",  "exploredCellsExplored");
-    exploredCellsExplored
+            .attr("class",  "cellsExplored");
+    cellsExplored
         .exit()
             .remove();
-    var exploredCellsObstacle  = svg.selectAll(".exploredCellsObstacle")
-        .data(data.exploredCells.cellsObstacle);
-    exploredCellsObstacle
+
+    // Obstacle cells
+    var cellsObstacle  = svg.selectAll(".cellsObstacle")
+        .data(data.cellsObstacle);
+    cellsObstacle
         .attr("x",      function(d) { return scaleFactor*d.x; })
         .attr("y",      function(d) { return scaleFactor*d.y; })
         .attr("width",  function(d) { return scaleFactor*d.width; })
         .attr("height", function(d) { return scaleFactor*d.height; });
-    exploredCellsObstacle.enter().append("rect")
+    cellsObstacle.enter().append("rect")
             .attr("x",      function(d) { return scaleFactor*d.x; })
             .attr("y",      function(d) { return scaleFactor*d.y; })
             .attr("width",  function(d) { return scaleFactor*d.width; })
             .attr("height", function(d) { return scaleFactor*d.height; })
-            .attr("class",  "exploredCellsObstacle");
-    exploredCellsObstacle
+            .attr("class",  "cellsObstacle");
+    cellsObstacle
         .exit()
             .remove();
-    var exploredCellsFrontier = svg.selectAll(".exploredCellsFrontier")
-        .data(data.exploredCells.cellsFrontier);
-    exploredCellsFrontier
+
+    // Frontier cells
+    var cellsFrontier = svg.selectAll(".cellsFrontier")
+        .data(data.cellsFrontier);
+    cellsFrontier
         .attr("x",      function(d) { return scaleFactor*d.x; })
         .attr("y",      function(d) { return scaleFactor*d.y; })
         .attr("width",  function(d) { return scaleFactor*d.width; })
         .attr("height", function(d) { return scaleFactor*d.height; });
-    exploredCellsFrontier.enter().append("rect")
+    cellsFrontier.enter().append("rect")
             .attr("x",      function(d) { return scaleFactor*d.x; })
             .attr("y",      function(d) { return scaleFactor*d.y; })
             .attr("width",  function(d) { return scaleFactor*d.width; })
             .attr("height", function(d) { return scaleFactor*d.height; })
-            .attr("class",  "exploredCellsFrontier");
-    exploredCellsFrontier
+            .attr("class",  "cellsFrontier");
+    cellsFrontier
         .exit()
             .remove();
 }

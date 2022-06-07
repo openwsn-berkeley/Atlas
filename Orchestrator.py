@@ -203,7 +203,9 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['speed']           = speed
 
         # update sequence number of movement instruction
-        dotBot['seqNumCommand'] += 1
+        dotBot['seqNumCommand']  += 1
+        # set relay status
+        dotBot['isRelay']         = random.choice([True, False])    # FIXME: replace with relay algorithms
 
         # set relay status (temporary until relay algorithms are implemented!)
         dotBot['isRelay']         = True if frame['source'] in [1,5] else False     # FIXME: real algorithm
@@ -375,15 +377,12 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
 
         returnVal = {
-            'dotBotpositions': self.getEvaluatedPositions(),
-            'discomap':        {"complete": False, "dots": [], "lines": []},
-            'exploredCells':   {
-                'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
-                'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
-                'cellsFrontier': [self._cell2SvgRect(*c) for c in self.cellsFrontier],
-            },
+            'dotBotpositions':  self.getEvaluatedPositions(),
+            'cellsExplored':   [self._cell2SvgRect(*c) for c in self.cellsExplored],
+            'cellsObstacle':   [self._cell2SvgRect(*c) for c in self.cellsObstacle],
+            'cellsFrontier':   [self._cell2SvgRect(*c) for c in self.cellsFrontier],
         }
-        
+
         return returnVal
     
     #======================== private =========================================
