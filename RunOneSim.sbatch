@@ -4,6 +4,7 @@
 #SBATCH --mail-user=razane.abu-aisheh@inria.fr    # Where to send mail
 #SBATCH --output=output%A_%a.log                  # Standard output and error log
 #SBATCH --partition=gpu                           # partition of nodes used (cpu_devel, cpu_homogen,gpu)
+#SBATCH --time=05:00:00                           # total run time limit (HH:MM:SS)
 
 # If you use conda
 source /home/$USER/.bashrc
