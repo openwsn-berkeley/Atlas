@@ -94,7 +94,6 @@ def main(simSetting, atlasUI=None):
     # run the simulation (blocking)
     runOneSim(simSetting, atlasUI)
 
-
 if __name__ == '__main__':
     '''
     Used by CLEPS only.
