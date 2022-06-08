@@ -101,3 +101,27 @@ def test_isCornerFrontier(expectedInOut):
     orchestrator.cellsObstacle = [(1.0,0.5),(1.5,0.5),(5.5,0.5),(6,1),(4,2.5),(3.5,3),(2.5,3),(2,3.5),(0.5,4.5),(1,5)]
 
     assert orchestrator._isCornerFrontier(*expectedInOut['in'].values()) == expectedInOut['out']
+
+def test_multipleDiagonalObstacles():
+    '''
+    testing when we have multiple diagonal obstacles connected to frontier cell.
+
+    test case:
+
+    e o o
+    o c o
+    o c o
+    o o o
+    '''
+
+    orchestrator  = Orchestrator.Orchestrator(
+        numRobots = 1,
+        initX     = 1,
+        initY     = 1
+    )
+    orchestrator.MINFEATURESIZE = 1
+    orchestrator.cellsExplored = [(0, 0), (0, 1.5)]
+    orchestrator.cellsObstacle = [(0.5, 0), (1, 0), (0, 0.5), (1, 0.5), (0, 1), (1, 1), (0.5, 1.5), (1, 1.5)]
+
+    assert orchestrator._isCornerFrontier((0.5, 0.5)) == True
+    assert orchestrator._isCornerFrontier((0.5, 1))   == True
