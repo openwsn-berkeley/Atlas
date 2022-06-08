@@ -89,11 +89,10 @@ def main(simSetting, atlasUI=None):
     and by the code below when running from CLEPS.
     '''
 
-    log.info('running on cleps ...')
+    log.info('running on CLEPS, seed={}...'.format(simSetting['seed']))
     
     # run the simulation (blocking)
     runOneSim(simSetting, atlasUI)
-
 
 if __name__ == '__main__':
     '''

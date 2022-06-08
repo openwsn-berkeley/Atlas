@@ -441,18 +441,16 @@ class Orchestrator(Wireless.WirelessDevice):
         },
         '''
 
-        returnVal     = False
-        firstObstacle = None
+        returnVal          = False
+        neighbourObstacles = []
 
         # check for obstacle in 1-hop neighbourhood of frontier
         for n in self._computeCellNeighbours(*cell):
             if n in self.cellsObstacle:
-                firstObstacle = n
-                break
+                neighbourObstacles += [n]
 
-        if firstObstacle:
-
-            (cx, cy) = firstObstacle
+        # find all diagonal obstacles connected to frontier
+        for (cx, cy) in neighbourObstacles:
 
             # check for second obstacle diagonal to the first one
             for (nx, ny) in self._computeCellNeighbours(*cell):
