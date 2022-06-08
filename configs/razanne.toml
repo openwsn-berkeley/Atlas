@@ -1,6 +1,6 @@
 [atlas]
-    numRobots                = 10
-    floorplan                = "large_empty_boundary.txt"      # filename in maps
+    numRobots                = 20
+    floorplan                = "inria_office_floorplan.txt"    # filename in maps
     navigationAlgorithm      = "Atlas"                         # options: Atlas, Ballistic
     relayAlgorithm           = "Recovery"                      # options: Recovery, Naive, SelfHealing
     lowerPdrThreshold        = 0.7                             # (for Recovery) trigger relay placement if below

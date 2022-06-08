@@ -191,6 +191,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # simulation complete when there are no more frontier cells left
         if not self.cellsFrontier:
             self.simEngine.completeRun()
+        log.debug(f'remaining frontiers are {self.cellsFrontier}')
 
         # update dotBotsView
         dotBot['x']       = newX
@@ -204,8 +205,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
-        # set relay status
-        dotBot['isRelay']         = random.choice([True, False])    # FIXME: replace with relay algorithms
 
         # set relay status (temporary until relay algorithms are implemented!)
         dotBot['isRelay']         = True if frame['source'] in [1,5] else False     # FIXME: real algorithm
