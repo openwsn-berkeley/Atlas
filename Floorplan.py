@@ -8,9 +8,10 @@ class Floorplan(object):
     The floorplan the DotBots move in.
     '''
     
-    def __init__(self, drawing, alias=None):
+    def __init__(self, drawing=None, alias=None):
 
         if alias:
+            assert not drawing
             drawing = pkg_resources.resource_string('floorplans', f'{alias}.txt').decode('utf-8')
 
         assert self._isMapValid(drawing)
