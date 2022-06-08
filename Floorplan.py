@@ -1,4 +1,5 @@
 # built-in
+import pkg_resources
 # third-party
 # local
 
@@ -7,8 +8,13 @@ class Floorplan(object):
     The floorplan the DotBots move in.
     '''
     
-    def __init__(self, drawing):
+    def __init__(self, drawing, alias=None):
+
+        if alias:
+            drawing = pkg_resources.resource_string('floorplans', f'{alias}.txt').decode('utf-8')
+
         assert self._isMapValid(drawing)
+
         (self.width, self.height, self.obstacles, self.initX, self.initY) = self._parseDrawing(drawing)
 
     @classmethod

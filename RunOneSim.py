@@ -46,7 +46,7 @@ def runOneSim(simSetting, atlasUI=None):
     random.seed(simSetting['seed'])
     
     # create the simulation environment
-    floorplan      = Floorplan.Floorplan(simSetting['floorplan'])
+    floorplan      = Floorplan.Floorplan(drawing=None, alias=simSetting['floorplan'])
     (initX, initY) = floorplan.getInitialPosition()
     simEngine      = SimEngine.SimEngine()
     orchestrator   = Orchestrator.Orchestrator(
