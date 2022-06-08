@@ -89,7 +89,7 @@ def main(simSetting, atlasUI=None):
     and by the code below when running from CLEPS.
     '''
 
-    log.info('running on cleps with uniqie ID of {}...'.format(simSetting['seed']))
+    log.info('running on CLEPS, seed={}...'.format(simSetting['seed']))
     
     # run the simulation (blocking)
     runOneSim(simSetting, atlasUI)
