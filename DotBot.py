@@ -19,37 +19,37 @@ class DotBot(Wireless.WirelessDevice):
     A single DotBot.
     '''
 
-    RETRY_TIMEOUT_S = 1
+    RETRY_TIMEOUT_S             = 1
 
     def __init__(self, dotBotId, x, y, floorplan):
 
         # store params
-        self.dotBotId = dotBotId
-        self.x = x
-        self.y = y
-        self.floorplan = floorplan
+        self.dotBotId           = dotBotId
+        self.x                  = x
+        self.y                  = y
+        self.floorplan          = floorplan
 
         # === local variables
         # singletons
-        self.simEngine = SimEngine.SimEngine()
-        self.wireless = Wireless.Wireless()
+        self.simEngine          = SimEngine.SimEngine()
+        self.wireless           = Wireless.Wireless()
         # current heading and speed
-        self.currentHeading = 0
-        self.currentSpeed = 0
+        self.currentHeading     = 0
+        self.currentSpeed       = 0
         # timestamps of when movement starts/stops
-        self.tsMovementStart = None
-        self.tsMovementStop = None
+        self.tsMovementStart    = None
+        self.tsMovementStop     = None
         # sequence numbers (to filter out duplicate commands and notifications)
-        self.seqNumCommand = None
+        self.seqNumCommand      = None
         self.seqNumNotification = 0
         # state maintained by internal bump computation
-        self.nextBumpX = None  # coordinate the DotBot will bump into next
-        self.nextBumpY = None
-        self.nextBumpTime = None  # time at which DotBot will bump
+        self.nextBumpX          = None  # coordinate the DotBot will bump into next
+        self.nextBumpY          = None
+        self.nextBumpTime       = None  # time at which DotBot will bump
         # is dotBot a relay
-        self.isRelay = False
+        self.isRelay            = False
         # if dotbot has bumped
-        self.bumped = False
+        self.bumped             = False
 
     # ======================== public ==========================================
 
@@ -70,11 +70,11 @@ class DotBot(Wireless.WirelessDevice):
         self.seqNumCommand = frame['movements'][self.dotBotId]['seqNumCommand']
 
         # set stop time based on timeout if given
-        timeout = frame['movements'][self.dotBotId]['timeout']
-        stopTime = timeout + self.simEngine.currentTime() if timeout else math.inf
+        timeout            = frame['movements'][self.dotBotId]['timeout']
+        stopTime           = timeout + self.simEngine.currentTime() if timeout else math.inf
 
         # set relay status
-        self.isRelay = frame['movements'][self.dotBotId]['isRelay']
+        self.isRelay       = frame['movements'][self.dotBotId]['isRelay']
 
         # if dotBot is set as relay don't adjust movement
         if self.isRelay:
@@ -99,7 +99,7 @@ class DotBot(Wireless.WirelessDevice):
 
         # remember when I started moving, will be indicated in notification
         self.tsMovementStart = self.simEngine.currentTime()
-        self.tsMovementStop = None
+        self.tsMovementStop  = None
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
 
         # compute when/where next bump will happen
@@ -107,8 +107,8 @@ class DotBot(Wireless.WirelessDevice):
                                                            self.floorplan.obstacles)
 
         # remember
-        self.nextBumpX = bumpX
-        self.nextBumpY = bumpY
+        self.nextBumpX    = bumpX
+        self.nextBumpY    = bumpY
         self.nextBumpTime = self.simEngine.currentTime() + timetobump
         log.debug(f'Dotbot {self.dotBotId} next bump at ({bumpX}, {bumpY}) at {self.nextBumpTime}')
 
@@ -134,11 +134,11 @@ class DotBot(Wireless.WirelessDevice):
             (newX, newY) = (self.x, self.y)
         else:
             (newX, newY) = u.computeCurrentPosition(
-                currentX=self.x,
-                currentY=self.y,
-                heading=self.currentHeading,
-                speed=self.currentSpeed,
-                duration=now - self.tsMovementStart,
+                currentX = self.x,
+                currentY = self.y,
+                heading  = self.currentHeading,
+                speed    = self.currentSpeed,
+                duration = now - self.tsMovementStart,
             )
 
         # do NOT write back any results to the DotBot's state as race condition possible
@@ -185,7 +185,7 @@ class DotBot(Wireless.WirelessDevice):
         (self.x, self.y) = self.computeCurrentPosition()
 
         # dotBot did not bump
-        self.bumped = False
+        self.bumped      = False
 
         # stop movement and send notification
         self._stopAndTransmit()
@@ -196,7 +196,7 @@ class DotBot(Wireless.WirelessDevice):
         self.seqNumNotification += 1
 
         # stop moving
-        self.currentSpeed = 0
+        self.currentSpeed   = 0
 
         # remember when I stop moving
         self.tsMovementStop = self.simEngine.currentTime()
@@ -252,9 +252,9 @@ class DotBot(Wireless.WirelessDevice):
 
         assert speed != 0
 
-        bumpX = None
-        bumpY = None
-        timetobump = None
+        bumpX           = None
+        bumpY           = None
+        timetobump      = None
         intersectPoints = []
 
         # find slope of movement trajectory
@@ -272,8 +272,8 @@ class DotBot(Wireless.WirelessDevice):
                 # horizontal edge case
 
                 if (
-                        (heading == 90 and xmax <= currentX) or
-                        (heading == 270 and currentX <= xmin)
+                    (heading == 90 and xmax <= currentX) or
+                    (heading == 270 and currentX <= xmin)
                 ):
                     # line is heading away from obstacle horizontally
                     # skip this obstacle
@@ -289,8 +289,8 @@ class DotBot(Wireless.WirelessDevice):
                 # vertical edge case
 
                 if (
-                        (heading == 0 and currentY <= ymin) or
-                        (heading == 180 and ymax <= currentY)
+                    (heading == 0 and currentY <= ymin) or
+                    (heading == 180 and ymax <= currentY)
                 ):
                     # line is heading away from obstacle vertically
                     # skip this obstacle
@@ -308,14 +308,14 @@ class DotBot(Wireless.WirelessDevice):
                 (topX, bottomX, leftY, rightY) = (None, None, None, None)
 
                 if (
-                        # line moving right upwards and starts to the right or top of obstacle
-                        ((0 < heading < 90 and (xmax <= currentX or currentY <= ymin))) or
-                        # line moving right downwards and starts to the right or bottom of obstacle
-                        ((90 < heading < 180 and (xmax <= currentX or ymax <= currentY))) or
-                        # line moving left downwards and starts to the left or bottom of obstacle
-                        ((180 < heading < 270 and (currentX <= xmin or ymax <= currentY))) or
-                        # line moving left upwards and starts to the left or top of obstacle
-                        ((270 < heading < 360 and (currentX <= xmin or currentY <= ymin)))
+                    # line moving right upwards and starts to the right or top of obstacle
+                    ((0 < heading < 90 and (xmax <= currentX or currentY <= ymin))) or
+                    # line moving right downwards and starts to the right or bottom of obstacle
+                    ((90 < heading < 180 and (xmax <= currentX or ymax <= currentY))) or
+                    # line moving left downwards and starts to the left or bottom of obstacle
+                    ((180 < heading < 270 and (currentX <= xmin or ymax <= currentY))) or
+                    # line moving left upwards and starts to the left or top of obstacle
+                    ((270 < heading < 360 and (currentX <= xmin or currentY <= ymin)))
                 ):
                     # skip this obstacle
                     continue
@@ -325,27 +325,25 @@ class DotBot(Wireless.WirelessDevice):
                 if 0 < heading < 90:
                     # top right quadrant
 
-                    bottomX = ((
-                                           ymax - currentY) / slope) + currentX  # intersection with bottom obstacle border (y=ymax)
-                    leftY = (xmin - currentX) * slope + currentY  # intersection with left obstacle border   (x=xmin)
+                    bottomX = ((ymax - currentY) / slope) + currentX  # intersection with bottom obstacle border (y=ymax)
+                    leftY   = (xmin - currentX) * slope + currentY    # intersection with left obstacle border   (x=xmin)
 
                 if 90 < heading < 180:
                     # bottom right quadrant
 
-                    topX = ((ymin - currentY) / slope) + currentX  # intersection with top obstacle border    (y=ymin)
-                    leftY = (xmin - currentX) * slope + currentY  # intersection with left obstacle border   (x=xmin)
+                    topX  = ((ymin - currentY) / slope) + currentX    # intersection with top obstacle border    (y=ymin)
+                    leftY = (xmin - currentX) * slope + currentY      # intersection with left obstacle border   (x=xmin)
 
                 if 180 < heading < 270:
                     # bottom left quadrant
 
-                    topX = ((ymin - currentY) / slope) + currentX  # intersection with top obstacle border    (y=ymin)
-                    rightY = (xmax - currentX) * slope + currentY  # intersection with right obstacle border  (x=xmax)
+                    topX   = ((ymin - currentY) / slope) + currentX   # intersection with top obstacle border    (y=ymin)
+                    rightY = (xmax - currentX) * slope + currentY     # intersection with right obstacle border  (x=xmax)
 
                 if 270 < heading < 360:
                     # top left quadrant
-                    bottomX = ((
-                                           ymax - currentY) / slope) + currentX  # intersection with bottom obstacle border (y=ymax)
-                    rightY = (xmax - currentX) * slope + currentY  # intersection with right obstacle border  (x=xmax)
+                    bottomX = ((ymax - currentY) / slope) + currentX  # intersection with bottom obstacle border (y=ymax)
+                    rightY  = (xmax - currentX) * slope + currentY    # intersection with right obstacle border  (x=xmax)
 
                 # check if intersection points are on obstacle
                 if topX and xmin <= round(topX, 10) <= xmax:
@@ -360,8 +358,8 @@ class DotBot(Wireless.WirelessDevice):
         if intersectPoints:
 
             # find closest intersection point to current position
-            distances = [((x, y), u.distance((currentX, currentY), (x, y))) for (x, y) in intersectPoints]
-            distances = sorted(distances, key=lambda e: e[1])
+            distances      = [((x, y), u.distance((currentX, currentY), (x, y))) for (x, y) in intersectPoints]
+            distances      = sorted(distances, key=lambda e: e[1])
             (bumpX, bumpY) = distances[0][0]
 
             # find bump time
