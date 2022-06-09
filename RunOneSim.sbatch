@@ -6,7 +6,7 @@
 #SBATCH --partition=gpu                           # partition of nodes used (cpu_devel, cpu_homogen,gpu)
 #SBATCH --time=10:00:00                           # total run time limit (HH:MM:SS)
 #SBATCH --mem=10G                                 # Total memory allocated
-#SBATCH --nodes=2                                 # node count
+#SBATCH --nodes=1                                 # node count
 
 # If you use conda
 source /home/$USER/.bashrc
