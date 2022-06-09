@@ -55,4 +55,16 @@ def setLoggerUname(uname):
     )
     logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 
+# ============== A* helpers
+class AstarNode(object):
+
+    def __init__(self, cellPos, parent):
+        self.parent       = parent
+        self.cellPos      = cellPos
+        self.gCost        = 0
+        self.hCost        = 0
+        self.fCost        = 0
+
+    def __lt__(self, other):
+        return self.fCost < other.fCost
 

@@ -11,88 +11,98 @@ import DataCollector
 # setup logging
 import logging.config
 import LoggingConfig
+
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('Orchestrator')
+
 
 class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
     '''
-    
-    COMM_DOWNSTREAM_PERIOD_S    = 1
-    MINFEATURESIZE              = 1
-    
+
+    COMM_DOWNSTREAM_PERIOD_S = 1
+    MINFEATURESIZE = 1
+
     def __init__(self, numRobots, initX, initY):
 
         # store params
-        self.numRobots          = numRobots
-        self.initX              = initX
-        self.initY              = initY
+        self.numRobots = numRobots
+        self.initX = initX
+        self.initY = initY
 
         # local variables
-        self.simEngine          = SimEngine.SimEngine()
-        self.wireless           = Wireless.Wireless()
-        self.datacollector      = DataCollector.DataCollector()
-        self.cellsExplored      = []
-        self.cellsObstacle      = []
-        self.cellsFrontier      = []
-        self.x                  = self.initX
-        self.y                  = self.initY
-        self.dotBotId           = 0
+        self.simEngine = SimEngine.SimEngine()
+        self.wireless = Wireless.Wireless()
+        self.datacollector = DataCollector.DataCollector()
+        self.cellsExplored = []
+        self.cellsObstacle = []
+        self.cellsFrontier = []
+        self.x = self.initX
+        self.y = self.initY
+        self.dotBotId = 0
 
         # for wireless to identify if this is a relay device or not
-        self.isRelay            = False
+        self.isRelay = False
 
-        self.dotBotsView        = dict([
+        self.dotBotsView = dict([
             (
                 i,
                 {
                     # current position of dotBot
-                   'x':                  initX,
-                   'y':                  initY,
+                    'x': initX,
+                    'y': initY,
                     # current heading and speed
-                   'heading':            0,
-                   'speed':              0,
+                    'heading': 0,
+                    'speed': 0,
                     # sequence numbers (to filter out duplicate commands and notifications)
-                   'seqNumCommand':      0,
-                   'seqNumNotification': None,
+                    'seqNumCommand': 0,
+                    'seqNumNotification': None,
                     # if dotBot is relay or not
-                   'isRelay':            False,
+                    'isRelay': False,
+                    # duration of movement until robot stops
+                    'timeout': None,
+                    # if dotBot bumped last time it stopped
+                    'bumped': False,
+                    # frontier cell dotBot has been given to explore and path to it
+                    'targetCell': None,
+                    'currentPath': [],
                 }
-            ) for i in range(1, self.numRobots+1)
+            ) for i in range(1, self.numRobots + 1)
         ])
 
         # initial movements
-        for dotBotId in range(1,self.numRobots+1):
-            (heading, speed) = self._pickNewMovement(dotBotId)
+        for dotBotId in range(1, self.numRobots + 1):
+            (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=dotBotId)
             self.dotBotsView[dotBotId]['heading'] = heading
-            self.dotBotsView[dotBotId]['speed']   = speed
+            self.dotBotsView[dotBotId]['speed'] = speed
+            self.dotBotsView[dotBotId]['timeout'] = timeout
 
-    #======================== public ==========================================
+    # ======================== public ==========================================
 
-    #=== admin
-    
+    # === admin
+
     def startExploration(self):
         '''
         Simulation engine hands over control to orchestrator
         '''
-        
+
         # arm first downstream communication
         self.simEngine.schedule(
-            self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
+            self.simEngine.currentTime() + self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-        
-    #=== communication
+
+    # === communication
 
     def _downstreamTimeoutCb(self):
-        
+
         # send downstream command
         self._sendDownstreamCommands()
-       
+
         # arm next downstream communication
         self.simEngine.schedule(
-            self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
+            self.simEngine.currentTime() + self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
 
@@ -109,10 +119,11 @@ class Orchestrator(Wireless.WirelessDevice):
                 (
                     dotBotId,
                     {
-                        'heading':        dotBot['heading'],
-                        'speed':          dotBot['speed'],
-                        'seqNumCommand':  dotBot['seqNumCommand'],
-                        'isRelay':        dotBot['isRelay'],
+                        'heading': dotBot['heading'],
+                        'speed': dotBot['speed'],
+                        'seqNumCommand': dotBot['seqNumCommand'],
+                        'isRelay': dotBot['isRelay'],
+                        'timeout': dotBot['timeout'],
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -120,21 +131,11 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # hand over to wireless
         self.wireless.transmit(
-            frame  = frameToTx,
-            sender = self,
+            frame=frameToTx,
+            sender=self,
         )
 
-    def _pickNewMovement(self, dotBotId):
-        '''
-        modifies the movement in dotBotsview
-        '''
-
-        heading = 360 * random.random()
-        speed   = 1
-
-        return (heading, speed)
-
-    def receive(self,frame):
+    def receive(self, frame):
         '''
         Notification received from a DotBot, indicating it has just bumped
         '''
@@ -142,7 +143,7 @@ class Orchestrator(Wireless.WirelessDevice):
         assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
 
         # shorthand
-        dotBot       = self.dotBotsView[frame['source']]
+        dotBot = self.dotBotsView[frame['source']]
 
         # filter out duplicates
         if frame['seqNumNotification'] == dotBot['seqNumNotification']:
@@ -151,20 +152,20 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # update DotBot's position
         (newX, newY) = u.computeCurrentPosition(
-            currentX = dotBot['x'],
-            currentY = dotBot['y'],
-            heading  = dotBot['heading'],
-            speed    = dotBot['speed'],
-            duration = frame['movementDuration'],
+            currentX=dotBot['x'],
+            currentY=dotBot['y'],
+            heading=dotBot['heading'],
+            speed=dotBot['speed'],
+            duration=frame['movementDuration'],
         )
 
         # update explored cells
-        cellsExplored          = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
-        self.cellsExplored    += cellsExplored['cellsExplored']
+        cellsExplored = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
+        self.cellsExplored += cellsExplored['cellsExplored']
 
         # update obstacle cells
         if cellsExplored['nextCell']:
-            self.cellsObstacle  += [cellsExplored['nextCell']]
+            self.cellsObstacle += [cellsExplored['nextCell']]
 
         # remove explored frontiers
         self.cellsFrontier = [
@@ -177,9 +178,9 @@ class Orchestrator(Wireless.WirelessDevice):
         for (cx, cy) in cellsExplored['cellsExplored']:
             for n in self._computeCellNeighbours(cx, cy):
                 if (
-                    (n not in self.cellsExplored) and
-                    (n not in self.cellsObstacle) and
-                    self._isCornerFrontier(n) == False     # check that cell isn't a corner frontier
+                        (n not in self.cellsExplored) and
+                        (n not in self.cellsObstacle) and
+                        self._isCornerFrontier(n) == False  # check that cell isn't a corner frontier
                 ):
                     self.cellsFrontier += [n]
 
@@ -194,22 +195,76 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'remaining frontiers are {self.cellsFrontier}')
 
         # update dotBotsView
-        dotBot['x']       = newX
-        dotBot['y']       = newY
+        dotBot['x'] = newX
+        dotBot['y'] = newY
+        dotBot['bumped'] = frame['bumped']
+
         log.debug(f'dotbot {dotBot} is at ( {newX},{newY} ) ')
 
-        # pick new speed and heading for dotBot
-        (heading, speed)          = self._pickNewMovement(frame['source'])
-        dotBot['heading']         = heading
-        dotBot['speed']           = speed
+        # assign dotBot a new target if it's previous target has successfully been explored
+        # otherwise continue moving towards same target.
+        if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
+
+            # assign a new target cell (destination) to dotBot
+            targetCell = self._assignCellToExplore(frame['source'])
+
+            # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
+            # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
+            path = self._computePath(
+                startCell=cellsExplored['cellsExplored'][-1],
+                targetCell=targetCell,
+                excludeDiagonalCells=True if frame['bumped'] else False
+            )
+            log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
+
+            # store update target cell and path in dotBots view
+            dotBot['currentPath'] = path
+            dotBot['targetCell'] = targetCell
+
+        else:
+
+            # continue going towards same target cell
+            targetCell = dotBot['targetCell']
+
+            if frame['bumped']:
+                # dotBot bumped on way to target
+
+                # find a new path around obstacle (no diagonal cells)
+                path = self._computePath(
+                    startCell=cellsExplored['cellsExplored'][-1],
+                    targetCell=targetCell,
+                    excludeDiagonalCells=True
+                )
+                log.debug('new path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
+
+                # update path in dotbots view
+                dotBot['currentPath'] = path
+
+            else:
+                # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
+                # remove cells already traversed from path
+                path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
+
+                # update path in dotbots view
+                dotBot['currentPath'] = path
+
+                log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
+
+        # set new speed and heading and timeout for dotBot
+        (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=frame['source'], path=path)
+        log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
+
+        dotBot['heading'] = heading
+        dotBot['speed'] = speed
+        dotBot['timeout'] = timeout
 
         # update sequence number of movement instruction
-        dotBot['seqNumCommand']  += 1
+        dotBot['seqNumCommand'] += 1
 
         # set relay status (temporary until relay algorithms are implemented!)
-        dotBot['isRelay']         = True if frame['source'] in [1,5] else False     # FIXME: real algorithm
+        dotBot['isRelay'] = True if frame['source'] in [1, 5] else False  # FIXME: real algorithm
 
-    #=== Map
+    # === Map
 
     def _computeCellsExplored(self, startX, startY, stopX, stopY):
         '''
@@ -232,14 +287,14 @@ class Orchestrator(Wireless.WirelessDevice):
         returnVal = {'cellsExplored': [], 'nextCell': None}
 
         # find current cell coordinates
-        (cx,cy)      = self._xy2cell(startX, startY)
+        (cx, cy) = self._xy2cell(startX, startY)
 
         # check if current cell is start cell
         if startX == cx or startY == cy:
             if (stopX < startX) and (startX == cx):
-                cx = cx - self.MINFEATURESIZE/2
+                cx = cx - self.MINFEATURESIZE / 2
             if (stopY < startY) and (startY == cy):
-                cy = cy - self.MINFEATURESIZE/2
+                cy = cy - self.MINFEATURESIZE / 2
 
         log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
         log.debug(f'next cell -> {(cx, cy)}')
@@ -247,12 +302,12 @@ class Orchestrator(Wireless.WirelessDevice):
         # maxNumCells is length of line *2 as each cell is 1/2 the size of a unit step
         # we add an extra 2 cells: 1 - in case start cell is not the initial cell and
         # 1 - for when we calculate the next cell beyond the trajectory
-        maxNumCells = u.distance((startX, startY), (stopX, stopY))*2 + 2
+        maxNumCells = u.distance((startX, startY), (stopX, stopY)) * 2 + 2
 
         # movement is not on boundaries
-        if not(
-            (startX == stopX) and (startX == cx or startX == cx+self.MINFEATURESIZE/2) or
-            (startY == stopY) and (startY == cy or startX == cy+self.MINFEATURESIZE/2)
+        if not (
+                (startX == stopX) and (startX == cx or startX == cx + self.MINFEATURESIZE / 2) or
+                (startY == stopY) and (startY == cy or startX == cy + self.MINFEATURESIZE / 2)
         ):
             returnVal['cellsExplored'] += [(cx, cy)]
             cellsExploredComputed = False
@@ -261,40 +316,41 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 # vertical line, move up or down
                 while cellsExploredComputed == False:
-                    xmax  = cx + self.MINFEATURESIZE/2
-                    ymax  = cy + self.MINFEATURESIZE/2
+                    xmax = cx + self.MINFEATURESIZE / 2
+                    ymax = cy + self.MINFEATURESIZE / 2
 
                     if (
-                        cx <= stopX <= xmax and
-                        cy <= stopY <= ymax
+                            cx <= stopX <= xmax and
+                            cy <= stopY <= ymax
                     ):
                         cellsExploredComputed = True
 
                     if startY < stopY:
-                        cy = cy + self.MINFEATURESIZE/2
+                        cy = cy + self.MINFEATURESIZE / 2
                     else:
-                        cy = cy - self.MINFEATURESIZE/2
+                        cy = cy - self.MINFEATURESIZE / 2
                     returnVal['cellsExplored'] += [(cx, cy)]
 
-                    log.debug('num cells {} and maxCellNum = {}'.format(len(returnVal['cellsExplored']),abs(maxNumCells)))
+                    log.debug(
+                        'num cells {} and maxCellNum = {}'.format(len(returnVal['cellsExplored']), abs(maxNumCells)))
                     assert len(returnVal) <= maxNumCells
 
             else:
 
                 # move according to line equation y = mx + c
-                m  = (stopY - startY)/(stopX - startX)
-                c  = startY - m*startX
+                m = (stopY - startY) / (stopX - startX)
+                c = startY - m * startX
                 log.debug(f'stop condition is {self._xy2cell(stopX, stopY)}')
 
                 while cellsExploredComputed == False:
 
                     ymin = cy
-                    ymax = cy + self.MINFEATURESIZE/2
-                    xmax = (cx + self.MINFEATURESIZE/2)
+                    ymax = cy + self.MINFEATURESIZE / 2
+                    xmax = (cx + self.MINFEATURESIZE / 2)
 
                     if startX < stopX:
                         # movement towards right side
-                        ynext = m*xmax + c
+                        ynext = m * xmax + c
                         slope = 1
                     else:
                         # movement towards left side
@@ -305,39 +361,39 @@ class Orchestrator(Wireless.WirelessDevice):
                     log.debug(f'ynext {ynext}')
 
                     if (
-                        cx <= stopX <= xmax and
-                        cy <= stopY <= ymax
+                            cx <= stopX <= xmax and
+                            cy <= stopY <= ymax
                     ):
                         cellsExploredComputed = True
 
                     if ynext < ymin:
                         # move up
-                        cy = cy - self.MINFEATURESIZE/2
+                        cy = cy - self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
                         log.debug(f'move up to -> {(cx, cy)}')
 
                     elif ymax < ynext:
                         # move down
-                        cy = cy + self.MINFEATURESIZE/2
+                        cy = cy + self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
                         log.debug(f'move down to -> {(cx, cy)}')
 
                     elif ynext == ymin:
                         # move diagonally upwards
-                        cx = cx + (self.MINFEATURESIZE/2)*slope
-                        cy = cy -  self.MINFEATURESIZE/2
+                        cx = cx + (self.MINFEATURESIZE / 2) * slope
+                        cy = cy - self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
                         log.debug(f'move diagonally upwards to -> {(cx, cy)}')
 
                     elif ynext == ymax:
                         # move diagonally downwards
-                        cx = cx + (self.MINFEATURESIZE/2)*slope
-                        cy = cy +  self.MINFEATURESIZE/2
+                        cx = cx + (self.MINFEATURESIZE / 2) * slope
+                        cy = cy + self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
                         log.debug(f'move diagonally downwards to -> {(cx, cy)}')
                     else:
                         # move sideways
-                        cx = cx + (self.MINFEATURESIZE/2)*slope
+                        cx = cx + (self.MINFEATURESIZE / 2) * slope
                         returnVal['cellsExplored'] += [(cx, cy)]
                         log.debug(f'move right to -> {(cx, cy)}')
 
@@ -352,10 +408,9 @@ class Orchestrator(Wireless.WirelessDevice):
 
         log.debug(f'new cells {returnVal}')
 
-
         return returnVal
 
-    #=== UI
+    # === UI
 
     def getEvaluatedPositions(self):
         '''
@@ -363,9 +418,9 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         returnVal = [
             {
-                'x':         dotBot['x'],
-                'y':         dotBot['y'],
-                'isRelay':   dotBot['isRelay'],
+                'x': dotBot['x'],
+                'y': dotBot['y'],
+                'isRelay': dotBot['isRelay'],
             } for dotBotId, dotBot in self.dotBotsView.items()
         ]
         return returnVal
@@ -376,55 +431,55 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
 
         returnVal = {
-            'dotBotpositions':  self.getEvaluatedPositions(),
-            'cellsExplored':   [self._cell2SvgRect(*c) for c in self.cellsExplored],
-            'cellsObstacle':   [self._cell2SvgRect(*c) for c in self.cellsObstacle],
-            'cellsFrontier':   [self._cell2SvgRect(*c) for c in self.cellsFrontier],
+            'dotBotpositions': self.getEvaluatedPositions(),
+            'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
+            'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
+            'cellsFrontier': [self._cell2SvgRect(*c) for c in self.cellsFrontier],
         }
 
         return returnVal
-    
-    #======================== private =========================================
+
+    # ======================== private =========================================
 
     def _xy2cell(self, x, y):
 
         # convert x,y coordinates to cell (top left coordinate)
-        xsteps = int(math.floor((x)/ (self.MINFEATURESIZE/2)))
-        cx     = xsteps*(self.MINFEATURESIZE/2)
-        ysteps = int(math.floor((y)/ (self.MINFEATURESIZE/2)))
-        cy     = ysteps*(self.MINFEATURESIZE/2)
+        xsteps = int(math.floor((x) / (self.MINFEATURESIZE / 2)))
+        cx = xsteps * (self.MINFEATURESIZE / 2)
+        ysteps = int(math.floor((y) / (self.MINFEATURESIZE / 2)))
+        cy = ysteps * (self.MINFEATURESIZE / 2)
 
         return (cx, cy)
 
-    def _cell2SvgRect(self,cx,cy):
+    def _cell2SvgRect(self, cx, cy):
         returnVal = {
-            'x':        cx,
-            'y':        cy,
-            'width':    self.MINFEATURESIZE/2,
-            'height':   self.MINFEATURESIZE/2,
+            'x': cx,
+            'y': cy,
+            'width': self.MINFEATURESIZE / 2,
+            'height': self.MINFEATURESIZE / 2,
         }
         return returnVal
 
     def _computeCellNeighbours(self, cx, cy):
-        cellSize = self.MINFEATURESIZE/2
+        cellSize = self.MINFEATURESIZE / 2
 
         returnVal = [
-            (cx+cellSize, cy),          (cx-cellSize, cy),
-            (cx,          cy-cellSize), (cx,          cy+cellSize),
-            (cx-cellSize, cy-cellSize), (cx+cellSize, cy+cellSize),
-            (cx-cellSize, cy+cellSize), (cx+cellSize, cy-cellSize)
+            (cx + cellSize, cy), (cx - cellSize, cy),
+            (cx, cy - cellSize), (cx, cy + cellSize),
+            (cx - cellSize, cy - cellSize), (cx + cellSize, cy + cellSize),
+            (cx - cellSize, cy + cellSize), (cx + cellSize, cy - cellSize)
         ]
 
         return returnVal
 
     def _computeCellCorners(self, x, y):
 
-        (cxmin, cymin)    = self._xy2cell(x, y)
-        (cxmax, cymax)    = (cxmin + self.MINFEATURESIZE/2, cymin + self.MINFEATURESIZE/2)
+        (cxmin, cymin) = self._xy2cell(x, y)
+        (cxmax, cymax) = (cxmin + self.MINFEATURESIZE / 2, cymin + self.MINFEATURESIZE / 2)
 
-        topLeftCorner     = (cxmin, cymin)
-        topRightCorner    = (cxmax, cymin)
-        bottomLeftCorner  = (cxmin, cymax)
+        topLeftCorner = (cxmin, cymin)
+        topRightCorner = (cxmax, cymin)
+        bottomLeftCorner = (cxmin, cymax)
         bottomRightCorner = (cxmax, cymax)
 
         return [topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner]
@@ -441,7 +496,7 @@ class Orchestrator(Wireless.WirelessDevice):
         },
         '''
 
-        returnVal          = False
+        returnVal = False
         neighbourObstacles = []
 
         # check for obstacle in 1-hop neighbourhood of frontier
@@ -466,17 +521,17 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 # if reached here, 2 diagonal obstacles have been detected
                 # find corner where obstacles connect diagonally (common corner)
-                firstObstacleCorners  = set(self._computeCellCorners(cx, cy))
+                firstObstacleCorners = set(self._computeCellCorners(cx, cy))
                 secondObstacleCorners = set(self._computeCellCorners(nx, ny))
 
                 commonCorner = firstObstacleCorners.intersection(secondObstacleCorners)
 
                 if not commonCorner:
                     continue
-                    
+
                 (ccx, ccy) = list(commonCorner)[0]
 
-                cellSize       = self.MINFEATURESIZE / 2
+                cellSize = self.MINFEATURESIZE / 2
                 connectedCells = [
                     (ccx - cellSize, ccy - cellSize),
                     (ccx, ccy - cellSize),
@@ -495,3 +550,125 @@ class Orchestrator(Wireless.WirelessDevice):
                         break
 
         return returnVal
+
+    # === Exploration
+    def _assignCellToExplore(self, dotBotId):
+        return random.choice(self.cellsFrontier)
+
+    # === Navigation
+    def _computePath(self, startCell, targetCell, excludeDiagonalCells=False):
+
+        openCells = []
+        openCells += [u.AstarNode(startCell, parent=None)]
+        closedCells = []
+        path = []
+
+        while openCells:
+
+            # find open cell with lowest F cost
+            currentCell = min(openCells)
+            openCells.remove(currentCell)
+
+            if currentCell is None:
+                log.warning("NO PATH!")
+                return
+
+            closedCells += [currentCell]
+
+            # backtrack direct path if we have reached target
+
+            if currentCell.cellPos == targetCell:
+
+                path = []
+
+                while currentCell.cellPos != startCell:
+                    path += [currentCell.cellPos]
+                    currentCell = currentCell.parent
+
+                path.reverse()
+                break
+
+            if excludeDiagonalCells:
+                (cx, cy) = currentCell.cellPos
+                cellSize = self.MINFEATURESIZE / 2
+                cellNeighbours = [
+                    (cx + cellSize, cy), (cx - cellSize, cy),
+                    (cx, cy - cellSize), (cx, cy + cellSize),
+                ]
+            else:
+                cellNeighbours = self._computeCellNeighbours(*currentCell.cellPos)
+
+            for childCell in cellNeighbours:
+                childCell = u.AstarNode(childCell, currentCell)
+                gCost = currentCell.gCost + 1
+                hCost = u.distance(childCell.cellPos, targetCell)
+
+                # skip cell if it is an obstacle cell
+                if childCell.cellPos in self.cellsObstacle:
+                    continue
+
+                if (
+                        (childCell.cellPos in [cell.cellPos for cell in openCells] or
+                         childCell.cellPos in [cell.cellPos for cell in openCells]) and
+                        (childCell.fCost <= gCost + hCost)
+                ):
+                    continue
+
+                childCell.gCost = gCost
+                childCell.hCost = hCost
+                childCell.fCost = gCost + hCost
+
+                openCells += [childCell]
+        log.debug(f'A* path from {startCell} to {targetCell} is {path}')
+        return path
+
+    def _computeHeadingSpeedTimeout(self, dotBotId, path=None):
+
+        if path:
+            log.debug(f'finding heading for path of {path}')
+
+            dotBot = self.dotBotsView[dotBotId]
+
+            # find initial heading and distance to reach first cell in path (to use as reference)
+            initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
+
+            # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
+            # movement is from cell centre to cell centre to avoid movements across cell borders and assure
+            # passing though cells to explore them
+            destination = (path[0][0] + self.MINFEATURESIZE / 4, path[0][1] + self.MINFEATURESIZE / 4)
+
+            # compute distance dotBot will move along same trajectory until heading changes from initial one
+            for idx, (cx, cy) in enumerate(path):
+
+                if (cx, cy) == path[-1]:
+                    # target is the only cell in the path
+                    break
+
+                # find heading to center of next cell
+                headingToNext = (math.degrees(math.atan2(path[idx + 1][1] - cy, path[idx + 1][0] - cx)) + 90) % 360
+
+                if headingToNext != initialHeading:
+                    # heading changes
+                    destination = (cx + self.MINFEATURESIZE / 4, cy + self.MINFEATURESIZE / 4)
+                    break
+
+            # find distance to destination cell from dotBot position
+            distance = u.distance((dotBot['x'], dotBot['y']), destination)
+
+            # heading to get to destination cell center (to assure exploration and avoid border to border movement)
+            heading = (
+                              math.degrees(math.atan2(destination[1] - dotBot['y'], destination[0] - dotBot['x'])) + 90
+                      ) % 360
+
+            # set speed
+            speed = 1
+
+            # find timeout to stop at target cell
+            timeout = distance / speed
+
+            log.debug(f'destination cell is {destination}, heading {heading}, time {timeout}')
+
+        else:
+            (heading, speed, timeout) = (360 * random.random(), 1, 0.5)
+
+        return (heading, speed, timeout)
