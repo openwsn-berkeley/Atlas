@@ -370,8 +370,8 @@ class DotBot(Wireless.WirelessDevice):
             assert bumpX >= 0 and bumpY >= 0
 
             # round
-            bumpX = round(bumpX, 3)
-            bumpY = round(bumpY, 3)
+            bumpX = round(bumpX, 5)
+            bumpY = round(bumpY, 5)
         else:
             log.error("NO INTERSECT FOUND")
 

@@ -50,32 +50,32 @@ class Orchestrator(Wireless.WirelessDevice):
                 i,
                 {
                     # current position of dotBot
-                    'x': initX,
-                    'y': initY,
+                    'x':                    initX,
+                    'y':                    initY,
                     # current heading and speed
-                    'heading': 0,
-                    'speed': 0,
+                    'heading':              0,
+                    'speed':                0,
                     # sequence numbers (to filter out duplicate commands and notifications)
-                    'seqNumCommand': 0,
-                    'seqNumNotification': None,
+                    'seqNumCommand':        0,
+                    'seqNumNotification':   None,
                     # if dotBot is relay or not
-                    'isRelay': False,
+                    'isRelay':              False,
                     # duration of movement until robot stops
-                    'timeout': None,
+                    'timeout':              None,
                     # if dotBot bumped last time it stopped
-                    'bumped': False,
+                    'bumped':               False,
                     # frontier cell dotBot has been given to explore and path to it
-                    'targetCell': None,
-                    'currentPath': [],
+                    'targetCell':           None,
+                    'currentPath':          [],
                 }
             ) for i in range(1, self.numRobots + 1)
         ])
 
         # initial movements
         for dotBotId in range(1, self.numRobots + 1):
-            (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=dotBotId)
+            (heading, speed, timeout)             = self._computeHeadingSpeedTimeout(dotBotId=dotBotId)
             self.dotBotsView[dotBotId]['heading'] = heading
-            self.dotBotsView[dotBotId]['speed'] = speed
+            self.dotBotsView[dotBotId]['speed']   = speed
             self.dotBotsView[dotBotId]['timeout'] = timeout
 
     # ======================== public ==========================================
@@ -119,11 +119,11 @@ class Orchestrator(Wireless.WirelessDevice):
                 (
                     dotBotId,
                     {
-                        'heading': dotBot['heading'],
-                        'speed': dotBot['speed'],
+                        'heading':       dotBot['heading'],
+                        'speed':         dotBot['speed'],
                         'seqNumCommand': dotBot['seqNumCommand'],
-                        'isRelay': dotBot['isRelay'],
-                        'timeout': dotBot['timeout'],
+                        'isRelay':       dotBot['isRelay'],
+                        'timeout':       dotBot['timeout'],
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -131,8 +131,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # hand over to wireless
         self.wireless.transmit(
-            frame=frameToTx,
-            sender=self,
+            frame  = frameToTx,
+            sender = self,
         )
 
     def receive(self, frame):
@@ -143,28 +143,28 @@ class Orchestrator(Wireless.WirelessDevice):
         assert frame['frameType'] == self.FRAMETYPE_NOTIFICATION
 
         # shorthand
-        dotBot = self.dotBotsView[frame['source']]
+        dotBot      = self.dotBotsView[frame['source']]
 
         # filter out duplicates
         if frame['seqNumNotification'] == dotBot['seqNumNotification']:
             return
-        dotBot['seqNumNotification'] = frame['seqNumNotification']
+        dotBot['seqNumNotification']   = frame['seqNumNotification']
 
         # update DotBot's position
         (newX, newY) = u.computeCurrentPosition(
-            currentX=dotBot['x'],
-            currentY=dotBot['y'],
-            heading=dotBot['heading'],
-            speed=dotBot['speed'],
-            duration=frame['movementDuration'],
+            currentX = dotBot['x'],
+            currentY = dotBot['y'],
+            heading  = dotBot['heading'],
+            speed    = dotBot['speed'],
+            duration = frame['movementDuration'],
         )
 
         # update explored cells
-        cellsExplored = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
+        cellsExplored       = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
         self.cellsExplored += cellsExplored['cellsExplored']
 
         # update obstacle cells
-        if cellsExplored['nextCell']:
+        if cellsExplored['nextCell'] and frame['bumped']:
             self.cellsObstacle += [cellsExplored['nextCell']]
 
         # remove explored frontiers
@@ -178,9 +178,9 @@ class Orchestrator(Wireless.WirelessDevice):
         for (cx, cy) in cellsExplored['cellsExplored']:
             for n in self._computeCellNeighbours(cx, cy):
                 if (
-                        (n not in self.cellsExplored) and
-                        (n not in self.cellsObstacle) and
-                        self._isCornerFrontier(n) == False  # check that cell isn't a corner frontier
+                    (n not in self.cellsExplored) and
+                    (n not in self.cellsObstacle) and
+                    self._isCornerFrontier(n) == False  # check that cell isn't a corner frontier
                 ):
                     self.cellsFrontier += [n]
 
@@ -192,77 +192,93 @@ class Orchestrator(Wireless.WirelessDevice):
         # simulation complete when there are no more frontier cells left
         if not self.cellsFrontier:
             self.simEngine.completeRun()
+
         log.debug(f'remaining frontiers are {self.cellsFrontier}')
 
         # update dotBotsView
-        dotBot['x'] = newX
-        dotBot['y'] = newY
+        dotBot['x']      = newX
+        dotBot['y']      = newY
         dotBot['bumped'] = frame['bumped']
 
-        log.debug(f'dotbot {dotBot} is at ( {newX},{newY} ) ')
+        log.debug(f'dotbot {dotBot} is at ({newX},{newY})')
 
-        # assign dotBot a new target if it's previous target has successfully been explored
-        # otherwise continue moving towards same target.
+        # assign target cell destination
+
         if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
-
+            # target has successfully been explored
             # assign a new target cell (destination) to dotBot
-            targetCell = self._assignCellToExplore(frame['source'])
+            targetCell           = self._assignCellToExplore(frame['source'])
 
-            # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
-            # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
-            path = self._computePath(
-                startCell=cellsExplored['cellsExplored'][-1],
-                targetCell=targetCell,
-                excludeDiagonalCells=True if frame['bumped'] else False
-            )
-            log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
-
-            # store update target cell and path in dotBots view
-            dotBot['currentPath'] = path
+            # store new target
             dotBot['targetCell'] = targetCell
 
         else:
+            # target cell not explored yet, keep moving towards it
+            targetCell           = dotBot['targetCell']
 
-            # continue going towards same target cell
-            targetCell = dotBot['targetCell']
+        # find path to target
 
-            if frame['bumped']:
-                # dotBot bumped on way to target
+        if (
+            frame['bumped'] and
+            not cellsExplored['cellsExplored'] and
+            dotBot['currentPath'][0] not in self.cellsExplored
+        ):
+            self.cellsObstacle += [dotBot['currentPath'][0]]
+            startCell  = (self._xy2cell(dotBot['x'], dotBot['y']))
+        else:
+            startCell  = cellsExplored['cellsExplored'][-1]
 
-                # find a new path around obstacle (no diagonal cells)
-                path = self._computePath(
-                    startCell=cellsExplored['cellsExplored'][-1],
-                    targetCell=targetCell,
-                    excludeDiagonalCells=True
-                )
-                log.debug('new path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
+        if targetCell != dotBot['targetCell'] or not dotBot['currentPath']:
+            # new target, find path to it
+            # FIXME: diagonal exclusion will no longer be needed once we make this fix
+            # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
+            # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
+            path = self._computePath(
+                startCell            = startCell,
+                targetCell           = targetCell,
+                excludeDiagonalCells = True if frame['bumped'] else False
+            )
+            log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
-                # update path in dotbots view
-                dotBot['currentPath'] = path
+            # store new path
+            dotBot['currentPath']    = path
 
-            else:
-                # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
-                # remove cells already traversed from path
-                path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
+        elif frame['bumped']:
+            # dotBot bumped on way to target
 
-                # update path in dotbots view
-                dotBot['currentPath'] = path
+            # find a new path around obstacle (no diagonal cells)
+            path = self._computePath(
+                startCell            = startCell,
+                targetCell           = targetCell,
+                excludeDiagonalCells = True
+            )
+            log.debug('new path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
 
-                log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
+            # update path in dotbots view
+            dotBot['currentPath'] = path
+        else:
+            # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
+            # remove cells already traversed from path
+            path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
+
+            # store updated path
+            dotBot['currentPath'] = path
+
+            log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
 
         # set new speed and heading and timeout for dotBot
         (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=frame['source'], path=path)
         log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
 
         dotBot['heading'] = heading
-        dotBot['speed'] = speed
+        dotBot['speed']   = speed
         dotBot['timeout'] = timeout
 
         # update sequence number of movement instruction
         dotBot['seqNumCommand'] += 1
 
         # set relay status (temporary until relay algorithms are implemented!)
-        dotBot['isRelay'] = True if frame['source'] in [1, 5] else False  # FIXME: real algorithm
+        dotBot['isRelay'] = True if frame['source'] in [1] else False  # FIXME: real algorithm
 
     # === Map
 
@@ -418,9 +434,9 @@ class Orchestrator(Wireless.WirelessDevice):
         '''
         returnVal = [
             {
-                'x': dotBot['x'],
-                'y': dotBot['y'],
-                'isRelay': dotBot['isRelay'],
+                'x':        dotBot['x'],
+                'y':        dotBot['y'],
+                'isRelay':  dotBot['isRelay'],
             } for dotBotId, dotBot in self.dotBotsView.items()
         ]
         return returnVal
@@ -432,9 +448,9 @@ class Orchestrator(Wireless.WirelessDevice):
 
         returnVal = {
             'dotBotpositions': self.getEvaluatedPositions(),
-            'cellsExplored': [self._cell2SvgRect(*c) for c in self.cellsExplored],
-            'cellsObstacle': [self._cell2SvgRect(*c) for c in self.cellsObstacle],
-            'cellsFrontier': [self._cell2SvgRect(*c) for c in self.cellsFrontier],
+            'cellsExplored':  [self._cell2SvgRect(*c) for c in self.cellsExplored],
+            'cellsObstacle':  [self._cell2SvgRect(*c) for c in self.cellsObstacle],
+            'cellsFrontier':  [self._cell2SvgRect(*c) for c in self.cellsFrontier],
         }
 
         return returnVal
@@ -445,27 +461,27 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # convert x,y coordinates to cell (top left coordinate)
         xsteps = int(math.floor((x) / (self.MINFEATURESIZE / 2)))
-        cx = xsteps * (self.MINFEATURESIZE / 2)
+        cx     = xsteps * (self.MINFEATURESIZE / 2)
         ysteps = int(math.floor((y) / (self.MINFEATURESIZE / 2)))
-        cy = ysteps * (self.MINFEATURESIZE / 2)
+        cy     = ysteps * (self.MINFEATURESIZE / 2)
 
         return (cx, cy)
 
     def _cell2SvgRect(self, cx, cy):
         returnVal = {
-            'x': cx,
-            'y': cy,
-            'width': self.MINFEATURESIZE / 2,
+            'x':      cx,
+            'y':      cy,
+            'width':  self.MINFEATURESIZE / 2,
             'height': self.MINFEATURESIZE / 2,
         }
         return returnVal
 
     def _computeCellNeighbours(self, cx, cy):
-        cellSize = self.MINFEATURESIZE / 2
+        cellSize  = self.MINFEATURESIZE / 2
 
         returnVal = [
-            (cx + cellSize, cy), (cx - cellSize, cy),
-            (cx, cy - cellSize), (cx, cy + cellSize),
+            (cx + cellSize, cy),            (cx - cellSize, cy),
+            (cx, cy - cellSize),            (cx, cy + cellSize),
             (cx - cellSize, cy - cellSize), (cx + cellSize, cy + cellSize),
             (cx - cellSize, cy + cellSize), (cx + cellSize, cy - cellSize)
         ]
@@ -474,12 +490,12 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _computeCellCorners(self, x, y):
 
-        (cxmin, cymin) = self._xy2cell(x, y)
-        (cxmax, cymax) = (cxmin + self.MINFEATURESIZE / 2, cymin + self.MINFEATURESIZE / 2)
+        (cxmin, cymin)    = self._xy2cell(x, y)
+        (cxmax, cymax)    = (cxmin + self.MINFEATURESIZE / 2, cymin + self.MINFEATURESIZE / 2)
 
-        topLeftCorner = (cxmin, cymin)
-        topRightCorner = (cxmax, cymin)
-        bottomLeftCorner = (cxmin, cymax)
+        topLeftCorner     = (cxmin, cymin)
+        topRightCorner    = (cxmax, cymin)
+        bottomLeftCorner  = (cxmin, cymax)
         bottomRightCorner = (cxmax, cymax)
 
         return [topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner]
@@ -496,7 +512,7 @@ class Orchestrator(Wireless.WirelessDevice):
         },
         '''
 
-        returnVal = False
+        returnVal          = False
         neighbourObstacles = []
 
         # check for obstacle in 1-hop neighbourhood of frontier
@@ -521,17 +537,17 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 # if reached here, 2 diagonal obstacles have been detected
                 # find corner where obstacles connect diagonally (common corner)
-                firstObstacleCorners = set(self._computeCellCorners(cx, cy))
+                firstObstacleCorners  = set(self._computeCellCorners(cx, cy))
                 secondObstacleCorners = set(self._computeCellCorners(nx, ny))
 
-                commonCorner = firstObstacleCorners.intersection(secondObstacleCorners)
+                commonCorner          = firstObstacleCorners.intersection(secondObstacleCorners)
 
                 if not commonCorner:
                     continue
 
                 (ccx, ccy) = list(commonCorner)[0]
 
-                cellSize = self.MINFEATURESIZE / 2
+                cellSize   = self.MINFEATURESIZE / 2
                 connectedCells = [
                     (ccx - cellSize, ccy - cellSize),
                     (ccx, ccy - cellSize),
@@ -552,16 +568,18 @@ class Orchestrator(Wireless.WirelessDevice):
         return returnVal
 
     # === Exploration
+
     def _assignCellToExplore(self, dotBotId):
         return random.choice(self.cellsFrontier)
 
     # === Navigation
+
     def _computePath(self, startCell, targetCell, excludeDiagonalCells=False):
 
-        openCells = []
-        openCells += [u.AstarNode(startCell, parent=None)]
+        openCells   = []
+        openCells  += [u.AstarNode(startCell, parent=None)]
         closedCells = []
-        path = []
+        path        = []
 
         while openCells:
 
@@ -582,15 +600,15 @@ class Orchestrator(Wireless.WirelessDevice):
                 path = []
 
                 while currentCell.cellPos != startCell:
-                    path += [currentCell.cellPos]
+                    path       += [currentCell.cellPos]
                     currentCell = currentCell.parent
 
                 path.reverse()
                 break
 
             if excludeDiagonalCells:
-                (cx, cy) = currentCell.cellPos
-                cellSize = self.MINFEATURESIZE / 2
+                (cx, cy)       = currentCell.cellPos
+                cellSize       = self.MINFEATURESIZE / 2
                 cellNeighbours = [
                     (cx + cellSize, cy), (cx - cellSize, cy),
                     (cx, cy - cellSize), (cx, cy + cellSize),
@@ -599,18 +617,18 @@ class Orchestrator(Wireless.WirelessDevice):
                 cellNeighbours = self._computeCellNeighbours(*currentCell.cellPos)
 
             for childCell in cellNeighbours:
-                childCell = u.AstarNode(childCell, currentCell)
-                gCost = currentCell.gCost + 1
-                hCost = u.distance(childCell.cellPos, targetCell)
+                childCell      = u.AstarNode(childCell, currentCell)
+                gCost          = currentCell.gCost + 1
+                hCost          = u.distance(childCell.cellPos, targetCell)
 
                 # skip cell if it is an obstacle cell
                 if childCell.cellPos in self.cellsObstacle:
                     continue
 
                 if (
-                        (childCell.cellPos in [cell.cellPos for cell in openCells] or
-                         childCell.cellPos in [cell.cellPos for cell in openCells]) and
-                        (childCell.fCost <= gCost + hCost)
+                    (childCell.cellPos in [cell.cellPos for cell in openCells] or
+                     childCell.cellPos in [cell.cellPos for cell in openCells]) and
+                    (childCell.fCost <= gCost + hCost)
                 ):
                     continue
 
@@ -649,7 +667,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 if headingToNext != initialHeading:
                     # heading changes
-                    destination = (cx + self.MINFEATURESIZE / 4, cy + self.MINFEATURESIZE / 4)
+                    destination   = (cx + self.MINFEATURESIZE / 4, cy + self.MINFEATURESIZE / 4)
                     break
 
             # find distance to destination cell from dotBot position
@@ -657,7 +675,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
             # heading to get to destination cell center (to assure exploration and avoid border to border movement)
             heading = (
-                              math.degrees(math.atan2(destination[1] - dotBot['y'], destination[0] - dotBot['x'])) + 90
+                math.degrees(math.atan2(destination[1] - dotBot['y'], destination[0] - dotBot['x'])) + 90
                       ) % 360
 
             # set speed
@@ -666,7 +684,11 @@ class Orchestrator(Wireless.WirelessDevice):
             # find timeout to stop at target cell
             timeout = distance / speed
 
-            log.debug(f'destination cell is {destination}, heading {heading}, time {timeout}')
+            log.debug('[computeHeadingSpeedTimeout] moving from  {} to {}, heading {}, time {}'.format(
+                (dotBot['x'], dotBot['y']),
+                destination, heading,
+                timeout)
+            )
 
         else:
             (heading, speed, timeout) = (360 * random.random(), 1, 0.5)
