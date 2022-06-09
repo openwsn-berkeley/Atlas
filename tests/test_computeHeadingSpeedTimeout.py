@@ -1,44 +1,59 @@
 import Orchestrator
 import pytest
-import random
+
 # ============================ fixtures ==============================
 
 EXPECTEDINOUT = [
 
     {
         'in': {
-            'startCell':             (0.00, 0.00),
-            'targetCell':            (2.00, 2.00),
-            'excludeDiagonalCells' : False
+            'path' : [(1,1), (1.5, 0.5)],
+            'x':      0.5,
+            'y':      0.5,
         },
         'out': {
-            'path': [
-                (0.50, 0.50),
-                (1.00, 1.00),
-                (1.50, 1.50),
-                (2.00, 2.00)
-            ],
-        },
+            'heading':  135,
+            'speed'   : 1,
+            'timeout':  1.06,
+        }
     },
     {
         'in': {
-            'startCell':            (0.00, 0.00),
-            'targetCell':           (2.00, 2.00),
-            'excludeDiagonalCells': True
+            'path': [(1.5, 1), (2,1), (2.5, 1.5), (3,1)],
+            'x':     1,
+            'y':     1,
         },
         'out': {
-            'path': [
-                (0.50, 0.00),
-                (0.50, 0.50),
-                (1.00, 0.50),
-                (1.00, 1.00),
-                (1.50, 1.00),
-                (1.50, 1.50),
-                (2.00, 1.50),
-                (2.00, 2.00)
-            ],
-        },
+            'heading': 101,
+            'speed':   1,
+            'timeout': 1.27,
+        }
     },
+    {
+        'in': {
+            'path': [(3,1)],
+            'x': 1,
+            'y': 0,
+        },
+        'out': {
+            'heading': 119,
+            'speed':   1,
+            'timeout': 2.57,
+        }
+    },
+    {
+        'in': {
+            'path': [(1, 1)],
+            'x': 1.25,
+            'y': 1,
+        },
+        'out': {
+            'heading': 180,
+            'speed':   1,
+            'timeout': 0.25,
+        }
+    },
+
 
 ]
 
@@ -48,50 +63,15 @@ def expectedInOut(request):
 
 # ============================ tests =================================
 
-def test_headingCalculationObstacles():
+def test_computeHeadingSpeedTimeout(expectedInOut):
 
     orchestrator = Orchestrator.Orchestrator(1, 1, 1)
-    orchestrator.MINFEATURESIZE = 1
+    inputs = expectedInOut['in']
+    orchestrator.dotBotsView[1]['x'] = inputs['x']
+    orchestrator.dotBotsView[1]['y'] = inputs['y']
 
-    path = [(1,1), (1.5, 0.5)]
-
-    orchestrator.dotBotsView[1]['x'] = 0.5
-    orchestrator.dotBotsView[1]['y'] = 0.5
-
-    (heading, speed, timeout) = orchestrator._computeHeadingSpeedTimeout(path, 1)
+    (heading, speed, timeout) = orchestrator._computeHeadingSpeedTimeout(dotBotId=1, path=inputs['path'])
 
     assert 0 <= heading <= 360
-    assert round(heading, 2) == 135
-    assert round(timeout, 2) == 1.06
-
-def test_headingCalculationWithTurn():
-
-    orchestrator = Orchestrator.Orchestrator(1, 1, 1)
-    orchestrator.MINFEATURESIZE = 1
-
-    path = [(1.5, 1), (2,1), (2.5, 1.5), (3,1)]
-
-    orchestrator.dotBotsView[1]['x'] = 1
-    orchestrator.dotBotsView[1]['y'] = 1
-
-    (heading, speed, timeout) = orchestrator._computeHeadingSpeedTimeout(path, 1)
-
-    assert 0 <= heading <= 360
-    assert round(heading, 2) == 101.31
-    assert round(timeout, 2) == 1.27
-
-def test_headingCalculationOneCellPath():
-
-    orchestrator = Orchestrator.Orchestrator(1, 1, 1)
-    orchestrator.MINFEATURESIZE = 1
-
-    path = [(3,1)]
-
-    orchestrator.dotBotsView[1]['x'] = 1
-    orchestrator.dotBotsView[1]['y'] = 0
-
-    (heading, speed, timeout) = orchestrator._computeHeadingSpeedTimeout(path, 1)
-
-    assert 0 <= heading <= 360
-    assert round(heading, 0) == 119
-    assert round(timeout, 2) == 2.57
+    assert round(heading, 0) == expectedInOut['out']['heading']
+    assert round(timeout, 2) == expectedInOut['out']['timeout']
