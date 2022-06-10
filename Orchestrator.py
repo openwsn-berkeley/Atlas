@@ -252,7 +252,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # movement is not on boundaries
         if not(
             (startX == stopX) and (startX == cx or startX == cx+self.MINFEATURESIZE/2) or
-            (startY == stopY) and (startY == cy or startX == cy+self.MINFEATURESIZE/2)
+            (startY == stopY) and (startY == cy or startY == cy+self.MINFEATURESIZE/2)
         ):
             returnVal['cellsExplored'] += [(cx, cy)]
             cellsExploredComputed = False
@@ -351,7 +351,6 @@ class Orchestrator(Wireless.WirelessDevice):
                 returnVal['nextCell'] = None
 
         log.debug(f'new cells {returnVal}')
-
 
         return returnVal
 
