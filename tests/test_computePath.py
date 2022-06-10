@@ -61,7 +61,8 @@ def test_computePathWithoutObstacles(expectedInOut):
         initX     = 1,
         initY     = 1
     )
-
+    orchestrator.cellsExplored = [(0.50, 0.50), (1.00, 1.00), (1.50, 1.50), (2.00, 2.00), (0.50, 0.00),
+                                  (1.00, 0.50), (1.50, 1.00), (2.00, 1.50)]
     assert orchestrator._computePath(*expectedInOut['in'].values()) == expectedInOut['out']['path']
 
 def test_computePathWithObstacles():
@@ -75,11 +76,19 @@ def test_computePathWithObstacles():
         initY     = 1
     )
 
+    orchestrator.cellsExplored = [(0.00, 0.00), (0.50, 0.00), (1.00, 0.00), (1.50, 0.00), (2.00, 0.00),
+                                  (0.00, 0.50), (0.50, 0.50), (1.00, 0.50), (1.50, 0.50), (2.00, 0.50),
+                                  (0.00, 1.00), (0.10, 0.00), (1.00, 1.00), (1.50, 1.00), (2.00, 1.00),
+                                  (0.00, 1.50), (0.10, 0.50), (1.00, 1.50), (1.50, 1.50), (2.00, 1.50),
+                                  (0.00, 2.00), (0.10, 2.00), (1.00, 2.00), (1.50, 2.00), (2.00, 2.00)]
+
     # check shortest path before obstacle
     assert (1.50, 1.50) in orchestrator._computePath((0.00, 0.00), (2.00, 2.00))
+    print(orchestrator._computePath((0.00, 0.00), (2.00, 2.00)))
 
     # check shortest path after adding obstacle
     orchestrator.cellsObstacle += [(1.50, 1.50)]
+
     assert not (1.50, 1.50) in orchestrator._computePath((0.00, 0.00), (2.00, 2.00))
 
 def test_computePathExcludeDiagonalCells():
@@ -92,6 +101,8 @@ def test_computePathExcludeDiagonalCells():
         initX     = 1,
         initY     = 1
     )
+
+    orchestrator.cellsExplored = [(0.0, 0.0), (0.0, 0.5)]
 
     # check shortest path before obstacle
     assert orchestrator._computePath((0.50, 0.00), (0.00, 0.50)) == [(0.0, 0.5)]
