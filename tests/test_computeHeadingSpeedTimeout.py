@@ -7,13 +7,13 @@ EXPECTEDINOUT = [
 
     {
         'in': {
-            'path' : [(1,1), (1.5, 0.5)],
-            'x':      0.5,
-            'y':      0.5,
+            'path':  [(1,1), (1.5, 0.5)],
+            'x':       0.5,
+            'y':       0.5,
         },
         'out': {
             'heading':  135,
-            'speed'   : 1,
+            'speed':    1,
             'timeout':  1.06,
         }
     },
@@ -31,26 +31,26 @@ EXPECTEDINOUT = [
     },
     {
         'in': {
-            'path': [(3,1)],
-            'x': 1,
-            'y': 0,
+            'path':  [(3,1)],
+            'x':       1,
+            'y':       0,
         },
         'out': {
-            'heading': 119,
-            'speed':   1,
-            'timeout': 2.57,
+            'heading':  119,
+            'speed':    1,
+            'timeout':  2.57,
         }
     },
     {
         'in': {
-            'path': [(1, 1)],
-            'x': 1.25,
-            'y': 1,
+            'path':   [(1, 1)],
+            'x':        1.25,
+            'y':        1,
         },
         'out': {
-            'heading': 180,
-            'speed':   1,
-            'timeout': 0.25,
+            'heading':  180,
+            'speed':    1,
+            'timeout':  0.25,
         }
     },
 
@@ -65,8 +65,8 @@ def expectedInOut(request):
 
 def test_computeHeadingSpeedTimeout(expectedInOut):
 
-    orchestrator = Orchestrator.Orchestrator(1, 1, 1)
-    inputs = expectedInOut['in']
+    orchestrator                     = Orchestrator.Orchestrator(1, 1, 1)
+    inputs                           = expectedInOut['in']
     orchestrator.dotBotsView[1]['x'] = inputs['x']
     orchestrator.dotBotsView[1]['y'] = inputs['y']
 

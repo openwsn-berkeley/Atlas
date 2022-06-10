@@ -228,9 +228,9 @@ class Orchestrator(Wireless.WirelessDevice):
         else:
             startCell  = cellsExplored['cellsExplored'][-1]
 
-        if targetCell != dotBot['targetCell'] or not dotBot['currentPath']:
+        if targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['bumped']:
             # new target, find path to it
-            # FIXME: diagonal exclusion will no longer be needed once we make this fix
+
             # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
             # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
             path = self._computePath(
@@ -243,19 +243,6 @@ class Orchestrator(Wireless.WirelessDevice):
             # store new path
             dotBot['currentPath']    = path
 
-        elif frame['bumped']:
-            # dotBot bumped on way to target
-
-            # find a new path around obstacle (no diagonal cells)
-            path = self._computePath(
-                startCell            = startCell,
-                targetCell           = targetCell,
-                excludeDiagonalCells = True
-            )
-            log.debug('new path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
-
-            # update path in dotbots view
-            dotBot['currentPath'] = path
         else:
             # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
             # remove cells already traversed from path
