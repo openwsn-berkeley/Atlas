@@ -320,7 +320,7 @@ EXPECTEDINOUT = [
                 (4.00, 1.50),
                 (4.50, 1.00),
             ],
-            'nextCell': (5.00, 0.50)
+            'nextCell': None
         }
     },
 
@@ -338,7 +338,24 @@ EXPECTEDINOUT = [
                 (1.50, 1.50),
                 (2.00, 1.50),
             ],
-            'nextCell': (2.50, 2.00)
+            'nextCell': None
+        }
+    },
+
+    # left border to centre of next cell
+    {
+        'in': {
+            'startX': 5.0,
+            'startY': 4.75,
+            'stopX':  5.75,
+            'stopY':  4.75,
+        },
+        'out': {
+            'cellsExplored': [
+                (5.00, 4.50),
+                (5.50, 4.50)
+            ],
+            'nextCell': (6.00, 4.50)
         }
     },
 ]
@@ -356,8 +373,8 @@ def test_computeCellsExplored(expectedInOut):
     '''
 
     orchestrator = Orchestrator.Orchestrator(1, 1, 1)
-    orchestrator.MINFEATURESIZE = 1
-
-    assert sorted(orchestrator._computeCellsExplored(*expectedInOut['in'].values())) == sorted(expectedInOut['out'])
+    output       = orchestrator._computeCellsExplored(*expectedInOut['in'].values())
+    assert sorted(output['cellsExplored']) == sorted(expectedInOut['out']['cellsExplored'])
+    assert output['nextCell']              == expectedInOut['out']['nextCell']
 
 
