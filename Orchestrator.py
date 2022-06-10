@@ -219,8 +219,8 @@ class Orchestrator(Wireless.WirelessDevice):
         # find path to target
 
         if (
-            frame['bumped'] and
-            not cellsExplored['cellsExplored'] and
+            frame['bumped']                                and
+            not cellsExplored['cellsExplored']             and
             dotBot['currentPath'][0] not in self.cellsExplored
         ):
             self.cellsObstacle += [dotBot['currentPath'][0]]
@@ -265,7 +265,7 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['seqNumCommand'] += 1
 
         # set relay status (temporary until relay algorithms are implemented!)
-        dotBot['isRelay'] = True if frame['source'] in [1] else False  # FIXME: real algorithm
+        dotBot['isRelay'] = True if frame['source'] in [1, 5] else False  # FIXME: real algorithm
 
     # === Map
 
@@ -557,7 +557,7 @@ class Orchestrator(Wireless.WirelessDevice):
     # === Exploration
 
     def _assignCellToExplore(self, dotBotId):
-        return random.choice(self.cellsFrontier)
+        return random.choice(self.cellsFrontier) if self.cellsFrontier else None
 
     # === Navigation
 
