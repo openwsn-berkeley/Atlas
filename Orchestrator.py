@@ -22,30 +22,30 @@ class Orchestrator(Wireless.WirelessDevice):
     '''
 
     COMM_DOWNSTREAM_PERIOD_S = 1
-    MINFEATURESIZE = 1
+    MINFEATURESIZE           = 1
 
     def __init__(self, numRobots, initX, initY):
 
         # store params
-        self.numRobots = numRobots
-        self.initX = initX
-        self.initY = initY
+        self.numRobots       = numRobots
+        self.initX           = initX
+        self.initY           = initY
 
         # local variables
-        self.simEngine = SimEngine.SimEngine()
-        self.wireless = Wireless.Wireless()
-        self.datacollector = DataCollector.DataCollector()
-        self.cellsExplored = []
-        self.cellsObstacle = []
-        self.cellsFrontier = []
-        self.x = self.initX
-        self.y = self.initY
-        self.dotBotId = 0
+        self.simEngine       = SimEngine.SimEngine()
+        self.wireless        = Wireless.Wireless()
+        self.datacollector   = DataCollector.DataCollector()
+        self.cellsExplored   = []
+        self.cellsObstacle   = []
+        self.cellsFrontier   = []
+        self.x               = self.initX
+        self.y               = self.initY
+        self.dotBotId        = 0
 
         # for wireless to identify if this is a relay device or not
-        self.isRelay = False
+        self.isRelay         = False
 
-        self.dotBotsView = dict([
+        self.dotBotsView     = dict([
             (
                 i,
                 {
@@ -168,7 +168,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.cellsObstacle += [cellsExplored['nextCell']]
 
         # remove explored frontiers
-        self.cellsFrontier = [
+        self.cellsFrontier  = [
             cell for cell in self.cellsFrontier
             if (cell not in self.cellsExplored and
                 cell not in self.cellsObstacle)
@@ -202,12 +202,11 @@ class Orchestrator(Wireless.WirelessDevice):
 
         log.debug(f'dotbot {dotBot} is at ({newX},{newY})')
 
-        # assign target cell destination
-
+        # assign target cell (destination)
         if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
             # target has successfully been explored
-            # assign a new target cell (destination) to dotBot
-            targetCell           = self._assignCellToExplore(frame['source'])
+            # assign a new target cell to dotBot
+            targetCell           = self._computeTargetCell(frame['source'])
 
             # store new target
             dotBot['targetCell'] = targetCell
@@ -217,16 +216,16 @@ class Orchestrator(Wireless.WirelessDevice):
             targetCell           = dotBot['targetCell']
 
         # find path to target
-
         if (
             frame['bumped']                                and
             not cellsExplored['cellsExplored']             and
             dotBot['currentPath'][0] not in self.cellsExplored
         ):
+            # dotbot bumped at corner of frontier
             self.cellsObstacle += [dotBot['currentPath'][0]]
-            startCell  = (self._xy2cell(dotBot['x'], dotBot['y']))
+            startCell           = (self._xy2cell(dotBot['x'], dotBot['y']))
         else:
-            startCell  = cellsExplored['cellsExplored'][-1]
+            startCell           = cellsExplored['cellsExplored'][-1]
 
         if targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['bumped']:
             # new target, find path to it
@@ -249,7 +248,7 @@ class Orchestrator(Wireless.WirelessDevice):
             path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
 
             # store updated path
-            dotBot['currentPath'] = path
+            dotBot['currentPath']    = path
 
             log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
 
@@ -257,15 +256,15 @@ class Orchestrator(Wireless.WirelessDevice):
         (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=frame['source'], path=path)
         log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
 
-        dotBot['heading'] = heading
-        dotBot['speed']   = speed
-        dotBot['timeout'] = timeout
+        dotBot['heading']         = heading
+        dotBot['speed']           = speed
+        dotBot['timeout']         = timeout
 
         # update sequence number of movement instruction
-        dotBot['seqNumCommand'] += 1
+        dotBot['seqNumCommand']  += 1
 
         # set relay status (temporary until relay algorithms are implemented!)
-        dotBot['isRelay'] = True if frame['source'] in [1, 5] else False  # FIXME: real algorithm
+        dotBot['isRelay']         = True if frame['source'] in [1, 5] else False  # FIXME: real algorithm
 
     # === Map
 
@@ -310,10 +309,10 @@ class Orchestrator(Wireless.WirelessDevice):
         # movement is not on boundaries
         if not (
                 (startX == stopX) and (startX == cx or startX == cx + self.MINFEATURESIZE / 2) or
-                (startY == stopY) and (startY == cy or startX == cy + self.MINFEATURESIZE / 2)
+                (startY == stopY) and (startY == cy or startY == cy + self.MINFEATURESIZE / 2)
         ):
             returnVal['cellsExplored'] += [(cx, cy)]
-            cellsExploredComputed = False
+            cellsExploredComputed       = False
 
             if startX == stopX:
 
@@ -556,7 +555,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     # === Exploration
 
-    def _assignCellToExplore(self, dotBotId):
+    def _computeTargetCell(self, dotBotId):
         return random.choice(self.cellsFrontier) if self.cellsFrontier else None
 
     # === Navigation
@@ -632,7 +631,7 @@ class Orchestrator(Wireless.WirelessDevice):
         if path:
             log.debug(f'finding heading for path of {path}')
 
-            dotBot = self.dotBotsView[dotBotId]
+            dotBot         = self.dotBotsView[dotBotId]
 
             # find initial heading and distance to reach first cell in path (to use as reference)
             initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
@@ -678,6 +677,7 @@ class Orchestrator(Wireless.WirelessDevice):
             )
 
         else:
+            # no path, give random movements
             (heading, speed, timeout) = (360 * random.random(), 1, 0.5)
 
         return (heading, speed, timeout)
