@@ -21,31 +21,34 @@ class Orchestrator(Wireless.WirelessDevice):
     The central orchestrator of the expedition.
     '''
 
-    COMM_DOWNSTREAM_PERIOD_S = 1
-    MINFEATURESIZE           = 1
+    COMM_DOWNSTREAM_PERIOD_S   = 1
+    MINFEATURESIZE             = 1
 
     def __init__(self, numRobots, initX, initY):
 
         # store params
-        self.numRobots       = numRobots
-        self.initX           = initX
-        self.initY           = initY
+        self.numRobots         = numRobots
+        self.initX             = initX
+        self.initY             = initY
 
         # local variables
-        self.simEngine       = SimEngine.SimEngine()
-        self.wireless        = Wireless.Wireless()
-        self.datacollector   = DataCollector.DataCollector()
-        self.cellsExplored   = []
-        self.cellsObstacle   = []
-        self.cellsFrontier   = []
-        self.x               = self.initX
-        self.y               = self.initY
-        self.dotBotId        = 0
-
+        self.simEngine         = SimEngine.SimEngine()
+        self.wireless          = Wireless.Wireless()
+        self.datacollector     = DataCollector.DataCollector()
+        self.cellsExplored     = []
+        self.cellsObstacle     = []
+        self.cellsFrontier     = []
+        self.x                 = self.initX
+        self.y                 = self.initY
+        self.dotBotId          = 0
         # for wireless to identify if this is a relay device or not
-        self.isRelay         = False
+        self.isRelay           = False
+        # to know if A* should be used for finding alternative path
+        self.isDirectPathOpen  = True
+        # to avoid given multiple robots same frontier as target cell
+        self.assignedFrontiers = []
 
-        self.dotBotsView     = dict([
+        self.dotBotsView       = dict([
             (
                 i,
                 {
@@ -202,6 +205,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
         log.debug(f'dotbot {dotBot} is at ({newX},{newY})')
 
+        # if dotBot bumped
+        if frame['bumped']:
+            self.isDirectPathOpen = False
+
         # assign target cell (destination)
         if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
             # target has successfully been explored
@@ -216,41 +223,45 @@ class Orchestrator(Wireless.WirelessDevice):
             targetCell           = dotBot['targetCell']
 
         # find path to target
-        if (
-            frame['bumped']                                and
-            not cellsExplored['cellsExplored']             and
-            dotBot['currentPath'][0] not in self.cellsExplored
-        ):
-            # dotbot bumped at corner of frontier
-            self.cellsObstacle += [dotBot['currentPath'][0]]
+
+        if not cellsExplored['cellsExplored']:
             startCell           = (self._xy2cell(dotBot['x'], dotBot['y']))
         else:
             startCell           = cellsExplored['cellsExplored'][-1]
 
-        if targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['bumped']:
-            # new target, find path to it
+        if self.isDirectPathOpen == False or not targetCell:
 
-            # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
-            # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
-            path = self._computePath(
-                startCell            = startCell,
-                targetCell           = targetCell,
-                excludeDiagonalCells = True if frame['bumped'] else False
-            )
-            log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
+            if not targetCell:
+                # no target, no path
+                path = None
 
-            # store new path
-            dotBot['currentPath']    = path
+            elif targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['bumped']:
+                # new target, find path to it
 
+                # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
+                # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
+                path = self._computePath(
+                    startCell            = startCell,
+                    targetCell           = targetCell,
+                    excludeDiagonalCells = True if frame['bumped'] else False
+                )
+                log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
+
+                # store new path
+                dotBot['currentPath']    = path
+
+            else:
+                # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
+                # remove cells already traversed from path
+                path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
+
+                # store updated path
+                dotBot['currentPath']    = path
+
+                log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
         else:
-            # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
-            # remove cells already traversed from path
-            path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
-
-            # store updated path
-            dotBot['currentPath']    = path
-
-            log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
+            path                  = [targetCell]
+            dotBot['currentPath'] = path
 
         # set new speed and heading and timeout for dotBot
         (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=frame['source'], path=path)
@@ -264,7 +275,7 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['seqNumCommand']  += 1
 
         # set relay status (temporary until relay algorithms are implemented!)
-        dotBot['isRelay']         = True if frame['source'] in [1, 5] else False  # FIXME: real algorithm
+        dotBot['isRelay']         = True if frame['source'] in [1] else False  # FIXME: real algorithm
 
     # === Map
 
@@ -556,7 +567,29 @@ class Orchestrator(Wireless.WirelessDevice):
     # === Exploration
 
     def _computeTargetCell(self, dotBotId):
-        return random.choice(self.cellsFrontier) if self.cellsFrontier else None
+        dotBot         = self.dotBotsView[dotBotId]
+        targetFrontier =  None
+
+        if self.cellsFrontier:
+            # find closest frontiers to initial position
+            cellsAndDistancesToStart = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
+                                        self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+
+            if cellsAndDistancesToStart:
+                cellsAndDistancesToStart = sorted(cellsAndDistancesToStart, key=lambda e: e[1])
+                closestFrontiersToStart  = [cell for (cell, distance) in cellsAndDistancesToStart if
+                                           distance == cellsAndDistancesToStart[0][1]]
+
+                # find closest frontier to robot
+                cellsAndDistancesToDotBot = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
+                                             closestFrontiersToStart]
+                cellsAndDistancesToDotBot = sorted(cellsAndDistancesToDotBot, key=lambda e: e[1])
+                closestFrontiersToDotBot  = [cell for (cell, distance) in cellsAndDistancesToDotBot if
+                                            distance == cellsAndDistancesToDotBot[0][1]]
+                targetFrontier            = random.choice(closestFrontiersToDotBot)
+                self.assignedFrontiers   += [targetFrontier]
+
+        return targetFrontier
 
     # === Navigation
 
@@ -608,7 +641,11 @@ class Orchestrator(Wireless.WirelessDevice):
                 hCost          = u.distance(childCell.cellPos, targetCell)
 
                 # skip cell if it is an obstacle cell
-                if childCell.cellPos in self.cellsObstacle:
+                if (
+                    childCell.cellPos in self.cellsObstacle     or
+                   (childCell.cellPos not in self.cellsExplored and
+                    childCell.cellPos not in self.cellsFrontier)
+                ):
                     continue
 
                 if (
@@ -623,6 +660,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 childCell.fCost = gCost + hCost
 
                 openCells += [childCell]
+
         log.debug(f'A* path from {startCell} to {targetCell} is {path}')
         return path
 

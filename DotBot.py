@@ -166,9 +166,8 @@ class DotBot(Wireless.WirelessDevice):
         (self.x, self.y) = self.computeCurrentPosition()
         log.debug(f'DotBot {self.dotBotId} stopped at ({self.x}, {self.y}) at {self.simEngine.currentTime()}')
         log.debug(
-            f'DotBot {self.dotBotId} expected position at ({self.nextBumpX}, {self.nextBumpY}) at {self.nextBumpTime}')
-        assert self.x == self.nextBumpX
-        assert self.y == self.nextBumpY
+            f'DotBot {self.dotBotId} expected position at ({self.nextBumpX}, {self.nextBumpY}) at {self.nextBumpTime}'
+        )
 
         # dotBot bumped
         self.bumped = True
