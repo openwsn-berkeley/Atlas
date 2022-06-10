@@ -170,6 +170,16 @@ class Orchestrator(Wireless.WirelessDevice):
         if cellsExplored['nextCell'] and frame['bumped']:
             self.cellsObstacle += [cellsExplored['nextCell']]
 
+        if (
+            frame['bumped']                                    and
+            not cellsExplored['cellsExplored']                 and
+            dotBot['currentPath']                              and
+            dotBot['currentPath'][0] == dotBot['targetCell']   and
+            dotBot['targetCell'] in self.cellsFrontier
+        ):
+            # dotBot bumped into its target frontier at corner
+            self.cellsObstacle += [dotBot['currentPath'][0]]
+
         # remove explored frontiers
         self.cellsFrontier  = [
             cell for cell in self.cellsFrontier
