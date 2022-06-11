@@ -225,9 +225,6 @@ class Orchestrator(Wireless.WirelessDevice):
             # assign a new target cell to dotBot
             targetCell           = self._computeTargetCell(frame['source'])
 
-            # store new target
-            dotBot['targetCell'] = targetCell
-
         else:
             # target cell not explored yet, keep moving towards it
             targetCell           = dotBot['targetCell']
@@ -257,26 +254,21 @@ class Orchestrator(Wireless.WirelessDevice):
                 )
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
-                # store new path
-                dotBot['currentPath']    = path
-
             else:
                 # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
                 # remove cells already traversed from path
                 path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
 
-                # store updated path
-                dotBot['currentPath']    = path
-
                 log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
         else:
             path                  = [targetCell]
-            dotBot['currentPath'] = path
 
         # set new speed and heading and timeout for dotBot
         (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=frame['source'], path=path)
         log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
 
+        dotBot['targetCell']      = targetCell
+        dotBot['currentPath']     = path
         dotBot['heading']         = heading
         dotBot['speed']           = speed
         dotBot['timeout']         = timeout
