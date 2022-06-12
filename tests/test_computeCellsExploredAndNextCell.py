@@ -349,7 +349,7 @@ def expectedInOut(request):
 
 # ============================ tests =================================
 
-def test_computeCellsExplored(expectedInOut):
+def test_computeCellsExploredAndNextCell(expectedInOut):
     '''
     testing computation of trajectory of cells created from a line from point a to point b
     and next cell beyond that
@@ -358,6 +358,6 @@ def test_computeCellsExplored(expectedInOut):
     orchestrator = Orchestrator.Orchestrator(1, 1, 1)
     orchestrator.MINFEATURESIZE = 1
 
-    assert sorted(orchestrator._computeCellsExplored(*expectedInOut['in'].values())) == sorted(expectedInOut['out'])
+    assert sorted(orchestrator._computeCellsExploredAndNextCell(*expectedInOut['in'].values())) == sorted(expectedInOut['out'])
 
 
