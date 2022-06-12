@@ -49,7 +49,7 @@ class DotBot(Wireless.WirelessDevice):
         # is dotBot a relay
         self.isRelay            = False
         # if dotbot has bumped
-        self.bumped             = False
+        self.hasJustedBumped     = False
 
     # ======================== public ==========================================
 
@@ -75,10 +75,6 @@ class DotBot(Wireless.WirelessDevice):
 
         # set relay status
         self.isRelay       = frame['movements'][self.dotBotId]['isRelay']
-
-        # if dotBot is set as relay don't adjust movement
-        if self.isRelay:
-            return
 
         # cancel scheduled movement timeout
         self.simEngine.cancelEvent(tag=f'{self.dotBotId}_movementTimeout')
@@ -170,7 +166,7 @@ class DotBot(Wireless.WirelessDevice):
         )
 
         # dotBot bumped
-        self.bumped = True
+        self.hasJustedBumped = True
 
         # stop movement and send notification
         self._stopAndTransmit()
@@ -184,7 +180,7 @@ class DotBot(Wireless.WirelessDevice):
         (self.x, self.y) = self.computeCurrentPosition()
 
         # dotBot did not bump
-        self.bumped      = False
+        self.hasJustedBumped      = False
 
         # stop movement and send notification
         self._stopAndTransmit()
@@ -214,7 +210,7 @@ class DotBot(Wireless.WirelessDevice):
             'source':             self.dotBotId,
             'movementDuration':   self.tsMovementStop - self.tsMovementStart,
             'seqNumNotification': self.seqNumNotification,
-            'bumped':             self.bumped
+            'hasJustedBumped':    self.hasJustedBumped
         }
 
         # hand over to wireless
@@ -367,8 +363,8 @@ class DotBot(Wireless.WirelessDevice):
             assert bumpX >= 0 and bumpY >= 0
 
             # round
-            bumpX = round(bumpX, 5)
-            bumpY = round(bumpY, 5)
+            bumpX = round(bumpX, 3)
+            bumpY = round(bumpY, 3)
         else:
             log.error("NO INTERSECT FOUND")
 

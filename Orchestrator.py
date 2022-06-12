@@ -32,23 +32,23 @@ class Orchestrator(Wireless.WirelessDevice):
         self.initY             = initY
 
         # local variables
-        self.simEngine         = SimEngine.SimEngine()
-        self.wireless          = Wireless.Wireless()
-        self.datacollector     = DataCollector.DataCollector()
-        self.cellsExplored     = []
-        self.cellsObstacle     = []
-        self.cellsFrontier     = []
-        self.x                 = self.initX
-        self.y                 = self.initY
-        self.dotBotId          = 0
+        self.simEngine            = SimEngine.SimEngine()
+        self.wireless             = Wireless.Wireless()
+        self.datacollector        = DataCollector.DataCollector()
+        self.cellsExplored        = []
+        self.cellsObstacle        = []
+        self.cellsFrontier        = []
+        self.x                    = self.initX
+        self.y                    = self.initY
+        self.dotBotId             = 0
         # for wireless to identify if this is a relay device or not
-        self.isRelay           = False
+        self.isRelay              = False
         # to know if A* should be used for finding alternative path
-        self.isDirectPathOpen  = True
+        self.bumpedOnWayToTarget  = True
         # to avoid given multiple robots same frontier as target cell
-        self.assignedFrontiers = []
+        self.assignedFrontiers    = []
 
-        self.dotBotsView       = dict([
+        self.dotBotsView          = dict([
             (
                 i,
                 {
@@ -65,10 +65,9 @@ class Orchestrator(Wireless.WirelessDevice):
                     'isRelay':              False,
                     # duration of movement until robot stops
                     'timeout':              None,
-                    # if dotBot bumped last time it stopped
-                    'bumped':               False,
                     # frontier cell dotBot has been given to explore and path to it
                     'targetCell':           None,
+                    # path from dotBot position to target cell
                     'currentPath':          [],
                 }
             ) for i in range(1, self.numRobots + 1)
@@ -163,18 +162,23 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # update explored cells
-        cellsExplored       = self._computeCellsExplored(dotBot['x'], dotBot['y'], newX, newY)
-        self.cellsExplored += cellsExplored['cellsExplored']
+        cellsExploredAndNextCell       = self._computeCellsExploredAndNextCell(dotBot['x'], dotBot['y'], newX, newY)
+
+        # shorthands
+        cellsExplored                  = cellsExploredAndNextCell['cellsExplored']
+        nextCell                       = cellsExploredAndNextCell['nextCell']
+
+        self.cellsExplored += cellsExploredAndNextCell['cellsExplored']
 
         # update obstacle cells
-        if cellsExplored['nextCell'] and frame['bumped']:
-            self.cellsObstacle += [cellsExplored['nextCell']]
+        if frame['hasJustedBumped'] and nextCell:
+            self.cellsObstacle += [nextCell]
 
         if (
-            frame['bumped']                                    and
-            not cellsExplored['cellsExplored']                 and
+            frame['hasJustedBumped']                           and
+            (not cellsExplored)                                and
             dotBot['currentPath']                              and
-            dotBot['currentPath'][0] == dotBot['targetCell']   and
+            (dotBot['currentPath'][0] == dotBot['targetCell']) and
             dotBot['targetCell'] in self.cellsFrontier
         ):
             # dotBot bumped into its target frontier at corner
@@ -188,7 +192,7 @@ class Orchestrator(Wireless.WirelessDevice):
         ]
 
         # compute new frontiers
-        for (cx, cy) in cellsExplored['cellsExplored']:
+        for (cx, cy) in cellsExplored:
             for n in self._computeCellNeighbours(cx, cy):
                 if (
                     (n not in self.cellsExplored) and
@@ -211,16 +215,15 @@ class Orchestrator(Wireless.WirelessDevice):
         # update dotBotsView
         dotBot['x']      = newX
         dotBot['y']      = newY
-        dotBot['bumped'] = frame['bumped']
 
         log.debug(f'dotbot {dotBot} is at ({newX},{newY})')
 
         # if dotBot bumped
-        if frame['bumped']:
-            self.isDirectPathOpen = False
+        if frame['hasJustedBumped']:
+            bumpedOnWayToTarget = True
 
         # assign target cell (destination)
-        if not dotBot['targetCell'] or dotBot['targetCell'] not in self.cellsFrontier:
+        if (not dotBot['targetCell']) or (dotBot['targetCell'] not in self.cellsFrontier):
             # target has successfully been explored
             # assign a new target cell to dotBot
             targetCell           = self._computeTargetCell(frame['source'])
@@ -231,18 +234,18 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # find path to target
 
-        if not cellsExplored['cellsExplored']:
+        if not cellsExplored:
             startCell           = (self._xy2cell(dotBot['x'], dotBot['y']))
         else:
-            startCell           = cellsExplored['cellsExplored'][-1]
+            startCell           = cellsExplored[-1]
 
-        if self.isDirectPathOpen == False or not targetCell:
+        if (self.bumpedOnWayToTarget == True) or (not targetCell):
 
             if not targetCell:
                 # no target, no path
                 path = None
 
-            elif targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['bumped']:
+            elif targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['hasJustedBumped']:
                 # new target, find path to it
 
                 # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
@@ -250,7 +253,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 path = self._computePath(
                     startCell            = startCell,
                     targetCell           = targetCell,
-                    excludeDiagonalCells = True if frame['bumped'] else False
+                    excludeDiagonalCells = True if frame['hasJustedBumped'] else False
                 )
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
@@ -281,7 +284,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     # === Map
 
-    def _computeCellsExplored(self, startX, startY, stopX, stopY):
+    def _computeCellsExploredAndNextCell(self, startX, startY, stopX, stopY):
         '''
         find cells passed through on trajectory between points a and b
         example input - output :
@@ -321,8 +324,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # movement is not on boundaries
         if not (
-                (startX == stopX) and (startX == cx or startX == cx + self.MINFEATURESIZE / 2) or
-                (startY == stopY) and (startY == cy or startY == cy + self.MINFEATURESIZE / 2)
+                ((startX == stopX) and ((startX == cx) or (startX == cx + self.MINFEATURESIZE / 2))) or
+                ((startY == stopY) and ((startY == cy) or (startY == cy + self.MINFEATURESIZE / 2)))
         ):
             returnVal['cellsExplored'] += [(cx, cy)]
             cellsExploredComputed       = False
@@ -596,6 +599,30 @@ class Orchestrator(Wireless.WirelessDevice):
     # === Navigation
 
     def _computePath(self, startCell, targetCell, excludeDiagonalCells=False):
+        """
+        uses A* (Breadth First Search with distance to target heuristic) to find
+        shortest path from start to target cell while avoiding obstacle cells.
+        if robot is on obstacle between cells, diagonal cells can be excluded
+        from the search to avoid trying to move through unexplored obstacle cells.
+
+        Example input - output:
+
+            {
+        'in': {
+            'startCell':             (0.00, 0.00),
+            'targetCell':            (2.00, 2.00),
+            'excludeDiagonalCells' : False
+        },
+        'out': {
+            'path': [
+                (0.50, 0.50),
+                (1.00, 1.00),
+                (1.50, 1.50),
+                (2.00, 2.00)
+            ],
+        },
+    },
+        """
 
         openCells   = []
         openCells  += [u.AstarNode(startCell, parent=None)]
