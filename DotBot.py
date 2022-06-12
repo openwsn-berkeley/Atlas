@@ -75,11 +75,7 @@ class DotBot(Wireless.WirelessDevice):
 
         # set relay status
         self.isRelay       = frame['movements'][self.dotBotId]['isRelay']
-
-        # if dotBot is set as relay don't adjust movement
-        if self.isRelay:
-            return
-
+        
         # cancel scheduled movement timeout
         self.simEngine.cancelEvent(tag=f'{self.dotBotId}_movementTimeout')
 
