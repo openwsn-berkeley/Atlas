@@ -134,6 +134,9 @@ class Orchestrator(Wireless.WirelessDevice):
 
         return (heading, speed)
 
+    def computeCurrentPosition(self):
+        return (self.x, self.y)
+
     def receive(self,frame):
         '''
         Notification received from a DotBot, indicating it has just bumped

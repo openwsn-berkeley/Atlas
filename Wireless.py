@@ -148,6 +148,10 @@ class Wireless(object):
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
 
+        # get current positions of sender and reciever
+        (receiverX, receiverY) = receiver.computeCurrentPosition()
+        (senderX,   senderY)   = sender.computeCurrentPosition()
+
         # find if (nodeA, nodeB) or (nodeB, nodeA) are in the lastStabilities keys.
         # set that as the key to use to find the value of the pdr
         linkInLastStabilities = {
@@ -160,8 +164,8 @@ class Wireless(object):
             sender.dotBotId   in self.lastPositions.keys()                      and
             receiver.dotBotId in self.lastPositions.keys()                      and
             # sender and receiver haven't moved since last time their link stability was computed
-            (sender.x,   sender.y)   == self.lastPositions[sender.dotBotId]     and
-            (receiver.x, receiver.y) == self.lastPositions[receiver.dotBotId]   and
+            (senderX,   senderY)   == self.lastPositions[sender.dotBotId]     and
+            (receiverX, receiverY) == self.lastPositions[receiver.dotBotId]   and
             # the link between sender and receiver is in last stabilities
             linkInLastStabilities
         ):
@@ -171,13 +175,13 @@ class Wireless(object):
 
         else:
 
-            distance    = u.distance((sender.x, sender.y), (receiver.x, receiver.y))
+            distance    = u.distance((senderX, senderY), (receiverX, receiverY))
             shift_value = random.uniform(0, self.PISTER_HACK_LOWER_SHIFT)
             rssi        = self._friisModel(distance) - shift_value
             pdr         = self._rssi_to_pdr(rssi)
 
-            self.lastPositions[sender.dotBotId]   = (sender.x,   sender.y)
-            self.lastPositions[receiver.dotBotId] = (receiver.x, receiver.y)
+            self.lastPositions[sender.dotBotId]   = (senderX,   senderY)
+            self.lastPositions[receiver.dotBotId] = (receiverX, receiverY)
             self.lastStabilities[(sender.dotBotId, receiver.dotBotId)] = pdr
 
         return pdr
