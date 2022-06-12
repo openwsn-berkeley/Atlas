@@ -195,10 +195,10 @@ class DotBot(Wireless.WirelessDevice):
         self.seqNumNotification += 1
 
         # stop moving
-        self.currentSpeed   = 0
+        self.currentSpeed        = 0
 
         # remember when I stop moving
-        self.tsMovementStop = self.simEngine.currentTime()
+        self.tsMovementStop      = self.simEngine.currentTime()
 
         # transmit
         self._transmit()
@@ -210,24 +210,24 @@ class DotBot(Wireless.WirelessDevice):
 
         # format frame to transmit
         frameToTx = {
-            'frameType': self.FRAMETYPE_NOTIFICATION,
-            'source': self.dotBotId,
-            'movementDuration': self.tsMovementStop - self.tsMovementStart,
+            'frameType':          self.FRAMETYPE_NOTIFICATION,
+            'source':             self.dotBotId,
+            'movementDuration':   self.tsMovementStop - self.tsMovementStart,
             'seqNumNotification': self.seqNumNotification,
-            'bumped': self.bumped
+            'bumped':             self.bumped
         }
 
         # hand over to wireless
         self.wireless.transmit(
-            frame=frameToTx,
-            sender=self,
+            frame  = frameToTx,
+            sender = self,
         )
 
         # schedule retransmission
         self.simEngine.schedule(
-            ts=self.simEngine.currentTime() + self.RETRY_TIMEOUT_S,
-            cb=self._transmit,
-            tag="retransmission_DotBot_{}".format(self.dotBotId),
+            ts  = self.simEngine.currentTime() + self.RETRY_TIMEOUT_S,
+            cb  = self._transmit,
+            tag = "retransmission_DotBot_{}".format(self.dotBotId),
         )
 
     # === motor control
