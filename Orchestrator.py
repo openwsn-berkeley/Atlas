@@ -268,7 +268,7 @@ class Orchestrator(Wireless.WirelessDevice):
             (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(dotBotId=frame['source'], path=path)
         else:
             (heading, speed, movementTimeout) = (0, 0, 0.5)
-            
+
         log.debug('heading & movementTimeout for {} are {} {}'.format(frame['source'], heading, movementTimeout))
 
         dotBot['targetCell']      = targetCell
