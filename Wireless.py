@@ -148,20 +148,24 @@ class Wireless(object):
         Pister Hack model for PDR calculation based on distance/ signal attenuation
         '''
 
+        # get current positions of sender and reciever
+        (receiverX, receiverY) = receiver.computeCurrentPosition()
+        (senderX, senderY) = sender.computeCurrentPosition()
+
         # find if (nodeA, nodeB) or (nodeB, nodeA) are in the lastStabilities keys.
         # set that as the key to use to find the value of the pdr
         linkInLastStabilities = {
-            (sender.dotBotId,   receiver.dotBotId),
+            (sender.dotBotId, receiver.dotBotId),
             (receiver.dotBotId, sender.dotBotId)
         }.intersection(self.lastStabilities.keys())
 
         if (
             # both sender and receiver are in are in last positions and the link between
-            sender.dotBotId   in self.lastPositions.keys()                      and
-            receiver.dotBotId in self.lastPositions.keys()                      and
+            sender.dotBotId in self.lastPositions.keys() and
+            receiver.dotBotId in self.lastPositions.keys() and
             # sender and receiver haven't moved since last time their link stability was computed
-            (sender.x,   sender.y)   == self.lastPositions[sender.dotBotId]     and
-            (receiver.x, receiver.y) == self.lastPositions[receiver.dotBotId]   and
+            (senderX, senderY) == self.lastPositions[sender.dotBotId] and
+            (receiverX, receiverY) == self.lastPositions[receiver.dotBotId] and
             # the link between sender and receiver is in last stabilities
             linkInLastStabilities
         ):
