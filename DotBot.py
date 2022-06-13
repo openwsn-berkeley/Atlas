@@ -49,7 +49,7 @@ class DotBot(Wireless.WirelessDevice):
         # is dotBot a relay
         self.isRelay            = False
         # if dotbot has bumped
-        self.hasJustedBumped     = False
+        self.hasJustBumped     = False
 
     # ======================== public ==========================================
 
@@ -166,7 +166,7 @@ class DotBot(Wireless.WirelessDevice):
         )
 
         # dotBot bumped
-        self.hasJustedBumped = True
+        self.hasJustBumped = True
 
         # stop movement and send notification
         self._stopAndTransmit()
@@ -180,7 +180,7 @@ class DotBot(Wireless.WirelessDevice):
         (self.x, self.y) = self.computeCurrentPosition()
 
         # dotBot did not bump
-        self.hasJustedBumped      = False
+        self.hasJustBumped      = False
 
         # stop movement and send notification
         self._stopAndTransmit()
@@ -210,7 +210,7 @@ class DotBot(Wireless.WirelessDevice):
             'source':             self.dotBotId,
             'movementDuration':   self.tsMovementStop - self.tsMovementStart,
             'seqNumNotification': self.seqNumNotification,
-            'hasJustedBumped':    self.hasJustedBumped
+            'hasJustBumped':      self.hasJustBumped
         }
 
         # hand over to wireless

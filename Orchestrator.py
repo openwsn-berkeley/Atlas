@@ -171,17 +171,17 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored += cellsExploredAndNextCell['cellsExplored']
 
         # update obstacle cells
-        if frame['hasJustedBumped'] and nextCell:
+        if frame['hasJustBumped'] and nextCell:
             self.cellsObstacle += [nextCell]
 
         if (
-            frame['hasJustedBumped']                           and
-            (not cellsExplored)                                and
-            dotBot['currentPath']                              and
-            (dotBot['currentPath'][0] == dotBot['targetCell']) and
+            frame['hasJustBumped']                                                              and
+            (not cellsExplored)                                                                 and
+            dotBot['currentPath']                                                               and
+            ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['currentPath'][0])) and
             dotBot['targetCell'] in self.cellsFrontier
         ):
-            # dotBot bumped into its target frontier at corner
+            # dotBot bumped into first cell on path at corner
             self.cellsObstacle += [dotBot['currentPath'][0]]
 
         # remove explored frontiers
@@ -219,7 +219,7 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'dotbot {dotBot} is at ({newX},{newY})')
 
         # if dotBot bumped
-        if frame['hasJustedBumped']:
+        if frame['hasJustBumped']:
             bumpedOnWayToTarget = True
 
         # assign target cell (destination)
@@ -245,7 +245,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 # no target, no path
                 path = None
 
-            elif targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['hasJustedBumped']:
+            elif targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['hasJustBumped']:
                 # new target, find path to it
 
                 # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
@@ -253,7 +253,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 path = self._computePath(
                     startCell            = startCell,
                     targetCell           = targetCell,
-                    excludeDiagonalCells = True if frame['hasJustedBumped'] else False
+                    excludeDiagonalCells = True if frame['hasJustBumped'] else False
                 )
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
