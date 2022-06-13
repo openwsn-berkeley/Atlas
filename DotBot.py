@@ -46,8 +46,8 @@ class DotBot(Wireless.WirelessDevice):
         self.nextBumpTime         = None  # time at which DotBot will bump
         # is dotBot a relay
         self.isRelay              = False
-        # if dotbot has bumped
-        self.hasJustBumped        = False
+        # if dotBot has bumped
+        self.hasJustBumped        = False # needed as variable as retransmits are called by simEngine
 
     # ======================== public ==========================================
 
