@@ -30,54 +30,53 @@ class Orchestrator(Wireless.WirelessDevice):
         self.initY              = initY
 
         # local variables
-        self.simEngine          = SimEngine.SimEngine()
-        self.wireless           = Wireless.Wireless()
-        self.datacollector      = DataCollector.DataCollector()
-        self.cellsExplored      = []
-        self.cellsObstacle      = []
-        self.cellsFrontier      = []
-        self.x                  = self.initX
-        self.y                  = self.initY
-        self.dotBotId           = 0
+        self.simEngine           = SimEngine.SimEngine()
+        self.wireless            = Wireless.Wireless()
+        self.datacollector       = DataCollector.DataCollector()
+        self.cellsExplored       = []
+        self.cellsObstacle       = []
+        self.cellsFrontier       = []
+        self.x                   = self.initX
+        self.y                   = self.initY
+        self.dotBotId            = 0
 
         # for wireless to identify if this is a relay device or not
-        self.isRelay            = False
+        self.isRelay             = False
         # to know if A* should be used for finding alternative path
-        self.bumpedOnWayToTarget  = True
+        self.bumpedOnWayToTarget = True
         # to avoid given multiple robots same frontier as target cell
-        self.assignedFrontiers    = []
+        self.assignedFrontiers   = []
 
-        self.dotBotsView        = dict([
+        self.dotBotsView         = dict([
             (
                 i,
                 {
-                    # current position of dotBot
-                   'x':                  initX,
-                   'y':                  initY,
+                    # current position of DotBot
+                    'x':                  initX,
+                    'y':                  initY,
                     # current heading and speed
-                   'heading':            0,
-                   'speed':              0,
+                    'heading':            0,
+                    'speed':              0,
                     # sequence numbers (to filter out duplicate commands and notifications)
-                   'seqNumCommand':      0,
-                   'seqNumNotification': None,
-                    # if dotBot is relay or not
-                   'isRelay':            False,
+                    'seqNumCommand':      0,
+                    'seqNumNotification': None,
+                    # if DotBot is relay or not
+                    'isRelay':            False,
                     # duration of movement until robot stops
-                    'timeout':           None,
-                    # frontier cell dotBot has been given to explore and path to it
-                    'targetCell':        None,
-                    # path from dotBot position to target cell
-                    'currentPath':       [],
+                    'movementTimeout':    None,
+                    # frontier cell DotBot has been given to explore and path to it
+                    'targetCell':         None,
+                    # [(cx1, cy1) -> (cx2, cy2) -> .... -> (cxTarget, cyTarget)]
+                    'currentPath':        [],
                 }
             ) for i in range(1, self.numRobots+1)
         ])
 
         # initial movements
         for dotBotId in range(1, self.numRobots + 1):
-            (heading, speed, timeout)             = self._computeHeadingSpeedTimeout(dotBotId=dotBotId)
-            self.dotBotsView[dotBotId]['heading'] = heading
-            self.dotBotsView[dotBotId]['speed']   = speed
-            self.dotBotsView[dotBotId]['timeout'] = timeout
+            self.dotBotsView[dotBotId]['heading']         = 360*random.random()
+            self.dotBotsView[dotBotId]['speed']           = 1
+            self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
     #======================== public ==========================================
 
@@ -112,7 +111,7 @@ class Orchestrator(Wireless.WirelessDevice):
         Send the next heading and speed commands to the robots
         '''
 
-        log.debug(f'dotBotsView -> {self.dotBotsView}')
+        log.debug(f'DotBotsView -> {self.dotBotsView}')
 
         frameToTx = {
             'frameType': self.FRAMETYPE_COMMAND,
@@ -120,11 +119,11 @@ class Orchestrator(Wireless.WirelessDevice):
                 (
                     dotBotId,
                     {
-                        'heading':        dotBot['heading'],
-                        'speed':          dotBot['speed'],
-                        'seqNumCommand':  dotBot['seqNumCommand'],
-                        'isRelay':        dotBot['isRelay'],
-                        'timeout':        dotBot['timeout'],
+                        'heading':         dotBot['heading'],
+                        'speed':           dotBot['speed'],
+                        'seqNumCommand':   dotBot['seqNumCommand'],
+                        'isRelay':         dotBot['isRelay'],
+                        'movementTimeout': dotBot['movementTimeout'],
                     }
                 ) for (dotBotId, dotBot) in self.dotBotsView.items()]
             )
@@ -179,7 +178,7 @@ class Orchestrator(Wireless.WirelessDevice):
             ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['currentPath'][0])) and
             dotBot['targetCell'] in self.cellsFrontier
         ):
-            # dotBot bumped into first cell on path at corner
+            # DotBot bumped into first cell on path at corner
             self.cellsObstacle += [dotBot['currentPath'][0]]
 
         # remove explored frontiers
@@ -210,20 +209,20 @@ class Orchestrator(Wireless.WirelessDevice):
 
         log.debug(f'remaining frontiers are {self.cellsFrontier}')
 
-        # update dotBotsView
+        # update DotBotsView
         dotBot['x']      = newX
         dotBot['y']      = newY
 
-        log.debug(f'dotbot {dotBot} is at ({newX},{newY})')
+        log.debug(f'DotBot {dotBot} is at ({newX},{newY})')
 
-        # if dotBot bumped
+        # if DotBot bumped
         if frame['hasJustBumped']:
             self.bumpedOnWayToTarget = True
 
         # assign target cell (destination)
         if (not dotBot['targetCell']) or (dotBot['targetCell'] not in self.cellsFrontier):
             # target has successfully been explored
-            # assign a new target cell to dotBot
+            # assign a new target cell to DotBot
             targetCell           = self._computeTargetCell(frame['source'])
 
         else:
@@ -246,7 +245,7 @@ class Orchestrator(Wireless.WirelessDevice):
             elif targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['hasJustBumped']:
                 # new target, find path to it
 
-                # find shortest path to target if dotBot hasn't bumped otherwise find path with no diagonal movements
+                # find shortest path to target if DotBot hasn't bumped otherwise find path with no diagonal movements
                 # to avoid bumping into frontiers at frontier corners (as they wont be added as obstacles)
                 path = self._computePath(
                     startCell            = startCell,
@@ -256,7 +255,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
             else:
-                # dotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
+                # DotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
                 # remove cells already traversed from path
                 path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
 
@@ -264,15 +263,19 @@ class Orchestrator(Wireless.WirelessDevice):
         else:
             path                  = [targetCell]
 
-        # set new speed and heading and timeout for dotBot
-        (heading, speed, timeout) = self._computeHeadingSpeedTimeout(dotBotId=frame['source'], path=path)
-        log.debug('heading & timeout for {} are {} {}'.format(frame['source'], heading, timeout))
+        # set new speed and heading and movementTimeout for DotBot
+        if path:
+            (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(dotBotId=frame['source'], path=path)
+        else:
+            (heading, speed, movementTimeout) = (0, 0, 0.5)
+            
+        log.debug('heading & movementTimeout for {} are {} {}'.format(frame['source'], heading, movementTimeout))
 
         dotBot['targetCell']      = targetCell
         dotBot['currentPath']     = path
         dotBot['heading']         = heading
         dotBot['speed']           = speed
-        dotBot['timeout']         = timeout
+        dotBot['movementTimeout'] = movementTimeout
 
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
@@ -691,58 +694,54 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'A* path from {startCell} to {targetCell} is {path}')
         return path
 
-    def _computeHeadingSpeedTimeout(self, dotBotId, path=None):
+    def _computeHeadingSpeedMovementTimeout(self, dotBotId, path):
 
-        if path:
-            log.debug(f'finding heading for path of {path}')
 
-            dotBot         = self.dotBotsView[dotBotId]
+        log.debug(f'finding heading for path of {path}')
 
-            # find initial heading and distance to reach first cell in path (to use as reference)
-            initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
+        dotBot         = self.dotBotsView[dotBotId]
 
-            # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
-            # movement is from cell centre to cell centre to avoid movements across cell borders and assure
-            # passing though cells to explore them
-            destination    = (path[0][0] + self.MINFEATURESIZE / 4, path[0][1] + self.MINFEATURESIZE / 4)
+        # find initial heading and distance to reach first cell in path (to use as reference)
+        initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
 
-            # compute distance dotBot will move along same trajectory until heading changes from initial one
-            for idx, (cx, cy) in enumerate(path):
+        # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
+        # movement is from cell centre to cell centre to avoid movements across cell borders and assure
+        # passing though cells to explore them
+        destination    = (path[0][0] + self.MINFEATURESIZE / 4, path[0][1] + self.MINFEATURESIZE / 4)
 
-                if (cx, cy) == path[-1]:
-                    # target is the only cell in the path
-                    break
+        # compute distance DotBot will move along same trajectory until heading changes from initial one
+        for idx, (cx, cy) in enumerate(path):
 
-                # find heading to center of next cell
-                headingToNext = (math.degrees(math.atan2(path[idx + 1][1] - cy, path[idx + 1][0] - cx)) + 90) % 360
+            if (cx, cy) == path[-1]:
+                # target is the only cell in the path
+                break
 
-                if headingToNext != initialHeading:
-                    # heading changes
-                    destination   = (cx + self.MINFEATURESIZE / 4, cy + self.MINFEATURESIZE / 4)
-                    break
+            # find heading to center of next cell
+            headingToNext = (math.degrees(math.atan2(path[idx + 1][1] - cy, path[idx + 1][0] - cx)) + 90) % 360
 
-            # find distance to destination cell from dotBot position
-            distance = u.distance((dotBot['x'], dotBot['y']), destination)
+            if headingToNext != initialHeading:
+                # heading changes
+                destination   = (cx + self.MINFEATURESIZE / 4, cy + self.MINFEATURESIZE / 4)
+                break
 
-            # heading to get to destination cell center (to assure exploration and avoid border to border movement)
-            heading = (
-                math.degrees(math.atan2(destination[1] - dotBot['y'], destination[0] - dotBot['x'])) + 90
-                      ) % 360
+        # find distance to destination cell from DotBot position
+        distance = u.distance((dotBot['x'], dotBot['y']), destination)
 
-            # set speed
-            speed   = 1
+        # heading to get to destination cell center (to assure exploration and avoid border to border movement)
+        heading = (
+            math.degrees(math.atan2(destination[1] - dotBot['y'], destination[0] - dotBot['x'])) + 90
+                  ) % 360
 
-            # find timeout to stop at target cell
-            timeout = distance / speed
+        # set speed
+        speed   = 1
 
-            log.debug('[computeHeadingSpeedTimeout] moving from  {} to {}, heading {}, time {}'.format(
-                (dotBot['x'], dotBot['y']),
-                destination, heading,
-                timeout)
-            )
+        # find movementTimeout to stop at target cell
+        movementTimeout = distance / speed
 
-        else:
-            # no path, give random movements
-            (heading, speed, timeout) = (360 * random.random(), 1, 0.5)
+        log.debug('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
+            (dotBot['x'], dotBot['y']),
+            destination, heading,
+            movementTimeout)
+        )
 
-        return (heading, speed, timeout)
+        return (heading, speed, movementTimeout)

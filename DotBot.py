@@ -41,13 +41,13 @@ class DotBot(Wireless.WirelessDevice):
         self.seqNumCommand        = None
         self.seqNumNotification   = 0
         # state maintained by internal bump computation
-        self.nextBumpX            = None  # coordinate the DotBot will bump into next
+        self.nextBumpX            = None   # coordinate the DotBot will bump into next
         self.nextBumpY            = None
-        self.nextBumpTime         = None  # time at which DotBot will bump
-        # is dotBot a relay
+        self.nextBumpTime         = None   # time at which DotBot will bump
+        # is DotBot a relay
         self.isRelay              = False
-        # if dotBot has bumped
-        self.hasJustBumped        = False # needed as variable as retransmits are called by simEngine
+        # if DotBot has bumped
+        self.hasJustBumped        = False  # needed as variable as retransmits are called by simEngine
 
     # ======================== public ==========================================
 
@@ -65,16 +65,16 @@ class DotBot(Wireless.WirelessDevice):
         if frame['movements'][self.dotBotId]['seqNumCommand'] == self.seqNumCommand:
             return
 
-        # set stop time based on timeout if given
-        timeout            = frame['movements'][self.dotBotId]['timeout']
-        stopTime           = timeout + self.simEngine.currentTime() if timeout else math.inf
+        # set stop time based on movementTimeout if given
+        movementTimeout          = frame['movements'][self.dotBotId]['movementTimeout']
+        stopTime                 = movementTimeout + self.simEngine.currentTime() if movementTimeout else math.inf
 
         self.seqNumCommand       = frame['movements'][self.dotBotId]['seqNumCommand']
 
         # set relay status
         self.isRelay             = frame['movements'][self.dotBotId]['isRelay']
 
-        # cancel scheduled movement timeout
+        # cancel scheduled movement movementTimeout
         self.simEngine.cancelEvent(tag=f'{self.dotBotId}_movementTimeout')
 
         # cancel scheduled bump when new packet is received
@@ -96,8 +96,11 @@ class DotBot(Wireless.WirelessDevice):
         self.tsMovementStop        = None
         log.debug(f'Dotbot {self.dotBotId} started new movement at {self.tsMovementStart}')
 
-        # compute when/where next bump will happen
-        (bumpX, bumpY, timetobump) = self._computeNextBump(self.x, self.y, self.currentHeading, self.currentSpeed, self.floorplan.obstacles)
+        # compute when/where next bump will happen if DotBot is moving
+        if self.currentSpeed == 0:
+            (bumpX, bumpY, timetobump) = (None, None, math.inf)
+        else:
+            (bumpX, bumpY, timetobump) = self._computeNextBump(self.x, self.y, self.currentHeading, self.currentSpeed, self.floorplan.obstacles)
 
         # remember
         self.nextBumpX             = bumpX
@@ -107,7 +110,7 @@ class DotBot(Wireless.WirelessDevice):
 
         if stopTime < self.nextBumpTime:
             # schedule movement timeout
-            self.simEngine.schedule(stopTime, self._movementTimeout, tag=f'{self.dotBotId}_movementTimeout')
+            self.simEngine.schedule(stopTime, self._movementTimeoutCb, tag=f'{self.dotBotId}_movementTimeout')
             log.debug(f'next stop for {self.dotBotId} scheduled for {self.simEngine.currentTime() + stopTime}')
         else:
             # schedule the bump event
@@ -162,24 +165,21 @@ class DotBot(Wireless.WirelessDevice):
             f'DotBot {self.dotBotId} expected position at ({self.nextBumpX}, {self.nextBumpY}) at {self.nextBumpTime}'
         )
 
-        # dotBot bumped
+        # DotBot bumped
         self.hasJustBumped = True
 
         # stop movement and send notification
         self._stopAndTransmit()
 
-        # transmit
-        self._transmit()
-
-    def _movementTimeout(self):
+    def _movementTimeoutCb(self):
         '''
-        DotBot allocated movement duration timed out
+        DotBot reached target before next bump
         '''
 
         # update my position
         (self.x, self.y)        = self.computeCurrentPosition()
 
-        # dotBot did not bump
+        # DotBot did not bump
         self.hasJustBumped      = False
 
         # stop movement and send notification

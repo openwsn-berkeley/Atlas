@@ -70,7 +70,7 @@ def test_computeHeadingSpeedTimeout(expectedInOut):
     orchestrator.dotBotsView[1]['x'] = inputs['x']
     orchestrator.dotBotsView[1]['y'] = inputs['y']
 
-    (heading, speed, timeout) = orchestrator._computeHeadingSpeedTimeout(dotBotId=1, path=inputs['path'])
+    (heading, speed, timeout) = orchestrator._computeHeadingSpeedMovementTimeout(dotBotId=1, path=inputs['path'])
 
     assert 0 <= heading <= 360
     assert round(heading, 0) == expectedInOut['out']['heading']
