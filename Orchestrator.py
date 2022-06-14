@@ -47,7 +47,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # to avoid given multiple robots same frontier as target cell
         self.assignedFrontiers   = []
         # algorithm used to place relays
-        self.relayAlgorithm      = "Recovery"  # FIXME: this should be set by config
+        self.relayAlgorithm      = "SelfHealing"  # FIXME: this should be set by config
 
         self.dotBotsView         = dict([
             (
@@ -775,19 +775,19 @@ class Orchestrator(Wireless.WirelessDevice):
     # === Relays
 
     def _assignRelaysAndRelayPositionsCb(self):
-
+        log.debug('heartbeats {}'.format([db['heartbeat'] for (_, db) in self.dotBotsView.items()]))
         self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
         if self.relayAlgorithm   == "Recovery":
             self._recoveryRelayPlacement()
-        elif self.relayAlgorithm == "Self-Healing":
-            pass
+
+        elif self.relayAlgorithm == "SelfHealing":
+            self._selfHealingRelayPlacement()
+
         else:
             pass
 
     def _recoveryRelayPlacement(self):
-
-        log.debug('heartbeats {}'.format([db['heartbeat'] for (_, db) in self.dotBotsView.items()]))
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
@@ -817,6 +817,90 @@ class Orchestrator(Wireless.WirelessDevice):
                         break
             break
 
-
     def _selfHealingRelayPlacement(self):
-        pass
+
+        RANGE_DISTANCE = 20  # FIXME: replace 20 with a variable and add logic behind it
+        CRITICAL_PDR   = 0.5
+        # A robot that has lost connection, we want to build a relay chain to to restore connectivity
+
+        # check if orchestrator has lost connection to any DotBots
+        for (dotBotId, dotBot) in self.dotBotsView.items():
+            if dotBot['heartbeat'] <= CRITICAL_PDR:
+                lostDotBot = dotBot
+
+                if not lostDotBot:
+                    return
+
+                startToLostDotBotDistance           = [
+                    ((self.x, self.y) ,u.distance((lostDotBot['x'], lostDotBot['y']), (self.x, self.y)))
+                ]
+                relayPositions                      = [
+                    dotBot['relayPosition'] for (_, dotBot) in self.dotBotsView.items() if dotBot['relayPosition']
+                ]
+
+                # if we already have relays in place, build relay chain starting from closest relay to
+                # lostDotBot instead of orchestrator
+
+                relaysToLostDotBotDistances         = [
+                    (position, u.distance((lostDotBot['x'], lostDotBot['y']), position)) for position in relayPositions
+                ]
+
+                closestRelayToLostDotBotAndDistance = sorted(
+                    startToLostDotBotDistance + relaysToLostDotBotDistances, key=lambda e: e[1]
+                )[0]
+
+                rootRelay                           = closestRelayToLostDotBotAndDistance[0]
+                rootRelayToLostDotBotDistance       = closestRelayToLostDotBotAndDistance[1]
+                distancesRatio                      = RANGE_DISTANCE / rootRelayToLostDotBotDistance
+                numRelays                           = int(rootRelayToLostDotBotDistance / RANGE_DISTANCE)
+
+                if numRelays == 0:
+                    return
+
+                # equations bellow from https://math.stackexchange.com/a/1630886
+
+                previousRelayInChain = rootRelay
+                for idx in range(numRelays):
+                    (x0, y0) = previousRelayInChain
+                    (x1, y1) = (lostDotBot['x'], lostDotBot['y'])
+
+                    nextPosInChain       = (
+                        int(((1 - distancesRatio) * x0 + distancesRatio * x1)),
+                        int(((1 - distancesRatio) * y0 + distancesRatio * y1))
+                    )
+
+                    # chose random dotBot to be relay
+                    dotBot               = random.choice(
+                        [
+                            db for (id, db) in self.dotBotsView.items() if
+                            (db != lostDotBot and ((db['x'], db['y']) and (not db['relayPosition']) and (db != lostDotBot)))
+                        ]
+                    )
+
+                    dotBot['isRelay'] = True
+
+                    if (
+                       (self._xy2cell(*nextPosInChain) in     self.cellsExplored)  and
+                       (self._xy2cell(*nextPosInChain) not in self.cellsObstacle)
+                    ):
+                        dotBot['relayPosition'] = nextPosInChain
+                    else:
+                        # next position in relay chain is not an explored cell
+                        # keep searching around in until and explored cell is found
+                        # to replace it
+
+                        open_cells   = [self._xy2cell(*nextPosInChain)]
+                        closed_cells = []
+
+                        for cell in open_cells:
+                            open_cells.pop(0)
+                            for n in self._computeCellNeighbours(*cell):
+                                if (cell in self.cellsExplored) and (cell not in self.cellsObstacle):
+                                    dotBot['relayPosition'] = n
+
+                                elif n not in closed_cells and n not in open_cells:
+                                    open_cells.append(n)
+
+                            closed_cells.append(cell)
+
+                    previousRelayInChain = nextPosInChain

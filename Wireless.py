@@ -65,7 +65,7 @@ class Wireless(object):
         -79: 1.0000,  # this value is not from experiment
     }
 
-    TX_POWER                = 0
+    TX_POWER                = -10
     ANTENNA_GAIN            = 0   # TX & RX
 
     PISTER_HACK_LOWER_SHIFT = 40  # dB
@@ -119,7 +119,7 @@ class Wireless(object):
 
             # get pdr between sender and receiver
             pdr            = self._getPDR(sender, relays, receiver)
-            log.debug(f'PDR between {sender} and {receiver} is {pdr}')
+            log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
