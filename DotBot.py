@@ -48,6 +48,14 @@ class DotBot(Wireless.WirelessDevice):
         self.isRelay              = False
         # if DotBot has bumped
         self.hasJustBumped        = False  # needed as variable as retransmits are called by simEngine
+        # estimated PDR is number of packets received over number of packets expected
+        self.estimatedPdr         = 1      # packets received per second
+        # how frequent estimated PDR is sent to orchestrator
+        self.estimatedPdrPeriod   = 10     # in seconds
+        self.numPacketReceived    = 0
+
+        # schedule next estimated PDR call back
+        self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
 
     # ======================== public ==========================================
 
@@ -60,6 +68,9 @@ class DotBot(Wireless.WirelessDevice):
         # drop any frame that is NOT a FRAMETYPE_COMMAND
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
+
+        # new command packet received
+        self.numPacketReceived += 1
 
         # filter out duplicates
         if frame['movements'][self.dotBotId]['seqNumCommand'] == self.seqNumCommand:
@@ -185,6 +196,22 @@ class DotBot(Wireless.WirelessDevice):
         # stop movement and send notification
         self._stopAndTransmit()
 
+    def _estimatedPdrCb(self):
+        '''
+        send estimated PDR to orchestrator to update on PDR status
+        '''
+
+        self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
+
+        # number of packets received to number of packets expected, to give an estimate of PDR
+        self.estimatedPdr         = self.numPacketReceived / self.estimatedPdrPeriod
+
+        # reset packet count
+        self.numPacketReceived = 0
+
+        # send notification with updates estimated PDR
+        self._transmit()
+
     def _stopAndTransmit(self):
 
         # update notification ID
@@ -193,8 +220,8 @@ class DotBot(Wireless.WirelessDevice):
         # stop moving
         self.currentSpeed        = 0
 
-        # remember when I stop moving
-        self.tsMovementStop      = self.simEngine.currentTime()
+        # remember how long DotBot moved for
+        self.movementDuration      = self.simEngine.currentTime() - self.tsMovementStart
 
         # transmit
         self._transmit()
@@ -208,9 +235,10 @@ class DotBot(Wireless.WirelessDevice):
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
             'source':             self.dotBotId,
-            'movementDuration':   self.tsMovementStop - self.tsMovementStart,
+            'movementDuration':   self.movementDuration,
             'seqNumNotification': self.seqNumNotification,
             'hasJustBumped':      self.hasJustBumped,
+            'estimatedPdr':       self.estimatedPdr,
         }
 
         # hand over to wireless

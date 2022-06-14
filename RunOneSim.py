@@ -53,6 +53,7 @@ def runOneSim(simSetting, atlasUI=None):
         simSetting['numRobots'],
         initX,
         initY,
+        simSetting['relayAlgorithm'],
     )
     dotBots        = [
         DotBot.DotBot(dotBotId, initX, initY, floorplan)
