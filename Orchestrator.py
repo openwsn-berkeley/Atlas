@@ -47,7 +47,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # to avoid given multiple robots same frontier as target cell
         self.assignedFrontiers   = []
         # algorithm used to place relays
-        self.relayAlgorithm      = relayAlgorithm  # FIXME: this should be set by config
+        self.relayAlgorithm      = relayAlgorithm
 
         self.dotBotsView         = dict([
             (
@@ -74,7 +74,7 @@ class Orchestrator(Wireless.WirelessDevice):
                     'heartbeat':          1,
                     # [(heartbeat pdr, DotBot position ), ..] (oldest -> latest)
                     'pdrHistory':         [],
-                    # position DotBot should go to if it becomes a relay
+                    # position DotBot should go to when/if it becomes a relay
                     'relayPosition':      None,
                 }
             ) for i in range(1, self.numRobots+1)
@@ -155,7 +155,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # shorthand
         dotBot                         = self.dotBotsView[frame['source']]
-        log.debug('DotBot {} was moving from {} to {} '.format(frame['source'],(dotBot['x'], dotBot['y']), dotBot['targetCell']))
+
+        log.debug('DotBot {} was moving from {} to {} '.format(
+            frame['source'], (dotBot['x'], dotBot['y']), dotBot['targetCell'])
+        )
 
         # store heartbeat
         dotBot['heartbeat']            = frame['heartbeat']
@@ -181,7 +184,7 @@ class Orchestrator(Wireless.WirelessDevice):
         cellsExplored                  = cellsExploredAndNextCell['cellsExplored']
         nextCell                       = cellsExploredAndNextCell['nextCell']
 
-        self.cellsExplored += cellsExploredAndNextCell['cellsExplored']
+        self.cellsExplored            += cellsExploredAndNextCell['cellsExplored']
 
         # update obstacle cells
         if frame['hasJustBumped'] and nextCell:
@@ -201,6 +204,7 @@ class Orchestrator(Wireless.WirelessDevice):
             # DotBot bumped into first cell on path at corner
             self.cellsObstacle += [dotBot['currentPath'][0]]
 
+            # DotBot bumped into its target cell at corner
             if ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['targetCell'])):
                 self._isCornerFrontier(dotBot['targetCell'])
 
@@ -248,7 +252,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
             # if DotBots previous target has not been explored yet,
             # release it from pool of assigned frontiers
-            if ((dotBot['targetCell'] in self.cellsFrontier) and (dotBot['targetCell'] != dotBot['relayPosition'])) :
+            if (
+               (dotBot['targetCell'] in self.cellsFrontier) and
+               (dotBot['targetCell'] != dotBot['relayPosition'])
+            ) :
                 self.assignedFrontiers.remove(dotBot['targetCell'])
 
         elif (
@@ -314,10 +321,9 @@ class Orchestrator(Wireless.WirelessDevice):
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1
 
-        # update pdr history if using relay algorithm
+        # update pdr history if using Recovery algorithm otherwise not needed
         if self.relayAlgorithm == "Recovery":
             dotBot['pdrHistory'] += [(dotBot['heartbeat'], (dotBot['x'], dotBot['y']))]
-
 
     #=== Map
 
@@ -730,7 +736,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _computeHeadingSpeedMovementTimeout(self, dotBotId, path):
 
-
         log.debug(f'finding heading for path of {path}')
 
         dotBot         = self.dotBotsView[dotBotId]
@@ -783,6 +788,7 @@ class Orchestrator(Wireless.WirelessDevice):
     # === Relays
 
     def _assignRelaysAndRelayPositionsCb(self):
+
         log.debug('heartbeats {}'.format([db['heartbeat'] for (_, db) in self.dotBotsView.items()]))
         self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
@@ -793,6 +799,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self._selfHealingRelayPlacement()
 
         else:
+            # don't place relays if no algorithm is specified
             pass
 
     def _recoveryRelayPlacement(self):
@@ -800,7 +807,8 @@ class Orchestrator(Wireless.WirelessDevice):
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
 
-            if dotBot['heartbeat'] > 0.7: # FIXME: the pdr value here should be from simsettings
+            # if all DotBot PDRs are above min threshold don't assign a relay
+            if dotBot['heartbeat'] > 0.7:
                 continue
 
             # skip dotBots that are already relays
@@ -821,27 +829,34 @@ class Orchestrator(Wireless.WirelessDevice):
                 # look for last DotBot position with PDR above acceptable threshold
                 if pdrValue >= 0.9:
                     if (dotBotX, dotBotY) not in self.cellsObstacle:
+                        # set relay position for DotBot to move to
                         dotBot['relayPosition']     = self._xy2cell(dotBotX, dotBotY)
                         break
             break
 
     def _selfHealingRelayPlacement(self):
 
-        RANGE_DISTANCE = 10  # FIXME: replace 20 with a variable and add logic behind it
+        RANGE_DISTANCE = 10  # up to 10m pister-hack stability minimum threshold is above 0
+        # original algorith assumes we only have one robot and want to restore connectivity to it
+        # we set critical pdr as a trigger to determine which DotBot we should restore connectivity to
         CRITICAL_PDR   = 0.7
-        # A robot that has lost connection, we want to build a relay chain to to restore connectivity
 
         # check if orchestrator has lost connection to any DotBots
         for (dotBotId, dotBot) in self.dotBotsView.items():
             if dotBot['heartbeat'] <= CRITICAL_PDR:
+                # A robot that has lost perfect connection
+                # we want to build a relay chain to to restore better connectivity
                 lostDotBot = dotBot
 
                 if not lostDotBot:
                     return
 
+                # find distance between lostDotBot and orchestrator
                 startToLostDotBotDistance           = [
                     ((self.x, self.y) ,u.distance((lostDotBot['x'], lostDotBot['y']), (self.x, self.y)))
                 ]
+
+                # find all relay positions
                 relayPositions                      = [
                     dotBot['relayPosition'] for (_, dotBot) in self.dotBotsView.items() if dotBot['relayPosition']
                 ]
@@ -867,6 +882,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 # equations bellow from https://math.stackexchange.com/a/1630886
 
+                # build relay chain to restore connectivity to lostDotBot
                 previousRelayInChain = rootRelay
                 for idx in range(numRelays):
                     (x0, y0) = previousRelayInChain
@@ -885,16 +901,18 @@ class Orchestrator(Wireless.WirelessDevice):
                         ]
                     )
 
+                    # set dotBot as relay
                     dotBot['isRelay'] = True
 
                     if (
                        (self._xy2cell(*nextPosInChain) in     self.cellsExplored)  and
                        (self._xy2cell(*nextPosInChain) not in self.cellsObstacle)
                     ):
+                        # next position in chain is valid set it as relay position
                         dotBot['relayPosition'] = nextPosInChain
                     else:
-                        # next position in relay chain is not an explored cell
-                        # keep searching around in until and explored cell is found
+                        # next position in relay chain is not an explored cell/valid
+                        # keep searching around in until an explored cell is found
                         # to replace it
 
                         open_cells   = [self._xy2cell(*nextPosInChain)]
@@ -911,4 +929,5 @@ class Orchestrator(Wireless.WirelessDevice):
 
                             closed_cells.append(cell)
 
+                    # move on to next relay in chain
                     previousRelayInChain = nextPosInChain

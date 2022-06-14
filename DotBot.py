@@ -195,13 +195,19 @@ class DotBot(Wireless.WirelessDevice):
         self._stopAndTransmit()
 
     def _heartbeatCb(self):
+        '''
+        send heartbeat to orchestrator to update on PDR status
+        '''
 
         self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
 
+        # compute estimated PDR
         self.heartbeat         = self.numPacketReceived / self.heartbeatPeriod
 
+        # reset packet count
         self.numPacketReceived = 0
 
+        # send heartbeat
         self._transmit()
 
     def _stopAndTransmit(self):
