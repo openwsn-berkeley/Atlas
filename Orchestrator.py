@@ -155,6 +155,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # shorthand
         dotBot                         = self.dotBotsView[frame['source']]
+        log.debug('DotBot {} was moving from {} to {} '.format(frame['source'],(dotBot['x'], dotBot['y']), dotBot['targetCell']))
 
         # store heartbeat
         dotBot['heartbeat']            = frame['heartbeat']
@@ -186,6 +187,10 @@ class Orchestrator(Wireless.WirelessDevice):
         if frame['hasJustBumped'] and nextCell:
             self.cellsObstacle += [nextCell]
 
+        log.debug('DotBot {} bumped is {} on path {} to {} '.format(
+            frame['source'], frame['hasJustBumped'], dotBot['currentPath'], dotBot['targetCell'])
+        )
+
         if (
             frame['hasJustBumped']                                                              and
             (not cellsExplored)                                                                 and
@@ -195,6 +200,9 @@ class Orchestrator(Wireless.WirelessDevice):
         ):
             # DotBot bumped into first cell on path at corner
             self.cellsObstacle += [dotBot['currentPath'][0]]
+
+            if ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['targetCell'])):
+                self._isCornerFrontier(dotBot['targetCell'])
 
         # remove explored frontiers
         self.cellsFrontier  = [
@@ -792,7 +800,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
 
-            if dotBot['heartbeat'] > 0.8: # FIXME: the pdr value here should be from simsettings
+            if dotBot['heartbeat'] > 0.7: # FIXME: the pdr value here should be from simsettings
                 continue
 
             # skip dotBots that are already relays
@@ -819,8 +827,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _selfHealingRelayPlacement(self):
 
-        RANGE_DISTANCE = 20  # FIXME: replace 20 with a variable and add logic behind it
-        CRITICAL_PDR   = 0.5
+        RANGE_DISTANCE = 10  # FIXME: replace 20 with a variable and add logic behind it
+        CRITICAL_PDR   = 0.7
         # A robot that has lost connection, we want to build a relay chain to to restore connectivity
 
         # check if orchestrator has lost connection to any DotBots
