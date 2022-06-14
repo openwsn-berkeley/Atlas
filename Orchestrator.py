@@ -70,9 +70,9 @@ class Orchestrator(Wireless.WirelessDevice):
                     'targetCell':         None,
                     # [(cx1, cy1) -> (cx2, cy2) -> .... -> (cxTarget, cyTarget)]
                     'currentPath':        [],
-                    # heartbeat of last estimated PDR from DotBot
-                    'heartbeat':          1,
-                    # [(heartbeat pdr, DotBot position ), ..] (oldest -> latest)
+                    # last estimated PDR from DotBot
+                    'estimatedPdr':       1,
+                    # [(estimated pdr, DotBot position ), ..] (oldest -> latest)
                     'pdrHistory':         [],
                     # position DotBot should go to when/if it becomes a relay
                     'relayPosition':      None,
@@ -160,8 +160,8 @@ class Orchestrator(Wireless.WirelessDevice):
             frame['source'], (dotBot['x'], dotBot['y']), dotBot['targetCell'])
         )
 
-        # store heartbeat
-        dotBot['heartbeat']            = frame['heartbeat']
+        # store estimated PDR
+        dotBot['estimatedPdr']            = frame['estimatedPdr']
 
         # filter out duplicates
         if frame['seqNumNotification'] == dotBot['seqNumNotification']:
@@ -201,10 +201,10 @@ class Orchestrator(Wireless.WirelessDevice):
             ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['currentPath'][0])) and
             dotBot['targetCell'] in self.cellsFrontier
         ):
-            # DotBot bumped into first cell on path at corner
+            # DotBot bumped into first cell on path at corner (but has not reached its target yet)
             self.cellsObstacle += [dotBot['currentPath'][0]]
 
-            # DotBot bumped into its target cell at corner
+            # DotBot reached its target and bumped into it at corner
             if ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['targetCell'])):
                 self._isCornerFrontier(dotBot['targetCell'])
 
@@ -283,7 +283,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 # no target, no path
                 path = None
 
-            elif (targetCell != dotBot['targetCell'] or not dotBot['currentPath'] or frame['hasJustBumped']):
+            elif ((targetCell != dotBot['targetCell']) or (not dotBot['currentPath']) or (frame['hasJustBumped'])):
                 # new target, find path to it
 
                 # find shortest path to target if DotBot hasn't bumped otherwise find path with no diagonal movements
@@ -323,7 +323,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # update pdr history if using Recovery algorithm otherwise not needed
         if self.relayAlgorithm == "Recovery":
-            dotBot['pdrHistory'] += [(dotBot['heartbeat'], (dotBot['x'], dotBot['y']))]
+            dotBot['pdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
 
     #=== Map
 
@@ -789,52 +789,57 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _assignRelaysAndRelayPositionsCb(self):
 
-        log.debug('heartbeats {}'.format([db['heartbeat'] for (_, db) in self.dotBotsView.items()]))
+        log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
+
+        # schedule next relay check to see if new relays are needed
+        # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds
         self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
         if self.relayAlgorithm   == "Recovery":
-            self._recoveryRelayPlacement()
+            self._relayPlacementRecovery()
 
         elif self.relayAlgorithm == "SelfHealing":
-            self._selfHealingRelayPlacement()
+            self._relayPlacementSelfHealing()
 
         else:
             # don't place relays if no algorithm is specified
             pass
 
-    def _recoveryRelayPlacement(self):
+    def _relayPlacementRecovery(self):
+        LOWER_PDR_THRESHOLD = 0.7
+        UPPER_PDR_THRESHOLD = 0.9
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
 
-            # if all DotBot PDRs are above min threshold don't assign a relay
-            if dotBot['heartbeat'] > 0.7:
+            # DotBot with high PDR isn't a relay
+            if dotBot['estimatedPdr'] > LOWER_PDR_THRESHOLD:
                 continue
 
             # skip dotBots that are already relays
             if dotBot['isRelay']:
                 continue
 
-            # assign dotBot as relay
-            dotBot['isRelay']    = True
+            # assign DotBot as relay
+            dotBot['isRelay']   = True
 
             # get stored PDR history (oldest -> latest)
-            pdrHistory         = dotBot['pdrHistory']
+            pdrHistory          = dotBot['pdrHistory']
 
             # reverse PDR history (latest -> oldest)
-            pdrHistoryReversed = pdrHistory[::-1]
+            pdrHistoryReversed  = pdrHistory[::-1]
 
             for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
 
                 # look for last DotBot position with PDR above acceptable threshold
-                if pdrValue >= 0.9:
+                if pdrValue >= UPPER_PDR_THRESHOLD:
                     if (dotBotX, dotBotY) not in self.cellsObstacle:
                         # set relay position for DotBot to move to
                         dotBot['relayPosition']     = self._xy2cell(dotBotX, dotBotY)
                         break
             break
 
-    def _selfHealingRelayPlacement(self):
+    def _relayPlacementSelfHealing(self):
 
         RANGE_DISTANCE = 10  # up to 10m pister-hack stability minimum threshold is above 0
         # original algorith assumes we only have one robot and want to restore connectivity to it
@@ -843,7 +848,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # check if orchestrator has lost connection to any DotBots
         for (dotBotId, dotBot) in self.dotBotsView.items():
-            if dotBot['heartbeat'] <= CRITICAL_PDR:
+            if dotBot['estimatedPdr'] <= CRITICAL_PDR:
                 # A robot that has lost perfect connection
                 # we want to build a relay chain to to restore better connectivity
                 lostDotBot = dotBot
@@ -893,7 +898,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         int(((1 - distancesRatio) * y0 + distancesRatio * y1))
                     )
 
-                    # chose random dotBot to be relay
+                    # chose random DotBot to be relay
                     dotBot               = random.choice(
                         [
                             db for (id, db) in self.dotBotsView.items() if
@@ -901,7 +906,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         ]
                     )
 
-                    # set dotBot as relay
+                    # set DotBot as relay
                     dotBot['isRelay'] = True
 
                     if (

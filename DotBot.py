@@ -48,13 +48,15 @@ class DotBot(Wireless.WirelessDevice):
         self.isRelay              = False
         # if DotBot has bumped
         self.hasJustBumped        = False  # needed as variable as retransmits are called by simEngine
-        # heartbeat is estimated pdr sent to orchestrator for every heartbeat period
-        self.heartbeat            = 1
-        self.heartbeatPeriod      = 10
+        # estimated PDR is number of packets received over number of packets expected
+        self.estimatedPdr         = 1      # packets received per second
+        # how frequent estimated PDR is sent to orchestrator
+        self.estimatedPdrPeriod   = 10     # in seconds
         self.numPacketReceived    = 0
 
-        # kickoff heartbeat
-        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
+        # schedule next estimated PDR call back
+        self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
+
     # ======================== public ==========================================
 
     def receive(self, frame):
@@ -194,20 +196,20 @@ class DotBot(Wireless.WirelessDevice):
         # stop movement and send notification
         self._stopAndTransmit()
 
-    def _heartbeatCb(self):
+    def _estimatedPdrCb(self):
         '''
-        send heartbeat to orchestrator to update on PDR status
+        send estimated PDR to orchestrator to update on PDR status
         '''
 
-        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
 
-        # compute estimated PDR
-        self.heartbeat         = self.numPacketReceived / self.heartbeatPeriod
+        # number of packets received to number of packets expected, to give an estimate of PDR
+        self.estimatedPdr         = self.numPacketReceived / self.estimatedPdrPeriod
 
         # reset packet count
         self.numPacketReceived = 0
 
-        # send heartbeat
+        # send notification with updates estimated PDR
         self._transmit()
 
     def _stopAndTransmit(self):
@@ -236,7 +238,7 @@ class DotBot(Wireless.WirelessDevice):
             'movementDuration':   self.movementDuration,
             'seqNumNotification': self.seqNumNotification,
             'hasJustBumped':      self.hasJustBumped,
-            'heartbeat':          self.heartbeat,
+            'estimatedPdr':       self.estimatedPdr,
         }
 
         # hand over to wireless
