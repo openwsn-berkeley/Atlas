@@ -48,7 +48,13 @@ class DotBot(Wireless.WirelessDevice):
         self.isRelay              = False
         # if DotBot has bumped
         self.hasJustBumped        = False  # needed as variable as retransmits are called by simEngine
+        # heartbeat is estimated pdr sent to orchestrator for every heartbeat period
+        self.heartbeat            = 1
+        self.heartbeatPeriod      = 10
+        self.numPacketReceived    = 0
 
+        # kickoff heartbeat
+        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
     # ======================== public ==========================================
 
     def receive(self, frame):
@@ -60,6 +66,9 @@ class DotBot(Wireless.WirelessDevice):
         # drop any frame that is NOT a FRAMETYPE_COMMAND
         if frame['frameType']!=self.FRAMETYPE_COMMAND:
             return
+
+        # new command packet received
+        self.numPacketReceived += 1
 
         # filter out duplicates
         if frame['movements'][self.dotBotId]['seqNumCommand'] == self.seqNumCommand:
@@ -185,6 +194,16 @@ class DotBot(Wireless.WirelessDevice):
         # stop movement and send notification
         self._stopAndTransmit()
 
+    def _heartbeatCb(self):
+
+        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
+
+        self.heartbeat         = self.numPacketReceived / self.heartbeatPeriod
+
+        self.numPacketReceived = 0
+
+        self._transmit()
+
     def _stopAndTransmit(self):
 
         # update notification ID
@@ -193,8 +212,8 @@ class DotBot(Wireless.WirelessDevice):
         # stop moving
         self.currentSpeed        = 0
 
-        # remember when I stop moving
-        self.tsMovementStop      = self.simEngine.currentTime()
+        # remember how long DotBot moved for
+        self.movementDuration      = self.simEngine.currentTime() - self.tsMovementStart
 
         # transmit
         self._transmit()
@@ -208,9 +227,10 @@ class DotBot(Wireless.WirelessDevice):
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
             'source':             self.dotBotId,
-            'movementDuration':   self.tsMovementStop - self.tsMovementStart,
+            'movementDuration':   self.movementDuration,
             'seqNumNotification': self.seqNumNotification,
             'hasJustBumped':      self.hasJustBumped,
+            'heartbeat':          self.heartbeat,
         }
 
         # hand over to wireless
