@@ -200,8 +200,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsFrontier  = [
             cell for cell in self.cellsFrontier
             if (cell not in self.cellsExplored        and
-                cell not in self.cellsObstacle)       and
-               (self._isCornerFrontier(cell) == False)
+                cell not in self.cellsObstacle)
         ]
 
         # compute new frontiers
