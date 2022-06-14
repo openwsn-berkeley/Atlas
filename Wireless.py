@@ -150,7 +150,7 @@ class Wireless(object):
 
         # get current positions of sender and reciever
         (receiverX, receiverY) = receiver.computeCurrentPosition()
-        (senderX, senderY) = sender.computeCurrentPosition()
+        (senderX, senderY)     = sender.computeCurrentPosition()
 
         # find if (nodeA, nodeB) or (nodeB, nodeA) are in the lastStabilities keys.
         # set that as the key to use to find the value of the pdr
