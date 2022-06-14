@@ -22,7 +22,7 @@ class Orchestrator(Wireless.WirelessDevice):
     COMM_DOWNSTREAM_PERIOD_S    = 1
     MINFEATURESIZE              = 1
     
-    def __init__(self, numRobots, initX, initY):
+    def __init__(self, numRobots, initX, initY, relayAlgorithm="Recovery"):
 
         # store params
         self.numRobots          = numRobots
@@ -47,7 +47,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # to avoid given multiple robots same frontier as target cell
         self.assignedFrontiers   = []
         # algorithm used to place relays
-        self.relayAlgorithm      = "SelfHealing"  # FIXME: this should be set by config
+        self.relayAlgorithm      = relayAlgorithm  # FIXME: this should be set by config
 
         self.dotBotsView         = dict([
             (
@@ -199,8 +199,9 @@ class Orchestrator(Wireless.WirelessDevice):
         # remove explored frontiers
         self.cellsFrontier  = [
             cell for cell in self.cellsFrontier
-            if (cell not in self.cellsExplored and
-                cell not in self.cellsObstacle)
+            if (cell not in self.cellsExplored        and
+                cell not in self.cellsObstacle)       and
+               (self._isCornerFrontier(cell) == False)
         ]
 
         # compute new frontiers
@@ -811,7 +812,7 @@ class Orchestrator(Wireless.WirelessDevice):
             for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
 
                 # look for last DotBot position with PDR above acceptable threshold
-                if pdrValue >= 1:
+                if pdrValue >= 0.9:
                     if (dotBotX, dotBotY) not in self.cellsObstacle:
                         dotBot['relayPosition']     = self._xy2cell(dotBotX, dotBotY)
                         break
