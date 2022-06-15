@@ -32,7 +32,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # local variables
         self.simEngine           = SimEngine.SimEngine()
         self.wireless            = Wireless.Wireless()
-        self.datacollector       = DataCollector.DataCollector()
+        self.dataCollector       = DataCollector.DataCollector()
         self.cellsExplored       = []
         self.cellsObstacle       = []
         self.cellsFrontier       = []
@@ -238,7 +238,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # FIXME: for debugging only
         self.dataCollector.collect(
             {
-                self.cellsFrontier
+                "remaining frontiers": self.cellsFrontier
             },
         )
 
