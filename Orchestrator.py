@@ -87,7 +87,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
+        #self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -323,6 +323,7 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['heading']         = heading
         dotBot['speed']           = speed
         dotBot['movementTimeout'] = movementTimeout
+        dotBot['isRelay']         = True if frame['source'] == 1 else False
 
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1

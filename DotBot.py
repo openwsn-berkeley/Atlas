@@ -55,7 +55,7 @@ class DotBot(Wireless.WirelessDevice):
         self.numPacketReceived    = 0
 
         # schedule next estimated PDR call back
-        self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
+        #self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
 
     # ======================== public ==========================================
 

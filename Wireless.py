@@ -65,7 +65,7 @@ class Wireless(object):
         -79: 1.0000,  # this value is not from experiment
     }
 
-    TX_POWER                = 0
+    TX_POWER                = 100
     ANTENNA_GAIN            = 0   # TX & RX
 
     PISTER_HACK_LOWER_SHIFT = 40  # dB
