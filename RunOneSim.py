@@ -38,12 +38,13 @@ def runOneSim(simSetting, atlasUI=None):
     dataCollector.collect(
         {
             'type':         'simSetting',
-            'simSetting':   simSetting,
+            'simSetting':    simSetting,
         },
     )
 
     # setting the seed
     random.seed(simSetting['seed'])
+    random.seed(2)
     
     # create the simulation environment
     floorplan      = Floorplan.Floorplan(alias=simSetting['floorplan'])
