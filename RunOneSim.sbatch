@@ -5,7 +5,7 @@
 #SBATCH --output=output%A_%a.log                  # Standard output and error log
 #SBATCH --partition=gpu                           # partition of nodes used (cpu_devel, cpu_homogen,gpu)
 #SBATCH --time=10:00:00                           # total run time limit (HH:MM:SS)
-#SBATCH --mem=10G                                 # Total memory allocated
+#SBATCH --mem=5G                                  # Total memory allocated
 #SBATCH --nodes=1                                 # node count
 
 # If you use conda
