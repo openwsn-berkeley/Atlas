@@ -234,7 +234,7 @@ class Orchestrator(Wireless.WirelessDevice):
         if not self.cellsFrontier:
             self.simEngine.completeRun()
 
-        log.debug(f'remaining frontiers are {self.cellsFrontier}')
+        log.debug(f'remaining frontiers are {self.cellsFrontier} at {self.simEngine.currentTime()}')
 
         # update DotBotsView
         dotBot['x']      = newX
