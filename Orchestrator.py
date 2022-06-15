@@ -187,8 +187,10 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored            += cellsExploredAndNextCell['cellsExplored']
 
         # update obstacle cells
-        if frame['hasJustBumped'] and nextCell:
+        if (frame['hasJustBumped'] and nextCell):
             self.cellsObstacle += [nextCell]
+
+
 
         log.debug('DotBot {} bumped is {} on path {} to {} '.format(
             frame['source'], frame['hasJustBumped'], dotBot['currentPath'], dotBot['targetCell'])
@@ -203,10 +205,8 @@ class Orchestrator(Wireless.WirelessDevice):
         ):
             # DotBot bumped into first cell on path at corner (but has not reached its target yet)
             self.cellsObstacle += [dotBot['currentPath'][0]]
-
-            # DotBot reached its target and bumped into it at corner
-            if ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['targetCell'])):
-                self._isCornerFrontier(dotBot['targetCell'])
+            if dotBot['targetCell'] and ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['targetCell'])):
+                self.cellsObstacle += [dotBot['targetCell']]
 
         # remove explored frontiers
         self.cellsFrontier  = [
@@ -235,12 +235,6 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.completeRun()
 
         log.debug(f'remaining frontiers are {self.cellsFrontier} at {self.simEngine.currentTime()}')
-        # FIXME: for debugging only
-        self.dataCollector.collect(
-            {
-                "remaining frontiers": self.cellsFrontier
-            },
-        )
 
         # update DotBotsView
         dotBot['x']      = newX
@@ -323,7 +317,6 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['heading']         = heading
         dotBot['speed']           = speed
         dotBot['movementTimeout'] = movementTimeout
-        dotBot['isRelay']         = True if frame['source'] == 1 else False
 
         # update sequence number of movement instruction
         dotBot['seqNumCommand']  += 1

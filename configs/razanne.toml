@@ -1,6 +1,6 @@
 [atlas]
-    numRobots                = 25
-    floorplan                = "scattered_obstacles"           # filename in maps
+    numRobots                = 1
+    floorplan                = "office"                        # filename in maps
     navigationAlgorithm      = "Atlas"                         # options: Atlas, Ballistic
     relayAlgorithm           = "SelfHealing"                   # options: Recovery, Naive, SelfHealing
     lowerPdrThreshold        = 0.7                             # (for Recovery) trigger relay placement if below
