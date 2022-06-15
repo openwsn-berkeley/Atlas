@@ -235,6 +235,12 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.completeRun()
 
         log.debug(f'remaining frontiers are {self.cellsFrontier} at {self.simEngine.currentTime()}')
+        # FIXME: for debugging only
+        self.dataCollector.collect(
+            {
+                self.cellsFrontier
+            },
+        )
 
         # update DotBotsView
         dotBot['x']      = newX
