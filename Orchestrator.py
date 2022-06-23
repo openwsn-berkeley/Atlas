@@ -187,26 +187,26 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored            += cellsExploredAndNextCell['cellsExplored']
 
         # update obstacle cells
-        if (frame['hasJustBumped'] and nextCell):
-            self.cellsObstacle += [nextCell]
+        if frame['hasJustBumped']:
+            if nextCell:
+                self.cellsObstacle += [nextCell]
+
+            else:
+                # DotBot bumped into target at corner
+                if (
+                    dotBot['currentPath'] ==  [dotBot['targetCell']]                   and
+                    ((newX, newY) in self._computeCellCorners(*dotBot['targetCell']))  and
+                    ((newX, newY) != (dotBot['targetCell'][0]+ self.MINFEATURESIZE/4, dotBot['targetCell'][1]+ self.MINFEATURESIZE/4)) and
+                    not cellsExplored
+                ):
+                    self.cellsObstacle += [dotBot['targetCell']]
 
 
-
-        log.debug('DotBot {} bumped is {} on path {} to {} '.format(
-            frame['source'], frame['hasJustBumped'], dotBot['currentPath'], dotBot['targetCell'])
-        )
-
-        if (
-            frame['hasJustBumped']                                                              and
-            (not cellsExplored)                                                                 and
-            dotBot['currentPath']                                                               and
-            ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['currentPath'][0])) and
-            dotBot['targetCell'] in self.cellsFrontier
-        ):
-            # DotBot bumped into first cell on path at corner (but has not reached its target yet)
-            self.cellsObstacle += [dotBot['currentPath'][0]]
-            if dotBot['targetCell'] and ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*dotBot['targetCell'])):
-                self.cellsObstacle += [dotBot['targetCell']]
+            # log
+            log.debug('DotBot {} bumped at {} on path {} to {} with corners {}'.format(
+                frame['source'], (dotBot['x'], dotBot['y']), dotBot['currentPath'], dotBot['targetCell'],
+                self._computeCellCorners(*dotBot['currentPath'][0])),
+            )
 
         # remove explored frontiers
         self.cellsFrontier  = [
@@ -711,10 +711,13 @@ class Orchestrator(Wireless.WirelessDevice):
                 hCost          = u.distance(childCell.cellPos, targetCell)
 
                 # skip cell if it is an obstacle cell
+                if childCell.cellPos in self.cellsObstacle:
+                    continue
+
+                # if cell is a frontier, check that it is reachable
                 if (
-                    childCell.cellPos in self.cellsObstacle     or
-                   (childCell.cellPos not in self.cellsExplored and
-                    childCell.cellPos not in self.cellsFrontier)
+                    (childCell.cellPos in self.cellsFrontier) and
+                    (not [n for n in self._computeCellNeighbours(*childCell.cellPos) if n in self.cellsExplored])
                 ):
                     continue
 

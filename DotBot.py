@@ -66,7 +66,7 @@ class DotBot(Wireless.WirelessDevice):
         assert frame['frameType'] in self.FRAMETYPE_ALL
 
         # drop any frame that is NOT a FRAMETYPE_COMMAND
-        if frame['frameType']!=self.FRAMETYPE_COMMAND:
+        if frame['frameType']  != self.FRAMETYPE_COMMAND:
             return
 
         # new command packet received
