@@ -87,7 +87,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        #self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -247,7 +247,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         if dotBot['relayPosition']:
             # DotBot has been assigned as relay, move to relay position
-            targetCell           = dotBot['relayPosition']
+            targetCell            = dotBot['relayPosition']
 
             # if DotBots previous target has not been explored yet,
             # release it from pool of assigned frontiers
@@ -273,14 +273,17 @@ class Orchestrator(Wireless.WirelessDevice):
 
         if (self.bumpedOnWayToTarget or (not targetCell)):
 
-            if not targetCell:
+            if ((not targetCell) or (dotBot['relayPosition'] == self._xy2cell(newX, newY))):
                 # no target, no path
                 path = None
 
             elif ((targetCell != dotBot['targetCell']) or (frame['hasJustBumped'])):
                 # new target, find path to it
 
-                if ((not cellsExplored) and dotBot['currentPath'] and (self._xy2cell(newX, newY) in dotBot['currentPath'])):
+                if (
+                    ((not cellsExplored)                                                              and
+                    (dotBot['currentPath'] and (self._xy2cell(newX, newY) in dotBot['currentPath'])))
+                ):
                     startCell = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) - 1]
                 elif cellsExplored:
                     startCell = cellsExplored[-1]
@@ -317,7 +320,7 @@ class Orchestrator(Wireless.WirelessDevice):
             path                  = [targetCell]
 
         # set new speed and heading and movementTimeout for DotBot
-        if path:
+        if path :
             (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(dotBotId=frame['source'], path=path)
         else:
             (heading, speed, movementTimeout) = (0, 0, 0.5)
