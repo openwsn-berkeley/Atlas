@@ -61,7 +61,8 @@ def test_getStabilityRandomPositions(randomPositions):
     testing PDR computation based on random distances
     '''
 
-    wireless = Wireless.Wireless()
+    wireless          = Wireless.Wireless()
+    wireless.TX_POWER = 0
 
     # friis pdr
     wireless.PISTER_HACK_LOWER_SHIFT = 0
@@ -80,11 +81,12 @@ def test_getStabilitySamePositions():
     are in the same positions as last time PDR was computed
     '''
 
-    wireless = Wireless.Wireless()
-    sender   = DotBot.DotBot(dotBotId=1, x=0, y=0, floorplan='#')
-    receiver = DotBot.DotBot(dotBotId=2, x=10, y=10, floorplan='#')
+    wireless          = Wireless.Wireless()
+    wireless.TX_POWER = 0
+    sender            = DotBot.DotBot(dotBotId=1, x=0, y=0, floorplan='#')
+    receiver          = DotBot.DotBot(dotBotId=2, x=10, y=10, floorplan='#')
 
-    pdr1     = wireless._getStability(sender, receiver)
-    pdr2     = wireless._getStability(sender, receiver)
+    pdr1              = wireless._getStability(sender, receiver)
+    pdr2              = wireless._getStability(sender, receiver)
 
     assert pdr1 == pdr2

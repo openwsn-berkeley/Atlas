@@ -1,5 +1,5 @@
 [atlas]
-    numRobots                = [25, 50, 100]
+    numRobots                = [15, 25, 50, 100]
     floorplan                = "scattered_obstacles"           # filename in maps
     navigationAlgorithm      = "Atlas"                         # options: Atlas, Ballistic
     relayAlgorithm           = "None"                          # options: Recovery, Naive, SelfHealing
