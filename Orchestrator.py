@@ -191,15 +191,15 @@ class Orchestrator(Wireless.WirelessDevice):
             if nextCell:
                 self.cellsObstacle += [nextCell]
 
-            else:
-                # DotBot bumped into target at corner
-                if (
-                    dotBot['currentPath'] ==  [dotBot['targetCell']]                   and
-                    ((newX, newY) in self._computeCellCorners(*dotBot['targetCell']))  and
-                    ((newX, newY) != (dotBot['targetCell'][0]+ self.MINFEATURESIZE/4, dotBot['targetCell'][1]+ self.MINFEATURESIZE/4)) and
-                    not cellsExplored
-                ):
-                    self.cellsObstacle += [dotBot['targetCell']]
+            # else:
+            #     # DotBot bumped into target at corner
+            #     if (
+            #         dotBot['currentPath'] ==  [dotBot['targetCell']]                   and
+            #         ((newX, newY) in self._computeCellCorners(*dotBot['targetCell']))  and
+            #         ((newX, newY) != (dotBot['targetCell'][0]+ self.MINFEATURESIZE/4, dotBot['targetCell'][1]+ self.MINFEATURESIZE/4)) and
+            #         not cellsExplored
+            #     ):
+            #         self.cellsObstacle += [dotBot['targetCell']]
 
             # log
             log.debug('DotBot {} bumped at {} on path {} to {} with corners {}'.format(
@@ -280,12 +280,7 @@ class Orchestrator(Wireless.WirelessDevice):
             elif ((targetCell != dotBot['targetCell']) or (frame['hasJustBumped'])):
                 # new target, find path to it
 
-                if (
-                    ((not cellsExplored)                                                              and
-                    (dotBot['currentPath'] and (self._xy2cell(newX, newY) in dotBot['currentPath'])))
-                ):
-                    startCell = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) - 1]
-                elif cellsExplored:
+                if cellsExplored:
                     startCell = cellsExplored[-1]
                 else:
                     startCell = u.computeCurrentPosition(
@@ -299,7 +294,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 if frame['hasJustBumped']:
                     # send robot back to center of last cell explored to ensure computation of valid path
-                    path = [startCell] + self._computePath(
+                    path = self._computePath(
                                             startCell            = startCell,
                                             targetCell           = targetCell,
                                             excludeDiagonalCells = True
