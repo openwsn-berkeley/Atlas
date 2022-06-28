@@ -191,15 +191,14 @@ class Orchestrator(Wireless.WirelessDevice):
             if nextCell:
                 self.cellsObstacle += [nextCell]
 
-            # else:
-            #     # DotBot bumped into target at corner
-            #     if (
-            #         dotBot['currentPath'] ==  [dotBot['targetCell']]                   and
-            #         ((newX, newY) in self._computeCellCorners(*dotBot['targetCell']))  and
-            #         ((newX, newY) != (dotBot['targetCell'][0]+ self.MINFEATURESIZE/4, dotBot['targetCell'][1]+ self.MINFEATURESIZE/4)) and
-            #         not cellsExplored
-            #     ):
-            #         self.cellsObstacle += [dotBot['targetCell']]
+            else:
+                # DotBot bumped into target at corner
+                if (
+                    dotBot['currentPath'] ==  [dotBot['targetCell']]                   and
+                    ((newX, newY) in self._computeCellCorners(*dotBot['targetCell']))  and
+                    not cellsExplored
+                ):
+                    self.cellsObstacle += [dotBot['targetCell']]
 
             # log
             log.debug('DotBot {} bumped at {} on path {} to {} with corners {}'.format(
@@ -307,6 +306,10 @@ class Orchestrator(Wireless.WirelessDevice):
             else:
                 # DotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
                 # remove cells already traversed from path
+                if self._xy2cell(newX, newY) not in dotBot['currentPath']:
+                    print(dotBot)
+                    print(newX, newY)
+
                 path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
 
                 log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
@@ -733,7 +736,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 if (
                     (childCell.cellPos in [cell.cellPos for cell in openCells] or
-                     childCell.cellPos in [cell.cellPos for cell in openCells]) and
+                     childCell.cellPos in [cell.cellPos for cell in closedCells]) and
                     (childCell.fCost <= gCost + hCost)
                 ):
                     continue
@@ -752,14 +755,14 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'finding heading for path of {path}')
 
         dotBot         = self.dotBotsView[dotBotId]
-
+        shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01))
         # find initial heading and distance to reach first cell in path (to use as reference)
         initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
 
         # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
         # movement is from cell centre to cell centre to avoid movements across cell borders and assure
         # passing though cells to explore them
-        destination    = (path[0][0] + self.MINFEATURESIZE / 4, path[0][1] + self.MINFEATURESIZE / 4)
+        destination    = (path[0][0] + shift, path[0][1] + shift)
 
         # compute distance DotBot will move along same trajectory until heading changes from initial one
         for idx, (cx, cy) in enumerate(path):
@@ -773,7 +776,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
             if headingToNext != initialHeading:
                 # heading changes
-                destination   = (cx + self.MINFEATURESIZE / 4, cy + self.MINFEATURESIZE / 4)
+                destination   = (cx + shift, cy + shift)
                 break
 
         # find distance to destination cell from DotBot position
