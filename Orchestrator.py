@@ -315,7 +315,7 @@ class Orchestrator(Wireless.WirelessDevice):
         else:
             (heading, speed, movementTimeout) = (0, 0, 0.5)
 
-        log.debug('heading & movementTimeout for {} are {} {}'.format(frame['source'], heading, movementTimeout))
+        log.info('heading & movementTimeout for {} are {} {}'.format(frame['source'], heading, movementTimeout))
 
         dotBot['targetCell']      = targetCell
         dotBot['currentPath']     = path
