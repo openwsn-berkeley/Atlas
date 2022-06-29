@@ -238,7 +238,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         if dotBot['relayPosition']:
 
-            log.info('relay {} at {} with original target as'.format(frame['source'], dotBot['relayPosition'], dotBot['taretCell'] ))
+            log.info('relay {} at {} with original target as'.format(frame['source'], dotBot['relayPosition'], dotBot['targetCell'] ))
             # DotBot has been assigned as relay, move to relay position
             targetCell            = dotBot['relayPosition']
 
