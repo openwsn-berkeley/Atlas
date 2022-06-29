@@ -200,12 +200,6 @@ class Orchestrator(Wireless.WirelessDevice):
                 ):
                     self.cellsObstacle += [dotBot['targetCell']]
 
-            # log
-            log.debug('DotBot {} bumped at {} on path {} to {} with corners {}'.format(
-                frame['source'], (dotBot['x'], dotBot['y']), dotBot['currentPath'], dotBot['targetCell'],
-                self._computeCellCorners(*dotBot['currentPath'][0])),
-            )
-
         # remove explored frontiers
         self.cellsFrontier  = [
             cell for cell in self.cellsFrontier
@@ -231,8 +225,6 @@ class Orchestrator(Wireless.WirelessDevice):
         # simulation complete when there are no more frontier cells left
         if not self.cellsFrontier:
             self.simEngine.completeRun()
-
-        log.debug(f'remaining frontiers are {self.cellsFrontier} at {self.simEngine.currentTime()}')
 
         # update DotBotsView
         dotBot['x']      = newX
@@ -370,9 +362,6 @@ class Orchestrator(Wireless.WirelessDevice):
             if (stopY < startY) and (startY == cy):
                 cy = cy - self.MINFEATURESIZE / 2
 
-        log.debug(f'moving from {startX}, {startY} to {stopX}, {stopY}')
-        log.debug(f'next cell -> {(cx, cy)}')
-
         # maxNumCells is length of line *2 as each cell is 1/2 the size of a unit step
         # we add an extra 2 cells: 1 - in case start cell is not the initial cell and
         # 1 - for when we calculate the next cell beyond the trajectory
@@ -405,8 +394,6 @@ class Orchestrator(Wireless.WirelessDevice):
                         cy = cy - self.MINFEATURESIZE / 2
                     returnVal['cellsExplored'] += [(cx, cy)]
 
-                    log.debug(
-                        'num cells {} and maxCellNum = {}'.format(len(returnVal['cellsExplored']), abs(maxNumCells)))
                     assert len(returnVal) <= maxNumCells
 
             else:
@@ -463,7 +450,6 @@ class Orchestrator(Wireless.WirelessDevice):
                         cx = cx + (self.MINFEATURESIZE / 2) * slope
                         returnVal['cellsExplored'] += [(cx, cy)]
 
-                    log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
                     assert len(returnVal) <= maxNumCells
 
             returnVal['nextCell'] = returnVal['cellsExplored'].pop(-1)
@@ -741,8 +727,6 @@ class Orchestrator(Wireless.WirelessDevice):
         return path
 
     def _computeHeadingSpeedMovementTimeout(self, dotBotId, path):
-
-        log.debug(f'finding heading for path of {path}')
 
         dotBot         = self.dotBotsView[dotBotId]
         shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01))
