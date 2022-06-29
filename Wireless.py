@@ -120,6 +120,10 @@ class Wireless(object):
             # get pdr between sender and receiver
             pdr            = self._getPDR(sender, relays, receiver)
 
+            #FIXME: for debgging
+            if (sender.x, sender.y) == (7.622, 5.122) and (receiver.x, receiver.y) == (8.168, 6.471):
+                print(pdr)
+
             # only log pdr when pdr is critically low
             log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr} with relays {relays}')
 
@@ -161,6 +165,9 @@ class Wireless(object):
             (receiver.dotBotId, sender.dotBotId)
         }.intersection(self.lastStabilities.keys())
 
+        # convert set to list to maintain order for  reproducibility
+        list(dict.fromkeys(linkInLastStabilities))
+
         if (
             # both sender and receiver are in are in last positions and the link between
             sender.dotBotId in self.lastPositions.keys() and
@@ -186,15 +193,6 @@ class Wireless(object):
             self.lastPositions[receiver.dotBotId] = (receiver.x, receiver.y)
             self.lastStabilities[(sender.dotBotId, receiver.dotBotId)] = pdr
 
-        if (sender.x, sender.y) == (7.622, 5.122) and (receiver.x, receiver.y) == (8.168, 6.471):
-            print(self.lastStabilities)
-            print("sender info")
-            print(sender.dotBotId, sender.x, sender.y)
-            print(self.lastPositions[sender.dotBotId])
-            print("receiver info")
-            print(receiver.dotBotId, receiver.x, receiver.y)
-            print(self.lastPositions[receiver.dotBotId])
-            print(shift_value)
 
         return pdr
 

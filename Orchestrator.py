@@ -217,7 +217,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 ):
                     self.cellsFrontier += [n]
 
-        # remove duplicate cells
+        # remove duplicate cells while maintaining order of cells for reproducibility
         self.cellsObstacle = list(dict.fromkeys(self.cellsObstacle))
         self.cellsExplored = list(dict.fromkeys(self.cellsExplored))
         self.cellsFrontier = list(dict.fromkeys(self.cellsFrontier))
