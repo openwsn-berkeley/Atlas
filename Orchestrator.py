@@ -414,7 +414,6 @@ class Orchestrator(Wireless.WirelessDevice):
                 # move according to line equation y = mx + c
                 m = (stopY - startY) / (stopX - startX)
                 c = startY - m * startX
-                log.debug(f'stop condition is {self._xy2cell(stopX, stopY)}')
 
                 while cellsExploredComputed == False:
 
@@ -431,9 +430,6 @@ class Orchestrator(Wireless.WirelessDevice):
                         ynext = m * cx + c
                         slope = -1
 
-                    log.debug(f'xmax,ymax {xmax}, {ymax}')
-                    log.debug(f'ynext {ynext}')
-
                     if (
                             cx <= stopX <= xmax and
                             cy <= stopY <= ymax
@@ -444,32 +440,28 @@ class Orchestrator(Wireless.WirelessDevice):
                         # move up
                         cy = cy - self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
-                        log.debug(f'move up to -> {(cx, cy)}')
 
                     elif ymax < ynext:
                         # move down
                         cy = cy + self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
-                        log.debug(f'move down to -> {(cx, cy)}')
 
                     elif ynext == ymin:
                         # move diagonally upwards
                         cx = cx + (self.MINFEATURESIZE / 2) * slope
                         cy = cy - self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
-                        log.debug(f'move diagonally upwards to -> {(cx, cy)}')
 
                     elif ynext == ymax:
                         # move diagonally downwards
                         cx = cx + (self.MINFEATURESIZE / 2) * slope
                         cy = cy + self.MINFEATURESIZE / 2
                         returnVal['cellsExplored'] += [(cx, cy)]
-                        log.debug(f'move diagonally downwards to -> {(cx, cy)}')
+
                     else:
                         # move sideways
                         cx = cx + (self.MINFEATURESIZE / 2) * slope
                         returnVal['cellsExplored'] += [(cx, cy)]
-                        log.debug(f'move right to -> {(cx, cy)}')
 
                     log.debug(f'num cells {len(returnVal)} and maxCellNum = {abs(maxNumCells)}')
                     assert len(returnVal) <= maxNumCells
@@ -479,8 +471,6 @@ class Orchestrator(Wireless.WirelessDevice):
             # if stop coordinates are exactly on a corner (connecting 4 cells), next cell is not certain
             if (stopX, stopY) in self._computeCellCorners(stopX, stopY):
                 returnVal['nextCell'] = None
-
-        log.debug(f'new cells {returnVal}')
 
         return returnVal
 

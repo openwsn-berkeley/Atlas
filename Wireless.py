@@ -119,7 +119,10 @@ class Wireless(object):
 
             # get pdr between sender and receiver
             pdr            = self._getPDR(sender, relays, receiver)
-            log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
+
+            # only log pdr when pdr is critically low
+            if pdr < 0.1 :
+                log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
