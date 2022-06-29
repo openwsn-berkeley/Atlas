@@ -224,8 +224,8 @@ class Orchestrator(Wireless.WirelessDevice):
                     self.cellsFrontier += [n]
 
         # remove duplicate cells
-        self.cellsObstacle = list(set(self.cellsObstacle))
-        self.cellsExplored = list(set(self.cellsExplored))
+        self.cellsObstacle = list(dict.fromkeys(self.cellsObstacle))
+        self.cellsExplored = list(dict.fromkeys(self.cellsExplored))
         self.cellsFrontier = list(dict.fromkeys(self.cellsFrontier))
 
         # simulation complete when there are no more frontier cells left
