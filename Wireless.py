@@ -120,12 +120,9 @@ class Wireless(object):
             # get pdr between sender and receiver
             pdr            = self._getPDR(sender, relays, receiver)
 
-            #FIXME: for debgging
-            if (sender.x, sender.y) == (7.622, 5.122) and (receiver.x, receiver.y) == (8.168, 6.471):
-                print(pdr)
-
             # only log pdr when pdr is critically low
-            log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr} with relays {relays}')
+            if pdr < 0.1:
+                log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
@@ -193,6 +190,10 @@ class Wireless(object):
             self.lastPositions[receiver.dotBotId] = (receiver.x, receiver.y)
             self.lastStabilities[(sender.dotBotId, receiver.dotBotId)] = pdr
 
+        # FIXME: for debgging
+        if (sender.x, sender.y) == (7.622, 5.122) and (receiver.x, receiver.y) == (8.168, 6.471):
+            print(pdr)
+            print(self.lastStabilities)
 
         return pdr
 
