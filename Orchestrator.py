@@ -238,7 +238,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
         if dotBot['relayPosition']:
 
-            log.info('relay {} at {} with original target as'.format(frame['source'], dotBot['relayPosition'], dotBot['targetCell'] ))
             # DotBot has been assigned as relay, move to relay position
             targetCell            = dotBot['relayPosition']
 
@@ -300,10 +299,6 @@ class Orchestrator(Wireless.WirelessDevice):
             else:
                 # DotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
                 # remove cells already traversed from path
-                if self._xy2cell(newX, newY) not in dotBot['currentPath']:
-                    print(dotBot)
-                    print(newX, newY)
-
                 path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
 
                 log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
