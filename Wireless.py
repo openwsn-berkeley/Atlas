@@ -65,7 +65,7 @@ class Wireless(object):
         -79: 1.0000,  # this value is not from experiment
     }
 
-    TX_POWER                = 0
+    TX_POWER                = 1000
     ANTENNA_GAIN            = 0   # TX & RX
 
     PISTER_HACK_LOWER_SHIFT = 40  # dB
@@ -118,8 +118,8 @@ class Wireless(object):
             assert sender != receiver
 
             # get pdr between sender and receiver
-            #pdr            = self._getPDR(sender, relays, receiver)
-            pdr = 0.8
+            pdr            = self._getPDR(sender, relays, receiver)
+
             # only log pdr when pdr is critically low
             if pdr < 0.1 :
                 log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
