@@ -820,7 +820,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 # look for last DotBot position with PDR above acceptable threshold
                 if pdrValue >= UPPER_PDR_THRESHOLD:
-                    if (dotBotX, dotBotY) not in self.cellsObstacle:
+                    if self._xy2cell(dotBotX, dotBotY) not in self.cellsObstacle:
                         # set relay position for DotBot to move to
                         dotBot['relayPosition']     = self._xy2cell(dotBotX, dotBotY)
                         break
