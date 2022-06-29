@@ -161,8 +161,8 @@ class Wireless(object):
             (receiver.dotBotId, sender.dotBotId)
         }.intersection(self.lastStabilities.keys())
 
-        # convert set to list to maintain order for  reproducibility
-        list(dict.fromkeys(linkInLastStabilities))
+        # convert set to list and sort, to maintain order for  reproducibility
+        linkInLastStabilities = list(sorted(list(linkInLastStabilities)))
 
         if (
             # both sender and receiver are in are in last positions and the link between
