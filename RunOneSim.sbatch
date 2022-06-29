@@ -2,8 +2,6 @@
 #SBATCH --job-name=Atlas                          # Job name
 #SBATCH --mail-type=FAIL                          # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=razane.abu-aisheh@inria.fr    # Where to send mail
-#SBATCH --output=output%A_%a.log                  # Standard output and error log
-#SBATCH --partition=gpu                           # partition of nodes used (cpu_devel, cpu_homogen,gpu)
 #SBATCH --gres=gpu:rtx6000:1                      # GPU nodes are only available in gpu partition
 #SBATCH --mem=10G                                 # Total memory allocated
 #SBATCH --time=24:00:00                           # total run time limit (HH:MM:SS)
