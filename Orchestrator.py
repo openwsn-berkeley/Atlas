@@ -237,6 +237,8 @@ class Orchestrator(Wireless.WirelessDevice):
         # assign target cell (destination)
 
         if dotBot['relayPosition']:
+
+            log.info('relay {} at {} with original target as'.format(frame['source'], dotBot['relayPosition'], dotBot['taretCell'] ))
             # DotBot has been assigned as relay, move to relay position
             targetCell            = dotBot['relayPosition']
 
@@ -315,7 +317,7 @@ class Orchestrator(Wireless.WirelessDevice):
         else:
             (heading, speed, movementTimeout) = (0, 0, 0.5)
 
-        log.info('heading & movementTimeout for {} are {} {}'.format(frame['source'], heading, movementTimeout))
+        log.debug('heading & movementTimeout for {} are {} {}'.format(frame['source'], heading, movementTimeout))
 
         dotBot['targetCell']      = targetCell
         dotBot['currentPath']     = path
