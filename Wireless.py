@@ -121,7 +121,7 @@ class Wireless(object):
             pdr            = self._getPDR(sender, relays, receiver)
 
             # only log pdr when pdr is critically low
-            log.info(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
+            log.info(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr} with relays {relays}')
 
             if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
