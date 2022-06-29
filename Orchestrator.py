@@ -857,7 +857,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _relayPlacementSelfHealing(self):
 
-        RANGE_DISTANCE = 10  # up to 10m pister-hack stability minimum threshold is above 0
+        RANGE_DISTANCE = 5  # up to 10m pister-hack stability minimum threshold is above 0
         # original algorith assumes we only have one robot and want to restore connectivity to it
         # we set critical pdr as a trigger to determine which DotBot we should restore connectivity to
         CRITICAL_PDR   = 0.7

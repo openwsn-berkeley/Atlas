@@ -66,12 +66,13 @@ def expectedInOut(request):
 def test_computeHeadingSpeedTimeout(expectedInOut):
 
     orchestrator                     = Orchestrator.Orchestrator(1, 1, 1)
+    orchestrator.shift               = orchestrator.MINFEATURESIZE / 4
     inputs                           = expectedInOut['in']
     orchestrator.dotBotsView[1]['x'] = inputs['x']
     orchestrator.dotBotsView[1]['y'] = inputs['y']
 
     (heading, speed, timeout) = orchestrator._computeHeadingSpeedMovementTimeout(dotBotId=1, path=inputs['path'])
-
+    print(orchestrator.shift)
     assert 0 <= heading <= 360
     assert round(heading, 0) == expectedInOut['out']['heading']
     assert round(timeout, 2) == expectedInOut['out']['timeout']
