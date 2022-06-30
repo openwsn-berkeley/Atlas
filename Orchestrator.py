@@ -243,10 +243,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
             # if DotBots previous target has not been explored yet,
             # release it from pool of assigned frontiers
-            if (
-               (dotBot['targetCell'] in self.cellsFrontier) and
-               (dotBot['targetCell'] != dotBot['relayPosition'])
-            ) :
+            if dotBot['targetCell'] in self.assignedFrontiers:
                 self.assignedFrontiers.remove(dotBot['targetCell'])
 
         elif (
@@ -604,6 +601,8 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot         = self.dotBotsView[dotBotId]
         targetFrontier =  None
 
+        self.assignedFrontiers = [frontier for frontier in self.assignedFrontiers if frontier in self.cellsFrontier]
+
         if self.cellsFrontier:
             # find closest frontiers to initial position
             cellsAndDistancesToStart     = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
@@ -793,8 +792,8 @@ class Orchestrator(Wireless.WirelessDevice):
             pass
 
     def _relayPlacementRecovery(self):
-        LOWER_PDR_THRESHOLD = 0.7
-        UPPER_PDR_THRESHOLD = 0.9
+        LOWER_PDR_THRESHOLD = 0.8
+        UPPER_PDR_THRESHOLD = 1
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
