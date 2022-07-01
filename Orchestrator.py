@@ -912,10 +912,11 @@ class Orchestrator(Wireless.WirelessDevice):
                         for cell in open_cells:
                             open_cells.pop(0)
                             for n in self._computeCellNeighbours(*cell):
-                                if (cell in self.cellsExplored) and (cell not in self.cellsObstacle):
+                                if (n in self.cellsExplored) and (n not in self.cellsObstacle):
                                     dotBot['relayPosition'] = n
+                                    break
 
-                                elif n not in closed_cells and n not in open_cells:
+                                if n not in closed_cells and n not in open_cells:
                                     open_cells.append(n)
 
                             closed_cells.append(cell)
