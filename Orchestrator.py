@@ -87,7 +87,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -779,7 +779,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # schedule next relay check to see if new relays are needed
         # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds
-        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
@@ -793,7 +793,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _relayPlacementRecovery(self):
         LOWER_PDR_THRESHOLD = 0.7
-        UPPER_PDR_THRESHOLD = 0.9
+        UPPER_PDR_THRESHOLD = 1
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
@@ -822,27 +822,17 @@ class Orchestrator(Wireless.WirelessDevice):
                     if self._xy2cell(dotBotX, dotBotY) not in self.cellsObstacle:
                         # set relay position for DotBot to move to
                         dotBot['relayPosition']     = self._xy2cell(dotBotX, dotBotY)
-                        # if DotBots previous target has not been explored yet,
-                        # release it from pool of assigned frontiers
-                        if dotBot['targetCell'] in self.assignedFrontiers:
-                            self.assignedFrontiers.remove(dotBot['targetCell'])
                         break
             break
 
     def _relayPlacementSelfHealing(self):
 
-        RANGE_DISTANCE = 5  # up to 10m pister-hack stability minimum threshold is above 0
-        # original algorithm assumes we only have one robot and want to restore connectivity to it
-        # we set critical pdr as a trigger to determine which DotBot we should restore connectivity to
-        CRITICAL_PDR   = 0.7
+        RANGE_DISTANCE = 10  # up to 10m pister-hack stability minimum threshold is above 0
 
         # check if orchestrator has lost connection to any DotBots
         for (dotBotId, dotBot) in self.dotBotsView.items():
 
             lostDotBot = dotBot
-
-            if not lostDotBot:
-                return
 
             # find distance between lostDotBot and orchestrator
             startToLostDotBotDistance           = [
