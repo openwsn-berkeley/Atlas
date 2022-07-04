@@ -87,7 +87,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -161,7 +161,7 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # store estimated PDR
-        dotBot['estimatedPdr']            = frame['estimatedPdr']
+        dotBot['estimatedPdr']         = frame['estimatedPdr']
 
         # filter out duplicates
         if frame['seqNumNotification'] == dotBot['seqNumNotification']:
@@ -779,7 +779,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # schedule next relay check to see if new relays are needed
         # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
 
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
@@ -792,8 +792,8 @@ class Orchestrator(Wireless.WirelessDevice):
             pass
 
     def _relayPlacementRecovery(self):
-        LOWER_PDR_THRESHOLD = 0.8
-        UPPER_PDR_THRESHOLD = 1
+        LOWER_PDR_THRESHOLD = 0.7
+        UPPER_PDR_THRESHOLD = 0.9
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
@@ -822,6 +822,10 @@ class Orchestrator(Wireless.WirelessDevice):
                     if self._xy2cell(dotBotX, dotBotY) not in self.cellsObstacle:
                         # set relay position for DotBot to move to
                         dotBot['relayPosition']     = self._xy2cell(dotBotX, dotBotY)
+                        # if DotBots previous target has not been explored yet,
+                        # release it from pool of assigned frontiers
+                        if dotBot['targetCell'] in self.assignedFrontiers:
+                            self.assignedFrontiers.remove(dotBot['targetCell'])
                         break
             break
 
@@ -920,6 +924,9 @@ class Orchestrator(Wireless.WirelessDevice):
                                     open_cells.append(n)
 
                             closed_cells.append(cell)
+
+                            if dotBot['relayPosition']:
+                                break
 
                     # move on to next relay in chain
                     previousRelayInChain = nextPosInChain
