@@ -43,8 +43,7 @@ def runOneSim(simSetting, atlasUI=None):
     )
 
     # setting the seed
-    #random.seed(simSetting['seed'])
-    random.seed(2)
+    random.seed(simSetting['seed'])
 
     # create the simulation environment
     floorplan      = Floorplan.Floorplan(alias=simSetting['floorplan'])
