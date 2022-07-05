@@ -87,7 +87,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -299,9 +299,6 @@ class Orchestrator(Wireless.WirelessDevice):
             else:
                 # DotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
                 # remove cells already traversed from path
-                if self._xy2cell(newX, newY) not in dotBot['currentPath']:
-                    print("uh oh!")
-                    print("oh no")
                 path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
 
                 log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
@@ -791,9 +788,8 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
 
         # schedule next relay check to see if new relays are needed
-        # check every 20 seconds as estimated PDR from DotBots is sent every 10 seconds.
-        # this way we give enough time for improvements in PDR to be detected before placing new relay
-        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
+        # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds.
+        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
