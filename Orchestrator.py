@@ -87,7 +87,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -269,7 +269,7 @@ class Orchestrator(Wireless.WirelessDevice):
             elif dotBot['relayPosition'] and (self._xy2cell(newX, newY) == targetCell):
                 path = [dotBot['relayPosition']]
 
-            elif ((targetCell != dotBot['targetCell']) or (frame['hasJustBumped'])):
+            elif ((targetCell != dotBot['targetCell']) or (frame['hasJustBumped']) or (not dotBot['currentPath'])):
                 # new target, find path to it
 
                 if cellsExplored:
@@ -299,6 +299,9 @@ class Orchestrator(Wireless.WirelessDevice):
             else:
                 # DotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
                 # remove cells already traversed from path
+                if self._xy2cell(newX, newY) not in dotBot['currentPath']:
+                    print("uh oh!")
+                    print("oh no")
                 path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
 
                 log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
@@ -309,9 +312,9 @@ class Orchestrator(Wireless.WirelessDevice):
         # set new speed and heading and movementTimeout for DotBot
         if path :
             (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(
-                dotBotId             = frame['source'],
-                path                 = path,
-                randomPositionInCell = False if (dotBot['relayPosition'] and (targetCell == self._xy2cell(newX, newY))) else True)
+                dotBotId                   = frame['source'],
+                path                       = path,
+                moveToRandomPositionInCell = False if (dotBot['relayPosition'] and (targetCell == self._xy2cell(newX, newY))) else True)
         else:
             (heading, speed, movementTimeout) = (0, 0, 0.5)
 
@@ -729,14 +732,12 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'A* path from {startCell} to {targetCell} is {path}')
         return path
 
-    def _computeHeadingSpeedMovementTimeout(self, dotBotId, path, randomPositionInCell=True):
+    def _computeHeadingSpeedMovementTimeout(self, dotBotId, path, moveToRandomPositionInCell=True):
 
         dotBot         = self.dotBotsView[dotBotId]
 
-        if randomPositionInCell == False:
-            shift          = 0
-        else:
-            shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01))
+        # shift coordinates from cell center to move to random position in cell
+        shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01)) if moveToRandomPositionInCell is True else 0
 
         # find initial heading and distance to reach first cell in path (to use as reference)
         initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
@@ -790,8 +791,9 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
 
         # schedule next relay check to see if new relays are needed
-        # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
+        # check every 20 seconds as estimated PDR from DotBots is sent every 10 seconds.
+        # this way we give enough time for improvements in PDR to be detected before placing new relay
+        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
 
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
