@@ -194,7 +194,7 @@ class Orchestrator(Wireless.WirelessDevice):
             else:
                 # DotBot bumped into target at corner
                 if (
-                    dotBot['currentPath'] ==  [dotBot['targetCell']]                   and
+                    dotBot['currentPath'] == [dotBot['targetCell']]                   and
                     ((newX, newY) in self._computeCellCorners(*dotBot['targetCell']))  and
                     not cellsExplored
                 ):
@@ -239,7 +239,7 @@ class Orchestrator(Wireless.WirelessDevice):
         if dotBot['relayPosition']:
 
             # DotBot has been assigned as relay, move to relay position
-            targetCell            = dotBot['relayPosition']
+            targetCell            = self._xy2cell(*dotBot['relayPosition'])
 
             # if DotBots previous target has not been explored yet,
             # release it from pool of assigned frontiers
@@ -262,9 +262,12 @@ class Orchestrator(Wireless.WirelessDevice):
 
         if (self.bumpedOnWayToTarget or (not targetCell)):
 
-            if ((not targetCell) or (dotBot['relayPosition'] == self._xy2cell(newX, newY))):
+            if ((not targetCell) or (dotBot['relayPosition'] and (dotBot['relayPosition'] == (newX, newY)))):
                 # no target, no path
                 path = None
+
+            elif dotBot['relayPosition'] and (self._xy2cell(newX, newY) == targetCell):
+                path = [dotBot['relayPosition']]
 
             elif ((targetCell != dotBot['targetCell']) or (frame['hasJustBumped'])):
                 # new target, find path to it
@@ -305,7 +308,10 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # set new speed and heading and movementTimeout for DotBot
         if path :
-            (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(dotBotId=frame['source'], path=path)
+            (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(
+                dotBotId             = frame['source'],
+                path                 = path,
+                randomPositionInCell = False if (dotBot['relayPosition'] and (targetCell == self._xy2cell(newX, newY))) else True)
         else:
             (heading, speed, movementTimeout) = (0, 0, 0.5)
 
@@ -622,6 +628,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 targetFrontier            = closestFrontiersToDotBot[0]
                 self.assignedFrontiers   += [targetFrontier]
 
+
         return targetFrontier
 
     # === Navigation
@@ -722,10 +729,15 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug(f'A* path from {startCell} to {targetCell} is {path}')
         return path
 
-    def _computeHeadingSpeedMovementTimeout(self, dotBotId, path):
+    def _computeHeadingSpeedMovementTimeout(self, dotBotId, path, randomPositionInCell=True):
 
         dotBot         = self.dotBotsView[dotBotId]
-        shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01))
+
+        if randomPositionInCell == False:
+            shift          = 0
+        else:
+            shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01))
+
         # find initial heading and distance to reach first cell in path (to use as reference)
         initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
 
@@ -792,8 +804,8 @@ class Orchestrator(Wireless.WirelessDevice):
             pass
 
     def _relayPlacementRecovery(self):
-        LOWER_PDR_THRESHOLD = 0.8
-        UPPER_PDR_THRESHOLD = 1
+        LOWER_PDR_THRESHOLD = 0.7
+        UPPER_PDR_THRESHOLD = 0.9
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
@@ -821,7 +833,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 if pdrValue >= UPPER_PDR_THRESHOLD:
                     if self._xy2cell(dotBotX, dotBotY) not in self.cellsObstacle:
                         # set relay position for DotBot to move to
-                        dotBot['relayPosition']     = self._xy2cell(dotBotX, dotBotY)
+                        dotBot['relayPosition']     = (dotBotX, dotBotY)
                         break
             break
 
