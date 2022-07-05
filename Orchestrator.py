@@ -792,7 +792,7 @@ class Orchestrator(Wireless.WirelessDevice):
             pass
 
     def _relayPlacementRecovery(self):
-        LOWER_PDR_THRESHOLD = 0.7
+        LOWER_PDR_THRESHOLD = 0.8
         UPPER_PDR_THRESHOLD = 1
 
         # first check if we need relays
@@ -861,7 +861,7 @@ class Orchestrator(Wireless.WirelessDevice):
             numRelays                           = int(rootRelayToLostDotBotDistance / RANGE_DISTANCE)
 
             if numRelays == 0:
-                return
+                continue
 
             # equations bellow from https://math.stackexchange.com/a/1630886
 
