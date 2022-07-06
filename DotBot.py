@@ -51,7 +51,7 @@ class DotBot(Wireless.WirelessDevice):
         # estimated PDR is number of packets received over number of packets expected
         self.estimatedPdr         = 1      # packets received per second
         # how frequent estimated PDR is sent to orchestrator
-        self.estimatedPdrPeriod   = 10     # in seconds
+        self.estimatedPdrPeriod   = 5     # in seconds
         self.numPacketReceived    = 0
 
         # schedule next estimated PDR call back

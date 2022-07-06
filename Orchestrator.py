@@ -22,12 +22,16 @@ class Orchestrator(Wireless.WirelessDevice):
     COMM_DOWNSTREAM_PERIOD_S    = 1
     MINFEATURESIZE              = 1
     
-    def __init__(self, numRobots, initX, initY, relayAlgorithm="Recovery"):
+    def __init__(self, numRobots, initX, initY, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8):
 
         # store params
         self.numRobots          = numRobots
         self.initX              = initX
         self.initY              = initY
+        # algorithm used to place relays
+        self.relayAlgorithm     = relayAlgorithm
+        self.lowerPdrThreshold  = lowerPdrThreshold
+        self.upperPdrThreshold  = upperPdrThreshold
 
         # local variables
         self.simEngine           = SimEngine.SimEngine()
@@ -46,8 +50,6 @@ class Orchestrator(Wireless.WirelessDevice):
         self.bumpedOnWayToTarget = True
         # to avoid given multiple robots same frontier as target cell
         self.assignedFrontiers   = []
-        # algorithm used to place relays
-        self.relayAlgorithm      = relayAlgorithm
 
         self.dotBotsView         = dict([
             (
@@ -802,8 +804,8 @@ class Orchestrator(Wireless.WirelessDevice):
             pass
 
     def _relayPlacementRecovery(self):
-        LOWER_PDR_THRESHOLD = 0.7
-        UPPER_PDR_THRESHOLD = 0.9
+        LOWER_PDR_THRESHOLD = self.lowerPdrThreshold
+        UPPER_PDR_THRESHOLD = self.upperPdrThreshold
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
@@ -829,7 +831,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 # look for last DotBot position with PDR above acceptable threshold
                 if pdrValue >= UPPER_PDR_THRESHOLD:
-                    if self._xy2cell(dotBotX, dotBotY) not in self.cellsObstacle:
+                    if (self._xy2cell(dotBotX, dotBotY) in self.cellsExplored):
                         # set relay position for DotBot to move to
                         dotBot['relayPosition']     = (dotBotX, dotBotY)
                         break

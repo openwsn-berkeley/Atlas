@@ -43,7 +43,8 @@ def runOneSim(simSetting, atlasUI=None):
     )
 
     # setting the seed
-    random.seed(simSetting['seed'])
+    #random.seed(simSetting['seed'])
+    random.seed(180)
 
     # create the simulation environment
     floorplan      = Floorplan.Floorplan(alias=simSetting['floorplan'])
@@ -54,6 +55,8 @@ def runOneSim(simSetting, atlasUI=None):
         initX,
         initY,
         simSetting['relayAlgorithm'],
+        simSetting['lowerPdrThreshold'],
+        simSetting['upperPdrThreshold'],
     )
     dotBots        = [
         DotBot.DotBot(dotBotId, initX, initY, floorplan)

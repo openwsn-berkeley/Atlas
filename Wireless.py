@@ -92,6 +92,7 @@ class Wireless(object):
         self.lastPositions   = {}
         self.lastStabilities = {}
 
+
     # ======================== public ==========================================
 
     def indicateDevices(self, devices):
