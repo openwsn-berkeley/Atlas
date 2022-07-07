@@ -14,6 +14,9 @@ import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
 log = logging.getLogger('Orchestrator')
 
+class AllRobotsAreRelays(Exception):
+    pass
+
 class Orchestrator(Wireless.WirelessDevice):
     '''
     The central orchestrator of the expedition.
@@ -227,6 +230,10 @@ class Orchestrator(Wireless.WirelessDevice):
         # simulation complete when there are no more frontier cells left
         if not self.cellsFrontier:
             self.simEngine.completeRun()
+
+        # simulation fails if all DotBots become relays
+        if len([dotBot for (_,dotBot) in self.dotBotsView.items() if dotBot['isRelay'] is True]) == len(self.dotBotsView):
+            raise AllRobotsAreRelays
 
         # update DotBotsView
         dotBot['x']      = newX
@@ -611,10 +618,13 @@ class Orchestrator(Wireless.WirelessDevice):
 
         self.assignedFrontiers = [frontier for frontier in self.assignedFrontiers if frontier in self.cellsFrontier]
 
+        if len(self.cellsFrontier) == len(self.assignedFrontiers):
+            self.assignedFrontiers = []
+
         if self.cellsFrontier:
             # find closest frontiers to initial position
             cellsAndDistancesToStart     = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
-                                        self.cellsFrontier]
+                                        self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
 
             if cellsAndDistancesToStart:
                 cellsAndDistancesToStart = sorted(cellsAndDistancesToStart, key=lambda e: e[1])
@@ -629,7 +639,6 @@ class Orchestrator(Wireless.WirelessDevice):
                                             distance == cellsAndDistancesToDotBot[0][1]]
                 targetFrontier            = closestFrontiersToDotBot[0]
                 self.assignedFrontiers   += [targetFrontier]
-
 
         return targetFrontier
 

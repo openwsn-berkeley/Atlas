@@ -93,6 +93,19 @@ class SimEngine(threading.Thread):
 
         except:
             log.critical(f"Simulation failed with error {traceback.format_exc().splitlines()}")
+
+            # collect completion time
+            self.dataCollector.collect(
+                {
+                    'type':             'KPI',
+                    'timeToCompletion': None,
+                },
+            )
+
+            self.dataCollector.flush()
+
+            log.info("Simulation Failed")
+
         else:
 
             # collect completion time
