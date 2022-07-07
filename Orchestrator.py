@@ -367,10 +367,11 @@ class Orchestrator(Wireless.WirelessDevice):
         # check if current cell is start cell
         if startX == cx or startY == cy:
             if (stopX < startX) and (startX == cx):
-                cx = cx - self.MINFEATURESIZE / 2
+                cx = cx - (self.MINFEATURESIZE / 2)
             if (stopY < startY) and (startY == cy):
-                cy = cy - self.MINFEATURESIZE / 2
+                cy = cy - (self.MINFEATURESIZE / 2)
 
+        log.debug(f'find cells explored: start at {(startX, startY)} stop at {(stopX, stopY)}')
         # maxNumCells is length of line *2 as each cell is 1/2 the size of a unit step
         # we add an extra 2 cells: 1 - in case start cell is not the initial cell and
         # 1 - for when we calculate the next cell beyond the trajectory
@@ -378,8 +379,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # movement is not on boundaries
         if not (
-                ((startX == stopX) and ((startX == cx) or (startX == cx + self.MINFEATURESIZE / 2))) or
-                ((startY == stopY) and ((startY == cy) or (startY == cy + self.MINFEATURESIZE / 2)))
+                ((startX == stopX) and ((startX == cx) or (startX == (cx + self.MINFEATURESIZE / 2)))) or
+                ((startY == stopY) and ((startY == cy) or (startY == (cy + self.MINFEATURESIZE / 2))))
         ):
             returnVal['cellsExplored'] += [(cx, cy)]
             cellsExploredComputed       = False
@@ -414,8 +415,8 @@ class Orchestrator(Wireless.WirelessDevice):
                 while cellsExploredComputed == False:
 
                     ymin = cy
-                    ymax = cy + self.MINFEATURESIZE / 2
-                    xmax = (cx + self.MINFEATURESIZE / 2)
+                    ymax = cy + (self.MINFEATURESIZE / 2)
+                    xmax = cx + (self.MINFEATURESIZE / 2)
 
                     if startX < stopX:
                         # movement towards right side
@@ -425,6 +426,9 @@ class Orchestrator(Wireless.WirelessDevice):
                         # movement towards left side
                         ynext = m * cx + c
                         slope = -1
+                    # round ynext to match rounding used for bump calculation to avoid adding obstacle cells as explored
+                    # if bup happened almost exactly at corner.
+                    ynext = round(ynext, 3)
 
                     if (
                             cx <= stopX <= xmax and
@@ -434,24 +438,24 @@ class Orchestrator(Wireless.WirelessDevice):
 
                     if ynext < ymin:
                         # move up
-                        cy = cy - self.MINFEATURESIZE / 2
+                        cy = cy - (self.MINFEATURESIZE / 2)
                         returnVal['cellsExplored'] += [(cx, cy)]
 
                     elif ymax < ynext:
                         # move down
-                        cy = cy + self.MINFEATURESIZE / 2
+                        cy = cy + (self.MINFEATURESIZE / 2)
                         returnVal['cellsExplored'] += [(cx, cy)]
 
                     elif ynext == ymin:
                         # move diagonally upwards
                         cx = cx + (self.MINFEATURESIZE / 2) * slope
-                        cy = cy - self.MINFEATURESIZE / 2
+                        cy = cy - (self.MINFEATURESIZE / 2)
                         returnVal['cellsExplored'] += [(cx, cy)]
 
                     elif ynext == ymax:
                         # move diagonally downwards
                         cx = cx + (self.MINFEATURESIZE / 2) * slope
-                        cy = cy + self.MINFEATURESIZE / 2
+                        cy = cy + (self.MINFEATURESIZE / 2)
                         returnVal['cellsExplored'] += [(cx, cy)]
 
                     else:
@@ -466,7 +470,7 @@ class Orchestrator(Wireless.WirelessDevice):
             # if stop coordinates are exactly on a corner (connecting 4 cells), next cell is not certain
             if (stopX, stopY) in self._computeCellCorners(stopX, stopY):
                 returnVal['nextCell'] = None
-
+        log.debug(f'cells explored {returnVal}')
         return returnVal
 
     #=== UI
