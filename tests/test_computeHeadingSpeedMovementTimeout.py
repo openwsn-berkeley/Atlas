@@ -14,7 +14,7 @@ EXPECTEDINOUT = [
         'out': {
             'heading':  135,
             'speed':    1,
-            'timeout':  1.06,
+            'timeout':  0.71,
         }
     },
     {
@@ -24,9 +24,9 @@ EXPECTEDINOUT = [
             'y':     1,
         },
         'out': {
-            'heading': 101,
+            'heading': 90,
             'speed':   1,
-            'timeout': 1.27,
+            'timeout': 1.00,
         }
     },
     {
@@ -36,9 +36,9 @@ EXPECTEDINOUT = [
             'y':       0,
         },
         'out': {
-            'heading':  119,
+            'heading':  117,
             'speed':    1,
-            'timeout':  2.57,
+            'timeout':  2.24,
         }
     },
     {
@@ -48,7 +48,7 @@ EXPECTEDINOUT = [
             'y':        1,
         },
         'out': {
-            'heading':  180,
+            'heading':  270,
             'speed':    1,
             'timeout':  0.25,
         }
@@ -66,13 +66,14 @@ def expectedInOut(request):
 def test_computeHeadingSpeedTimeout(expectedInOut):
 
     orchestrator                     = Orchestrator.Orchestrator(1, 1, 1)
-    orchestrator.shift               = orchestrator.MINFEATURESIZE / 4
     inputs                           = expectedInOut['in']
     orchestrator.dotBotsView[1]['x'] = inputs['x']
     orchestrator.dotBotsView[1]['y'] = inputs['y']
 
-    (heading, speed, timeout) = orchestrator._computeHeadingSpeedMovementTimeout(dotBotId=1, path=inputs['path'])
-    print(orchestrator.shift)
+    (heading, speed, timeout) = orchestrator._computeHeadingSpeedMovementTimeout(
+        dotBotId                   = 1,
+        path                       = inputs['path'],
+        moveToRandomPositionInCell = False)
     assert 0 <= heading <= 360
     assert round(heading, 0) == expectedInOut['out']['heading']
     assert round(timeout, 2) == expectedInOut['out']['timeout']
