@@ -614,7 +614,7 @@ class Orchestrator(Wireless.WirelessDevice):
         if self.cellsFrontier:
             # find closest frontiers to initial position
             cellsAndDistancesToStart     = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
-                                        self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+                                        self.cellsFrontier]
 
             if cellsAndDistancesToStart:
                 cellsAndDistancesToStart = sorted(cellsAndDistancesToStart, key=lambda e: e[1])
