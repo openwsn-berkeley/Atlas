@@ -426,10 +426,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         # movement towards left side
                         ynext = m * cx + c
                         slope = -1
-                    # round ynext to match rounding used for bump calculation to avoid adding obstacle cells as explored
-                    # if bup happened almost exactly at corner.
-                    ynext = round(ynext, 3)
-
+                    ynext = round(ynext, 9)
                     if (
                             cx <= stopX <= xmax and
                             cy <= stopY <= ymax
