@@ -294,7 +294,7 @@ class Orchestrator(Wireless.WirelessDevice):
                     startCell = self._xy2cell(*startCell)
 
                 if frame['hasJustBumped']:
-                    # send robot back to center of last cell explored to ensure computation of valid path
+
                     path = self._computePath(
                                             startCell            = startCell,
                                             targetCell           = targetCell,
@@ -302,6 +302,10 @@ class Orchestrator(Wireless.WirelessDevice):
                                         )
                 else:
                     path = self._computePath(startCell, targetCell)
+
+                # if DotBot bumped at corner, move it to random position in startCell before continuing on path
+                if (newX, newY) == self._xy2cell(newX, newY) and (newX, newY) in self.cellsFrontier:
+                    path = [startCell] + path
 
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
