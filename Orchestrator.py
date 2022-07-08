@@ -212,6 +212,10 @@ class Orchestrator(Wireless.WirelessDevice):
                 cell not in self.cellsObstacle)
         ]
 
+        # remove any corner frontiers
+        for cell in self.cellsFrontier:
+            self._isCornerFrontier(cell)
+
         # compute new frontiers
         for (cx, cy) in cellsExplored:
             for n in self._computeCellNeighbours(cx, cy):
