@@ -293,19 +293,8 @@ class Orchestrator(Wireless.WirelessDevice):
                                 )
                     startCell = self._xy2cell(*startCell)
 
-                if frame['hasJustBumped']:
 
-                    path = self._computePath(
-                                            startCell            = startCell,
-                                            targetCell           = targetCell,
-                                            excludeDiagonalCells = True
-                                        )
-                else:
-                    path = self._computePath(startCell, targetCell)
-
-                # if DotBot bumped at corner, move it to random position in startCell before continuing on path
-                if (newX, newY) == self._xy2cell(newX, newY) and (newX, newY) in self.cellsFrontier:
-                    path = [startCell] + path
+                path = self._computePath(startCell, targetCell)
 
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
@@ -649,7 +638,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     # === Navigation
 
-    def _computePath(self, startCell, targetCell, excludeDiagonalCells=False):
+    def _computePath(self, startCell, targetCell):
         """
         uses A* (Breadth First Search with distance to target heuristic) to find
         shortest path from start to target cell while avoiding obstacle cells.
@@ -703,15 +692,14 @@ class Orchestrator(Wireless.WirelessDevice):
                 path.reverse()
                 break
 
-            if excludeDiagonalCells:
-                (cx, cy)       = currentCell.cellPos
-                cellSize       = self.MINFEATURESIZE / 2
-                cellNeighbours = [
-                    (cx + cellSize, cy), (cx - cellSize, cy),
-                    (cx, cy - cellSize), (cx, cy + cellSize),
-                ]
-            else:
-                cellNeighbours = self._computeCellNeighbours(*currentCell.cellPos)
+            cellNeighbours = self._computeCellNeighbours(*currentCell.cellPos)
+
+            (cx, cy)       = currentCell.cellPos
+            cellSize       = self.MINFEATURESIZE / 2
+            diagonalCells  = [
+                (cx - cellSize, cy - cellSize), (cx + cellSize, cy - cellSize),
+                (cx - cellSize, cy + cellSize), (cx + cellSize, cy + cellSize),
+            ]
 
             for childCell in cellNeighbours:
                 childCell      = u.AstarNode(childCell, currentCell)
@@ -721,6 +709,19 @@ class Orchestrator(Wireless.WirelessDevice):
                 # skip cell if it is an obstacle cell
                 if childCell.cellPos in self.cellsObstacle:
                     continue
+                # skip cell if it is diagonal to current/parent cell and is connected to an obstacle cell
+                # that parent cell is connected to to avoid moving to cell through corners
+                if childCell.cellPos in diagonalCells:
+                    obstacleNeighboursOfChild = [
+                        cell for cell in self._computeCellNeighbours(*childCell.cellPos) if cell in self.cellsObstacle
+                    ]
+
+                    obstacleNeighboursOfParent = [
+                        cell for cell in self._computeCellNeighbours(*childCell.cellPos) if cell in self.cellsObstacle
+                    ]
+
+                    if set(obstacleNeighboursOfChild).intersection(set(obstacleNeighboursOfParent)):
+                       continue
 
                 # if cell is a frontier, check that it is reachable
                 if (
