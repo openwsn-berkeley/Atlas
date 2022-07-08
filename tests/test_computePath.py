@@ -10,34 +10,12 @@ EXPECTEDINOUT = [
         'in': {
             'startCell':             (0.00, 0.00),
             'targetCell':            (2.00, 2.00),
-            'excludeDiagonalCells' : False
         },
         'out': {
             'path': [
                 (0.50, 0.50),
                 (1.00, 1.00),
                 (1.50, 1.50),
-                (2.00, 2.00)
-            ],
-        },
-    },
-
-    # path with diagonal cells excluded
-    {
-        'in': {
-            'startCell':            (0.00, 0.00),
-            'targetCell':           (2.00, 2.00),
-            'excludeDiagonalCells': True
-        },
-        'out': {
-            'path': [
-                (0.50, 0.00),
-                (0.50, 0.50),
-                (1.00, 0.50),
-                (1.00, 1.00),
-                (1.50, 1.00),
-                (1.50, 1.50),
-                (2.00, 1.50),
                 (2.00, 2.00)
             ],
         },
@@ -90,24 +68,3 @@ def test_computePathWithObstacles():
     orchestrator.cellsObstacle += [(1.50, 1.50)]
 
     assert not (1.50, 1.50) in orchestrator._computePath((0.00, 0.00), (2.00, 2.00))
-
-def test_computePathExcludeDiagonalCells():
-    '''
-    testing finding path between two cells using A* algorithm
-    '''
-
-    orchestrator  = Orchestrator.Orchestrator(
-        numRobots = 1,
-        initX     = 1,
-        initY     = 1
-    )
-
-    orchestrator.cellsExplored = [(0.0, 0.0), (0.0, 0.5)]
-
-    # check shortest path before obstacle
-    assert orchestrator._computePath((0.50, 0.00), (0.00, 0.50)) == [(0.0, 0.5)]
-
-    # check shortest path after adding obstacle
-    orchestrator.cellsObstacle += [(0.50, 0.50)]
-
-    assert orchestrator._computePath((0.50, 0.00), (0.00, 0.50), excludeDiagonalCells=True) == [(0.0, 0.0), (0.0, 0.5)]
