@@ -708,7 +708,11 @@ class Orchestrator(Wireless.WirelessDevice):
             for childCell in cellNeighbours:
                 childCell      = u.AstarNode(childCell, currentCell)
                 gCost          = currentCell.gCost + 1
-                hCost          = u.distance(childCell.cellPos, targetCell)
+                if childCell.cellPos in self.cellsFrontier:
+                    addedCost = 1
+                else:
+                    addedCost = 0
+                hCost          = u.distance(childCell.cellPos, targetCell) + addedCost
 
                 # skip cell if it is an obstacle cell
                 if childCell.cellPos in self.cellsObstacle:
@@ -726,13 +730,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
                     if set(obstacleNeighboursOfChild).intersection(set(obstacleNeighboursOfParent)):
                        continue
-
-                # if cell is a frontier, check that it is reachable
-                if (
-                    (childCell.cellPos in self.cellsFrontier) and
-                    (not [n for n in self._computeCellNeighbours(*childCell.cellPos) if n in self.cellsExplored])
-                ):
-                    continue
 
                 if (
                     (childCell.cellPos in [cell.cellPos for cell in openCells] or
