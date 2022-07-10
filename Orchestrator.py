@@ -709,7 +709,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 childCell      = u.AstarNode(childCell, currentCell)
                 gCost          = currentCell.gCost + 1
                 if childCell.cellPos in self.cellsFrontier:
-                    addedCost = 1
+                    addedCost = 5
                 else:
                     addedCost = 0
                 hCost          = u.distance(childCell.cellPos, targetCell) + addedCost
