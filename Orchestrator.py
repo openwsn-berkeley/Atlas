@@ -708,8 +708,9 @@ class Orchestrator(Wireless.WirelessDevice):
             for childCell in cellNeighbours:
                 childCell      = u.AstarNode(childCell, currentCell)
                 gCost          = currentCell.gCost + 1
-                if childCell.cellPos in self.cellsFrontier:
-                    addedCost = 5
+                if childCell.cellPos in self.cellsFrontier and childCell.cellPos in diagonalCells and childCell.cellPos != targetCell:
+                    addedCost = 10
+                    log.debug(f'adding cost to {childCell.cellPos}')
                 else:
                     addedCost = 0
                 hCost          = u.distance(childCell.cellPos, targetCell) + addedCost
@@ -745,6 +746,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 openCells += [childCell]
 
         log.debug(f'A* path from {startCell} to {targetCell} is {path}')
+        log.debug(f'frontier cells in path are {[c for c in path if c in self.cellsFrontier]}')
         return path
 
     def _computeHeadingSpeedMovementTimeout(self, dotBotId, path, moveToRandomPositionInCell=True):
