@@ -35,6 +35,7 @@ class Wireless(object):
     '''
 
     DFLT_PDR           = 1
+    CRITICAL_PDR       = 0.1
 
     TWO_DOT_FOUR_GHZ   = 2400000000    # Hz
     SPEED_OF_LIGHT     = 299792458     # m/s
@@ -119,7 +120,10 @@ class Wireless(object):
 
             # get pdr between sender and receiver
             pdr            = self._getPDR(sender, relays, receiver)
-            log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
+
+            # only log pdr when pdr is critically low
+            if pdr < self.CRITICAL_PDR:
+                log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
 
             if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
@@ -152,12 +156,18 @@ class Wireless(object):
         (receiverX, receiverY) = receiver.computeCurrentPosition()
         (senderX, senderY)     = sender.computeCurrentPosition()
 
-        # find if (nodeA, nodeB) or (nodeB, nodeA) are in the lastStabilities keys.
-        # set that as the key to use to find the value of the pdr
+        # find if (sender, receiver) or (receiver, sender) are in the lastStabilities keys.
+        # if so it means that the sender and receiver are at the same positions the were last time
+        # they communicated with each other so PDR should be the same. we can use this key to retrieve that
+        # PDR value from lastStabilities. 
+
         linkInLastStabilities = {
             (sender.dotBotId, receiver.dotBotId),
             (receiver.dotBotId, sender.dotBotId)
         }.intersection(self.lastStabilities.keys())
+
+        # convert set to list and sort, to maintain order for reproducibility
+        linkInLastStabilities = sorted(list(linkInLastStabilities))
 
         if (
             # both sender and receiver are in are in last positions and the link between
