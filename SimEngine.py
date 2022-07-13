@@ -101,9 +101,9 @@ class SimEngine(threading.Thread):
                     'timeToCompletion': None,
                 },
             )
-
             self.dataCollector.flush()
 
+            # log
             log.info("Simulation Failed")
 
         else:
@@ -115,13 +115,10 @@ class SimEngine(threading.Thread):
                     'timeToCompletion': self._currentTime,
                 },
             )
-
             self.dataCollector.flush()
 
+            # log
             log.info("Simulation Completed")
-
-
-
 
     #======================== public ==========================================
     
