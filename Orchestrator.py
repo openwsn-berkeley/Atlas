@@ -199,7 +199,7 @@ class Orchestrator(Wireless.WirelessDevice):
             else:
                 # DotBot bumped into target at corner
                 if (
-                    dotBot['currentPath'] == [dotBot['targetCell']]                   and
+                    dotBot['currentPath'] == [dotBot['targetCell']]                    and
                     ((newX, newY) in self._computeCellCorners(*dotBot['targetCell']))  and
                     not cellsExplored
                 ):
@@ -276,10 +276,12 @@ class Orchestrator(Wireless.WirelessDevice):
         if (self.bumpedOnWayToTarget or (not targetCell)):
 
             if ((not targetCell) or (dotBot['relayPosition'] and (dotBot['relayPosition'] == (newX, newY)))):
-                # no target, no path
+                # no target or DotBot is relay and is at it's relay position
                 path = None
 
             elif dotBot['relayPosition'] and (self._xy2cell(newX, newY) == targetCell):
+                # relay has reached its assigned targetCell but not the exact coordinates in that cell yet.
+                # we need it to be in the exact (x, y) position assigned to assure PDR is the same there.
                 path = [dotBot['relayPosition']]
 
             elif ((targetCell != dotBot['targetCell']) or (frame['hasJustBumped']) or (not dotBot['currentPath'])):
@@ -288,15 +290,17 @@ class Orchestrator(Wireless.WirelessDevice):
                 if cellsExplored:
                     startCell = cellsExplored[-1]
                 else:
+                    # startCell is where dotBot would be if it reversed by half a cell size.
                     startCell = u.computeCurrentPosition(
-                                    currentX = dotBot['x'],
-                                    currentY = dotBot['y'],
+                                    currentX =  dotBot['x'],
+                                    currentY =  dotBot['y'],
                                     heading  = (dotBot['heading'] + 180) % 360,
-                                    speed    = dotBot['speed'],
-                                    duration = 0.25,
+                                    speed    =  dotBot['speed'],
+                                    duration = (self.MINFEATURESIZE/4),
                                 )
-                    startCell = self._xy2cell(*startCell)
 
+                    # convert coordinates to cell
+                    startCell = self._xy2cell(*startCell)
 
                 path = self._computePath(startCell, targetCell)
 
@@ -314,6 +318,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # set new speed and heading and movementTimeout for DotBot
         if path :
+            # if a DotBot is a relay and is moving to it's relay position, move it to the exact coordinates given.
+            # otherwise move it to random position in cell its heading to.
             (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(
                 dotBotId                   = frame['source'],
                 path                       = path,
@@ -423,7 +429,10 @@ class Orchestrator(Wireless.WirelessDevice):
                         # movement towards left side
                         ynext = m * cx + c
                         slope = -1
+
+                    # round
                     ynext = round(ynext, 9)
+
                     if (
                             cx <= stopX <= xmax and
                             cy <= stopY <= ymax
@@ -617,6 +626,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.assignedFrontiers = [frontier for frontier in self.assignedFrontiers if frontier in self.cellsFrontier]
 
         if len(self.cellsFrontier) == len(self.assignedFrontiers):
+            # if all frontiers are assigned to DotBots, clear assigned frontiers, to avoid frontier cells not
+            # being explored if the DotBot they are assigned to has lost connectivity.
             self.assignedFrontiers = []
 
         if self.cellsFrontier:
@@ -708,6 +719,9 @@ class Orchestrator(Wireless.WirelessDevice):
             for childCell in cellNeighbours:
                 childCell      = u.AstarNode(childCell, currentCell)
                 gCost          = currentCell.gCost + 1
+
+                # add extra cost to frontier cells (if they are diagonal and are not the target)
+                # to prioritise explored cells over frontiers and to avoid building paths through undiscovered obstacles
                 if childCell.cellPos in self.cellsFrontier and childCell.cellPos in diagonalCells and childCell.cellPos != targetCell:
                     addedCost = 10
                     log.debug(f'adding cost to {childCell.cellPos}')
@@ -718,6 +732,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 # skip cell if it is an obstacle cell
                 if childCell.cellPos in self.cellsObstacle:
                     continue
+
                 # skip cell if it is diagonal to current/parent cell and is connected to an obstacle cell
                 # that parent cell is connected to to avoid moving to cell through corners
                 if childCell.cellPos in diagonalCells:
@@ -753,7 +768,8 @@ class Orchestrator(Wireless.WirelessDevice):
 
         dotBot         = self.dotBotsView[dotBotId]
 
-        # shift coordinates from cell center to move to random position in cell
+        # shift coordinates from cell center to compute movement to random position in cell
+        # otherwise compute movement to exact target coordinates given.
         shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01)) if moveToRandomPositionInCell is True else 0
 
         # find initial heading and distance to reach first cell in path (to use as reference)
@@ -857,7 +873,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _relayPlacementSelfHealing(self):
 
-        RANGE_DISTANCE = 8  # up to 10m pister-hack stability minimum threshold is above 0
+        RANGE_DISTANCE = 8  # up to 10m pister-hack stability minimum PDR is still above 0
 
         # check if orchestrator has lost connection to any DotBots
         for (dotBotId, dotBot) in self.dotBotsView.items():
