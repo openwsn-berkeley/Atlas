@@ -841,6 +841,19 @@ class Orchestrator(Wireless.WirelessDevice):
         LOWER_PDR_THRESHOLD = self.lowerPdrThreshold
         UPPER_PDR_THRESHOLD = self.upperPdrThreshold
 
+        # do not place new relay if there is a relay that has not reached its given position yet
+        for (dotBotId, dotBot) in self.dotBotsView.items():
+            if dotBot['isRelay'] and self._xy2cell(*dotBot['relayPosition']) != self._xy2cell(dotBot['x'], dotBot['y']):
+                return
+
+        dotBotsWithPdrBelowThreshold = [(db, db['estimatedPdr']) for (_, db) in self.dotBotsView.items() if db['estimatedPdr'] <= LOWER_PDR_THRESHOLD]
+
+        if len(dotBotsWithPdrBelowThreshold) < 2:
+            return
+
+        dotBotToBecomeRelay          = sorted(dotBotsWithPdrBelowThreshold, key=lambda e: e[1])[-1][0]
+        log.info('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
+
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
 
@@ -852,14 +865,17 @@ class Orchestrator(Wireless.WirelessDevice):
             if dotBot['isRelay']:
                 continue
 
-            # assign DotBot as relay
-            dotBot['isRelay']   = True
+            if dotBot != dotBotToBecomeRelay:
+                continue
 
             # get stored PDR history (oldest -> latest)
             pdrHistory          = dotBot['pdrHistory']
 
             # reverse PDR history (latest -> oldest)
             pdrHistoryReversed  = pdrHistory[::-1]
+
+            # assign DotBot as relay
+            dotBot['isRelay']   = True
 
             for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
 
