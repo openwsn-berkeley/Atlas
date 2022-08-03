@@ -827,6 +827,16 @@ class Orchestrator(Wireless.WirelessDevice):
         # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds.
         self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
+        # collect PDRs
+        self.dataCollector.collect(
+            {
+                'type':        'KPI',
+                'PDRs':        self.wireless.getCurrentPDRs(),
+                'numOfRelays': len([db for (_, db) in self.dotBotsView.items() if db['isRelay'] == True ]),
+                'time':        self.simEngine.currentTime()
+            },
+        )
+
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
 

@@ -1,9 +1,9 @@
 [atlas]
-    numRobots                = [15, 25, 50]
+    numRobots                = 15
     floorplan                = "scattered_obstacles"           # filename in maps
     navigationAlgorithm      = "Atlas"                         # options: Atlas, Ballistic
     relayAlgorithm           = "Recovery"                      # options: Recovery, SelfHealing, NoRelays
     lowerPdrThreshold        = 0.8                             # (for Recovery) trigger relay placement if below
     upperPdrThreshold        = 0.9                             # (for Recovery) to determine relay position
     propagationModel         = "PisterHack"                    # options: LOS, Friis, Radius, PisterHack
-    numberOfRuns             = 10                              # number of simulations runs with same simSetting
+    numberOfRuns             = 1                               # number of simulations runs with same simSetting
