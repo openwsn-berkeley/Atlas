@@ -724,7 +724,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 # to prioritise explored cells over frontiers and to avoid building paths through undiscovered obstacles
                 if childCell.cellPos in self.cellsFrontier and childCell.cellPos in diagonalCells and childCell.cellPos != targetCell:
                     addedCost = 10
-                    log.debug(f'adding cost to {childCell.cellPos}')
+                    log.debug(f'adding cost to diagonal cell {childCell.cellPos}')
                 else:
                     addedCost = 0
                 hCost          = u.distance(childCell.cellPos, targetCell) + addedCost
