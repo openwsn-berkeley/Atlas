@@ -720,6 +720,10 @@ class Orchestrator(Wireless.WirelessDevice):
                 childCell      = u.AstarNode(childCell, currentCell)
                 gCost          = currentCell.gCost + 1
 
+                # skip cells that have not been explored
+                if childCell.cellPos not in self.cellsFrontier and childCell.cellPos not in self.cellsExplored:
+                    continue
+
                 # add extra cost to frontier cells (if they are diagonal and are not the target)
                 # to prioritise explored cells over frontiers and to avoid building paths through undiscovered obstacles
                 if childCell.cellPos in self.cellsFrontier and childCell.cellPos in diagonalCells and childCell.cellPos != targetCell:
@@ -943,12 +947,16 @@ class Orchestrator(Wireless.WirelessDevice):
                 )
 
                 # chose random DotBot to be relay
-                dotBot               = random.choice(
-                    [
-                        db for (id, db) in self.dotBotsView.items() if
-                        (db != lostDotBot and ((db['x'], db['y']) and (not db['relayPosition']) and (db != lostDotBot)))
-                    ]
-                )
+                try:
+                    dotBot               = random.choice(
+                        [
+                            db for (id, db) in self.dotBotsView.items() if
+                            (db != lostDotBot and ((db['x'], db['y']) and (not db['relayPosition']) and (db != lostDotBot)))
+                        ]
+                    )
+                except IndexError:
+                    # no valid DotBots left to be placed as relays
+                    return
 
                 # set DotBot as relay
                 dotBot['isRelay'] = True
