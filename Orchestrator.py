@@ -631,23 +631,11 @@ class Orchestrator(Wireless.WirelessDevice):
             self.assignedFrontiers = []
 
         if self.cellsFrontier:
-            # find closest frontiers to initial position
-            cellsAndDistancesToStart     = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
-                                        self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+            targetFrontiers = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
+                                              self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+            targetFrontier  = sorted(targetFrontiers, key=lambda e: e[1])[0][0]
 
-            if cellsAndDistancesToStart:
-                cellsAndDistancesToStart = sorted(cellsAndDistancesToStart, key=lambda e: e[1])
-                closestFrontiersToStart  = [cell for (cell, distance) in cellsAndDistancesToStart if
-                                           distance == cellsAndDistancesToStart[0][1]]
-
-                # find closest frontier to robot
-                cellsAndDistancesToDotBot = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
-                                             closestFrontiersToStart]
-                cellsAndDistancesToDotBot = sorted(cellsAndDistancesToDotBot, key=lambda e: e[1])
-                closestFrontiersToDotBot  = [cell for (cell, distance) in cellsAndDistancesToDotBot if
-                                            distance == cellsAndDistancesToDotBot[0][1]]
-                targetFrontier            = closestFrontiersToDotBot[0]
-                self.assignedFrontiers   += [targetFrontier]
+            self.assignedFrontiers += [targetFrontier]
 
         return targetFrontier
 
