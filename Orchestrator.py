@@ -304,6 +304,15 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 path = self._computePath(startCell, targetCell)
 
+                # if DotBot bumped into first cell on it's path at it's corner
+                # add that cell as an obstacle
+                if (
+                    ((newX, newY) in self._computeCellCorners(*startCell)) and
+                    frame['hasJustBumped']                                 and
+                    ((newX, newY) == self._xy2cell(*startCell))
+                ):
+                    self.cellsObstacle += [dotBot['currentPath'][0]]
+
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
             else:
@@ -762,7 +771,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # shift coordinates from cell center to compute movement to random position in cell
         # otherwise compute movement to exact target coordinates given.
-        shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01)) if moveToRandomPositionInCell is True else 0
+        shift          = random.uniform(0.01, ((self.MINFEATURESIZE/2) - 0.01)) if moveToRandomPositionInCell is True else 0
 
         # find initial heading and distance to reach first cell in path (to use as reference)
         initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
