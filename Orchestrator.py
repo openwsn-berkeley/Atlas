@@ -309,7 +309,8 @@ class Orchestrator(Wireless.WirelessDevice):
                 if (
                     ((newX, newY) in self._computeCellCorners(*startCell)) and
                     frame['hasJustBumped']                                 and
-                    ((newX, newY) == self._xy2cell(*startCell))
+                    ((newX, newY) == self._xy2cell(*startCell))            and
+                    (not cellsExplored)
                 ):
                     self.cellsObstacle += [dotBot['currentPath'][0]]
 
