@@ -64,6 +64,7 @@ class SimEngine(threading.Thread):
         try:
             while True:
 
+                # start profiling
                 yappi.start()
 
                 # wait for simulator to be running
@@ -125,6 +126,7 @@ class SimEngine(threading.Thread):
             log.info("Simulation Completed")
 
         finally:
+            # end profiling and display data (used for debugging)
             yappi.stop()
             print("Is Profiling Running : ", yappi.is_running())
             print("========== Func Stats ==============")
