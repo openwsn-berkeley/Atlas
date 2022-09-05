@@ -4,9 +4,11 @@ import time
 import datetime
 import traceback
 # third-party
+import yappi
 # local
 import DataCollector
 # setup logging
+import io as python_io
 import logging.config
 import LoggingConfig
 logging.config.dictConfig(LoggingConfig.LOGGINGCONFIG)
@@ -61,6 +63,9 @@ class SimEngine(threading.Thread):
     def run(self):
         try:
             while True:
+
+                # start profiling
+                yappi.start()
 
                 # wait for simulator to be running
                 self.semIsRunning.acquire()
@@ -119,6 +124,24 @@ class SimEngine(threading.Thread):
 
             # log
             log.info("Simulation Completed")
+
+        finally:
+            # end profiling and display data (used for debugging)
+            yappi.stop()
+            print("Is Profiling Running : ", yappi.is_running())
+            print("========== Func Stats ==============")
+            yappi.get_func_stats().print_all()
+            print("\n========== Thread Stats ==============")
+            yappi.get_thread_stats().print_all()
+
+            yappi.clear_stats()
+
+            yappi.start(builtins=True, profile_threads=False)
+
+            yappi.stop()
+
+            print("========== Func Stats =================")
+            yappi.get_func_stats().print_all()
 
     #======================== public ==========================================
     

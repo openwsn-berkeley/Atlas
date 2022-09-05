@@ -304,6 +304,16 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 path = self._computePath(startCell, targetCell)
 
+                # if DotBot bumped into first cell on it's path at it's corner
+                # add that cell as an obstacle
+                if (
+                    ((newX, newY) in self._computeCellCorners(*startCell)) and
+                    frame['hasJustBumped']                                 and
+                    ((newX, newY) == self._xy2cell(*startCell))            and
+                    (not cellsExplored)
+                ):
+                    self.cellsObstacle += [dotBot['currentPath'][0]]
+
                 log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
 
             else:
@@ -631,23 +641,11 @@ class Orchestrator(Wireless.WirelessDevice):
             self.assignedFrontiers = []
 
         if self.cellsFrontier:
-            # find closest frontiers to initial position
-            cellsAndDistancesToStart     = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
-                                        self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+            targetFrontiers = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
+                                              self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+            targetFrontier  = sorted(targetFrontiers, key=lambda e: e[1])[0][0]
 
-            if cellsAndDistancesToStart:
-                cellsAndDistancesToStart = sorted(cellsAndDistancesToStart, key=lambda e: e[1])
-                closestFrontiersToStart  = [cell for (cell, distance) in cellsAndDistancesToStart if
-                                           distance == cellsAndDistancesToStart[0][1]]
-
-                # find closest frontier to robot
-                cellsAndDistancesToDotBot = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
-                                             closestFrontiersToStart]
-                cellsAndDistancesToDotBot = sorted(cellsAndDistancesToDotBot, key=lambda e: e[1])
-                closestFrontiersToDotBot  = [cell for (cell, distance) in cellsAndDistancesToDotBot if
-                                            distance == cellsAndDistancesToDotBot[0][1]]
-                targetFrontier            = closestFrontiersToDotBot[0]
-                self.assignedFrontiers   += [targetFrontier]
+            self.assignedFrontiers += [targetFrontier]
 
         return targetFrontier
 
@@ -774,7 +772,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # shift coordinates from cell center to compute movement to random position in cell
         # otherwise compute movement to exact target coordinates given.
-        shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01)) if moveToRandomPositionInCell is True else 0
+        shift          = random.uniform(0.01, ((self.MINFEATURESIZE/2) - 0.01)) if moveToRandomPositionInCell is True else 0
 
         # find initial heading and distance to reach first cell in path (to use as reference)
         initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
