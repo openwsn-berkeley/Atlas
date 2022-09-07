@@ -841,7 +841,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 'time':        self.simEngine.currentTime()
             },
         )
-        print(self.wireless.getCurrentPDRs())
+
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
 
