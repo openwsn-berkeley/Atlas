@@ -46,7 +46,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.x                   = self.initX
         self.y                   = self.initY
         self.dotBotId            = 0
-        self.pdrHysteresisWindow = 2
+        self.pdrHysteresisWindow = 4
 
         # for wireless to identify if this is a relay device or not
         self.isRelay             = False
@@ -830,7 +830,7 @@ class Orchestrator(Wireless.WirelessDevice):
         # schedule next relay check to see if new relays are needed
         # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds.
         # FIXME : change magic number (10) to variable
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
 
         # collect PDRs
         self.dataCollector.collect(
@@ -858,6 +858,9 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
+
+            if len(dotBot['pdrHistory']) < self.pdrHysteresisWindow:
+                return
 
             # DotBot with high PDR isn't a relay
             # FIXME: add average of last x PDRs (this changes based on window)
