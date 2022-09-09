@@ -47,6 +47,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.y                   = self.initY
         self.dotBotId            = 0
         self.pdrHysteresisWindow = 4
+        self.assignRelaysPeriod  = 20
 
         # for wireless to identify if this is a relay device or not
         self.isRelay             = False
@@ -93,8 +94,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        # FIXME : explain number 2, magic value
-        self.simEngine.schedule(self.simEngine.currentTime() + 2, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + self.assignRelaysPeriod, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -828,9 +828,7 @@ class Orchestrator(Wireless.WirelessDevice):
         log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
 
         # schedule next relay check to see if new relays are needed
-        # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds.
-        # FIXME : change magic number (10) to variable
-        self.simEngine.schedule(self.simEngine.currentTime() + 20, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + self.assignRelaysPeriod, self._assignRelaysAndRelayPositionsCb)
 
         # collect PDRs
         self.dataCollector.collect(
@@ -856,23 +854,31 @@ class Orchestrator(Wireless.WirelessDevice):
         LOWER_PDR_THRESHOLD = self.lowerPdrThreshold
         UPPER_PDR_THRESHOLD = self.upperPdrThreshold
 
+        dotBotsWithPdrBelowThreshold = [(db, db['estimatedPdr']) for (_, db) in self.dotBotsView.items() if db['estimatedPdr'] <= LOWER_PDR_THRESHOLD]
+
+        if not dotBotsWithPdrBelowThreshold:
+            return
+
+        dotBotToBecomeRelay          = sorted(dotBotsWithPdrBelowThreshold, key=lambda e: e[1])[-1][0]
+
         # first check if we need relays
         for (dotBotId, dotBot) in self.dotBotsView.items():
 
             if len(dotBot['pdrHistory']) < self.pdrHysteresisWindow:
                 return
 
-            # DotBot with high PDR isn't a relay
-            # FIXME: add average of last x PDRs (this changes based on window)
-
             # compute average of last 5 PDRs
             avgPDR = sum([pdr[0] for pdr in dotBot['pdrHistory'][-self.pdrHysteresisWindow:]])/self.pdrHysteresisWindow
 
+            # DotBot with avg PDR above threshold won't be a relay
             if avgPDR > LOWER_PDR_THRESHOLD:
                 continue
 
             # skip dotBots that are already relays
             if dotBot['isRelay']:
+                continue
+
+            if dotBot != dotBotToBecomeRelay:
                 continue
 
             # get stored PDR history (oldest -> latest)
