@@ -94,7 +94,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime() + self.assignRelaysPeriod, self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + 2, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -857,7 +857,9 @@ class Orchestrator(Wireless.WirelessDevice):
         # find DotBots that have an average PDR (over a defined time window) that is <= lower PDR threshold
         dotBotsWithAvgPdrBelowThreshold = [
             (db, db['estimatedPdr']) for (_, db) in self.dotBotsView.items() if
-            (sum([pdr[0] for pdr in db['pdrHistory'][-self.pdrHysteresisWindow:]])/self.pdrHysteresisWindow) <= LOWER_PDR_THRESHOLD
+            (db['pdrHistory'] and
+            (((sum([pdr[0] for pdr in db['pdrHistory'][-self.pdrHysteresisWindow:]])/self.pdrHysteresisWindow) <= LOWER_PDR_THRESHOLD) and
+            (not db['isRelay'])))
         ]
 
         if not dotBotsWithAvgPdrBelowThreshold:
