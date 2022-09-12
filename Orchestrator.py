@@ -47,7 +47,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.y                   = self.initY
         self.dotBotId            = 0
         self.pdrHysteresisWindow = 4
-        self.assignRelaysPeriod  = 20
+        self.assignRelaysPeriod  = 10
 
         # for wireless to identify if this is a relay device or not
         self.isRelay             = False
@@ -854,51 +854,37 @@ class Orchestrator(Wireless.WirelessDevice):
         LOWER_PDR_THRESHOLD = self.lowerPdrThreshold
         UPPER_PDR_THRESHOLD = self.upperPdrThreshold
 
-        dotBotsWithPdrBelowThreshold = [(db, db['estimatedPdr']) for (_, db) in self.dotBotsView.items() if db['estimatedPdr'] <= LOWER_PDR_THRESHOLD]
+        # find DotBots that have an average PDR (over a defined time window) that is <= lower PDR threshold
+        dotBotsWithAvgPdrBelowThreshold = [
+            (db, db['estimatedPdr']) for (_, db) in self.dotBotsView.items() if
+            (sum([pdr[0] for pdr in db['pdrHistory'][-self.pdrHysteresisWindow:]])/self.pdrHysteresisWindow) <= LOWER_PDR_THRESHOLD
+        ]
 
-        if not dotBotsWithPdrBelowThreshold:
+        if not dotBotsWithAvgPdrBelowThreshold:
             return
 
-        dotBotToBecomeRelay          = sorted(dotBotsWithPdrBelowThreshold, key=lambda e: e[1])[-1][0]
+        # out of all DotBots with PDRs falling below lower threshold, select one with highest PDR to become relay
+        # to assure communication between Orchestrator and relay DotBot until DotBot reaches it's relay position.
+        dotBotToBecomeRelay          = sorted(dotBotsWithAvgPdrBelowThreshold, key=lambda e: e[1])[-1][0]
 
-        # first check if we need relays
-        for (dotBotId, dotBot) in self.dotBotsView.items():
+        # assign DotBot as relay
+        dotBotToBecomeRelay['isRelay']   = True
 
-            if len(dotBot['pdrHistory']) < self.pdrHysteresisWindow:
-                return
+        # get stored PDR history (oldest -> latest)
+        pdrHistory          = dotBotToBecomeRelay['pdrHistory']
 
-            # compute average of last 5 PDRs
-            avgPDR = sum([pdr[0] for pdr in dotBot['pdrHistory'][-self.pdrHysteresisWindow:]])/self.pdrHysteresisWindow
+        # reverse PDR history (latest -> oldest)
+        pdrHistoryReversed  = pdrHistory[::-1]
 
-            # DotBot with avg PDR above threshold won't be a relay
-            if avgPDR > LOWER_PDR_THRESHOLD:
-                continue
+        for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
 
-            # skip dotBots that are already relays
-            if dotBot['isRelay']:
-                continue
+            # look for last DotBot position with PDR above upper threshold
+            if pdrValue >= UPPER_PDR_THRESHOLD:
+                if (self._xy2cell(dotBotX, dotBotY) in self.cellsExplored):
+                    # set relay position for DotBot to move to
+                    dotBotToBecomeRelay['relayPosition']     = (dotBotX, dotBotY)
+                    break
 
-            if dotBot != dotBotToBecomeRelay:
-                continue
-
-            # get stored PDR history (oldest -> latest)
-            pdrHistory          = dotBot['pdrHistory']
-
-            # reverse PDR history (latest -> oldest)
-            pdrHistoryReversed  = pdrHistory[::-1]
-
-            # assign DotBot as relay
-            dotBot['isRelay']   = True
-
-            for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
-
-                # look for last DotBot position with PDR above acceptable threshold
-                if pdrValue >= UPPER_PDR_THRESHOLD:
-                    if (self._xy2cell(dotBotX, dotBotY) in self.cellsExplored):
-                        # set relay position for DotBot to move to
-                        dotBot['relayPosition']     = (dotBotX, dotBotY)
-                        break
-            break
 
     def _relayPlacementSelfHealing(self):
 

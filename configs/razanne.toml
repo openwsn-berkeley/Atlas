@@ -1,5 +1,5 @@
 [atlas]
-    numRobots                = 15
+    numRobots                = 25
     floorplan                = "factory_small"                                          # filename in floorplans
     navigationAlgorithm      = "Atlas"                                                  # options: Atlas, Ballistic
     relayAlgorithm           = "Recovery"                                               # options: Recovery, SelfHealing, NoRelays
