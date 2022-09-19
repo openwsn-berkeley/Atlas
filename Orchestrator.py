@@ -94,7 +94,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
         # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime(), self._assignRelaysAndRelayPositionsCb)
+        self.simEngine.schedule(self.simEngine.currentTime()+2, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -839,6 +839,9 @@ class Orchestrator(Wireless.WirelessDevice):
                 'time':        self.simEngine.currentTime()
             },
         )
+
+        if self.simEngine.currentTime() > self.pdrHysteresisWindow:
+            return
 
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()

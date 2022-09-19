@@ -1,6 +1,6 @@
 [atlas]
-    numRobots                = 15
-    floorplan                = "office_small"                                           # filename in floorplans
+    numRobots                = [15, 25, 50]
+    floorplan                = ["office_small", "factory_small", "empty_small"]         # filename in floorplans
     navigationAlgorithm      = "Atlas"                                                  # options: Atlas, Ballistic
     relayAlgorithm           = "Recovery"                                               # options: Recovery, SelfHealing, NoRelays
     lowerPdrThreshold        = 0.8                                                      # (for Recovery) trigger relay placement if below
