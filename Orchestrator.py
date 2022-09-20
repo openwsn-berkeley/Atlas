@@ -840,9 +840,6 @@ class Orchestrator(Wireless.WirelessDevice):
             },
         )
 
-        if self.simEngine.currentTime() < self.pdrHysteresisWindow:
-            return
-
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
 
