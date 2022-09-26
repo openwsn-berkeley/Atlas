@@ -28,61 +28,64 @@ class Orchestrator(Wireless.WirelessDevice):
     def __init__(self, numRobots, initX, initY, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8):
 
         # store params
-        self.numRobots          = numRobots
-        self.initX              = initX
-        self.initY              = initY
+        self.numRobots                = numRobots
+        self.initX                    = initX
+        self.initY                    = initY
         # algorithm used to place relays
-        self.relayAlgorithm     = relayAlgorithm
-        self.lowerPdrThreshold  = lowerPdrThreshold
-        self.upperPdrThreshold  = upperPdrThreshold
+        self.relayAlgorithm           = relayAlgorithm
+        self.lowerPdrThreshold        = lowerPdrThreshold
+        self.upperPdrThreshold        = upperPdrThreshold
 
         # local variables
-        self.simEngine           = SimEngine.SimEngine()
-        self.wireless            = Wireless.Wireless()
-        self.dataCollector       = DataCollector.DataCollector()
-        self.cellsExplored       = []
-        self.cellsObstacle       = []
-        self.cellsFrontier       = []
-        self.x                   = self.initX
-        self.y                   = self.initY
-        self.dotBotId            = 0
-        self.pdrHysteresisWindow = 4
-        self.assignRelaysPeriod  = 10
+        self.simEngine                = SimEngine.SimEngine()
+        self.wireless                 = Wireless.Wireless()
+        self.dataCollector            = DataCollector.DataCollector()
+        self.cellsExplored            = []
+        self.cellsObstacle            = []
+        self.cellsFrontier            = []
+        self.x                        = self.initX
+        self.y                        = self.initY
+        self.dotBotId                 = 0
+        self.pdrSlidingWindowPeriod   = 1
+        self.lastSlidingWindowEndTime = 0
+        self.assignRelaysPeriod       = 10
 
         # for wireless to identify if this is a relay device or not
-        self.isRelay             = False
+        self.isRelay                  = False
         # to know if A* should be used for finding alternative path
-        self.bumpedOnWayToTarget = True
+        self.bumpedOnWayToTarget      = True
         # to avoid given multiple robots same frontier as target cell
-        self.assignedFrontiers   = []
+        self.assignedFrontiers        = []
 
-        self.dotBotsView         = dict([
+        self.dotBotsView              = dict([
             (
                 i,
                 {
                     # current position of DotBot
-                    'x':                  initX,
-                    'y':                  initY,
+                    'x':                   initX,
+                    'y':                   initY,
                     # current heading and speed
-                    'heading':            0,
-                    'speed':              0,
+                    'heading':             0,
+                    'speed':               0,
                     # sequence numbers (to filter out duplicate commands and notifications)
-                    'seqNumCommand':      0,
-                    'seqNumNotification': None,
+                    'seqNumCommand':       0,
+                    'seqNumNotification':  None,
                     # if DotBot is relay or not
-                    'isRelay':            False,
+                    'isRelay':             False,
                     # duration of movement until robot stops
-                    'movementTimeout':    None,
+                    'movementTimeout':     None,
                     # frontier cell DotBot has been given to explore and path to it
-                    'targetCell':         None,
+                    'targetCell':          None,
                     # [(cx1, cy1) -> (cx2, cy2) -> .... -> (cxTarget, cyTarget)]
-                    'currentPath':        [],
+                    'currentPath':         [],
                     # last estimated PDR from DotBot
-                    'estimatedPdr':       1,
+                    'estimatedPdr':        1,
+                    # [111010010] (oldest -> latest) ; 1 : received packet , 0: no packet received
+                    'pdrHistory':          [],
                     # [(estimated pdr, DotBot position ), ..] (oldest -> latest)
-                    'pdrHistory':         [],
+                    'estimatedPdrHistory': [],
                     # position DotBot should go to when/if it becomes a relay
-                    'relayPosition':      None,
+                    'relayPosition':       None,
                 }
             ) for i in range(1, self.numRobots+1)
         ])
@@ -96,6 +99,9 @@ class Orchestrator(Wireless.WirelessDevice):
         # kickoff relay placement algorithm
         self.simEngine.schedule(self.simEngine.currentTime()+2, self._assignRelaysAndRelayPositionsCb)
 
+        # kickoff pdr estimation
+        self.simEngine.schedule(self.simEngine.currentTime() + self.pdrSlidingWindowPeriod, self._computeEstimatedPdrsCb)
+
     #======================== public ==========================================
 
     #=== admin
@@ -107,17 +113,17 @@ class Orchestrator(Wireless.WirelessDevice):
         
         # arm first downstream communication
         self.simEngine.schedule(
-            self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
+            self.simEngine.currentTime(),
             self._downstreamTimeoutCb,
         )
-        
+
     #=== communication
 
     def _downstreamTimeoutCb(self):
-        
+
         # send downstream command
         self._sendDownstreamCommands()
-       
+
         # arm next downstream communication
         self.simEngine.schedule(
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
@@ -167,12 +173,15 @@ class Orchestrator(Wireless.WirelessDevice):
             frame['source'], (dotBot['x'], dotBot['y']), dotBot['targetCell'])
         )
 
-        # store estimated PDR
-        dotBot['estimatedPdr']         = frame['estimatedPdr']
+        # Do not compute new movements for pdr heartbeat notifications
+        if frame['pdrHeartbeat']:
+            dotBot['pdrHistory']   += [(1, self.simEngine.currentTime())]
+            return
 
         # filter out duplicates
         if frame['seqNumNotification'] == dotBot['seqNumNotification']:
             return
+
         dotBot['seqNumNotification']   = frame['seqNumNotification']
 
         # update DotBot's position
@@ -352,7 +361,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # update pdr history if using Recovery algorithm otherwise not needed
         if self.relayAlgorithm == "Recovery":
-            dotBot['pdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
+            dotBot['estimatedPdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
 
     #=== Map
 
@@ -823,6 +832,30 @@ class Orchestrator(Wireless.WirelessDevice):
 
     # === Relays
 
+    def _computeEstimatedPdrsCb(self):
+
+        self.simEngine.schedule(self.simEngine.currentTime()+self.pdrSlidingWindowPeriod, self._computeEstimatedPdrsCb)
+        for ( _, dotBot) in self.dotBotsView.items():
+            numOfPackerRxed = 0
+            slidingWindowStartTime = self.lastSlidingWindowEndTime
+            slidingWindowEndTime   = slidingWindowStartTime + self.pdrSlidingWindowPeriod
+            for (pdr, time) in dotBot['pdrHistory']:
+
+                if time < slidingWindowStartTime:
+                    continue
+
+                if time >= slidingWindowEndTime:
+                    break
+
+                numOfPackerRxed += pdr
+            # FIXME: *2 should be change to variable/relationship to
+            dotBot['estimatedPdr'] = (numOfPackerRxed/(self.pdrSlidingWindowPeriod*2))
+            logging.debug('estimated pdr for dotbot {} is {} '.format(_,dotBot['estimatedPdr']))
+            assert  0 <= dotBot['estimatedPdr'] <= 1
+
+        self.lastSlidingWindowEndTime = slidingWindowEndTime
+
+
     def _assignRelaysAndRelayPositionsCb(self):
 
         log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
@@ -857,8 +890,8 @@ class Orchestrator(Wireless.WirelessDevice):
         # find DotBots that have an average PDR (over a defined time window) that is <= lower PDR threshold
         dotBotsWithAvgPdrBelowThreshold = [
             (db, db['estimatedPdr']) for (_, db) in self.dotBotsView.items() if
-            (db['pdrHistory'] and
-            (((sum([pdr[0] for pdr in db['pdrHistory'][-self.pdrHysteresisWindow:]])/self.pdrHysteresisWindow) <= LOWER_PDR_THRESHOLD) and
+            (db['estimatedPdrHistory'] and
+            ((db['estimatedPdr'] <= LOWER_PDR_THRESHOLD) and
             (not db['isRelay'])))
         ]
 
@@ -873,10 +906,10 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBotToBecomeRelay['isRelay']   = True
 
         # get stored PDR history (oldest -> latest)
-        pdrHistory          = dotBotToBecomeRelay['pdrHistory']
+        estimatedPdrHistory              = dotBotToBecomeRelay['estimatedPdrHistory']
 
         # reverse PDR history (latest -> oldest)
-        pdrHistoryReversed  = pdrHistory[::-1]
+        pdrHistoryReversed  = estimatedPdrHistory[::-1]
 
         for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
 
