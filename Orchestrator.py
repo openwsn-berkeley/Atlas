@@ -46,7 +46,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.x                        = self.initX
         self.y                        = self.initY
         self.dotBotId                 = 0
-        self.pdrSlidingWindowPeriod   = 1
+        self.pdrSlidingWindowPeriod   = 10
         self.lastSlidingWindowEndTime = 0
         self.assignRelaysPeriod       = 10
 
@@ -116,8 +116,8 @@ class Orchestrator(Wireless.WirelessDevice):
     def _downstreamTimeoutCb(self):
 
         # FIXME: move these to seperate function
-        self._assignRelaysAndRelayPositionsCb()
         self._computeEstimatedPdrsCb()
+        self._assignRelaysAndRelayPositionsCb()
 
         # send downstream command
         self._sendDownstreamCommands()
@@ -173,7 +173,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # Do not compute new movements for pdr heartbeat notifications
         if frame['notificationType'] == "heartbeat":
-            dotBot['pdrHistory']   += [(1, self.simEngine.currentTime())]
+            dotBot['pdrHistory']   += [self.simEngine.currentTime()]
             return
 
         # filter out duplicates
@@ -832,21 +832,24 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _computeEstimatedPdrsCb(self):
 
+        if (self.simEngine.currentTime() - self.lastSlidingWindowEndTime) < self.pdrSlidingWindowPeriod:
+            return
+
         for ( _, dotBot) in self.dotBotsView.items():
-            numOfPackerRxed = 0
+            numOfPackerRxed        = 0
             slidingWindowStartTime = self.lastSlidingWindowEndTime
             slidingWindowEndTime   = slidingWindowStartTime + self.pdrSlidingWindowPeriod
-            for (pdr, time) in dotBot['pdrHistory']:
+            dotBot['pdrHistory']   = [time for time in dotBot['pdrHistory'] if time > slidingWindowStartTime]
 
-                if time < slidingWindowStartTime:
-                    continue
+            for time in dotBot['pdrHistory']:
 
                 if time >= slidingWindowEndTime:
                     break
 
-                numOfPackerRxed += pdr
+                numOfPackerRxed += 1
+
             # FIXME: *2 should be change to variable/relationship to
-            dotBot['estimatedPdr'] = (numOfPackerRxed/(self.pdrSlidingWindowPeriod))
+            dotBot['estimatedPdr'] = (numOfPackerRxed/((self.pdrSlidingWindowPeriod)*2))
             logging.debug('estimated pdr for dotbot {} is {} '.format(_,dotBot['estimatedPdr']))
             assert  0 <= dotBot['estimatedPdr'] <= 1
 
@@ -855,7 +858,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _assignRelaysAndRelayPositionsCb(self):
 
-        log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
+        log.info('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
 
         # collect PDRs
         self.dataCollector.collect(
