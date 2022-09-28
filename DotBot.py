@@ -50,12 +50,12 @@ class DotBot(Wireless.WirelessDevice):
         # if DotBot has bumped
         self.hasJustBumped        = False  # needed as variable as retransmits are called by simEngine
         # how frequent estimated PDR is sent to orchestrator
-        self.pdrHeartbeatPeriod   = 0.5      # in seconds
-        self.numPacketReceived    = 0
-        self.pdrHeartbeat         = False
+        self.heartbeatPeriod      = 0.5    # in seconds
+        self.heartbeat            = False
+        self.notificationType     = None
 
         # schedule next estimated PDR call back
-        self.simEngine.schedule(self.simEngine.currentTime() + self.pdrHeartbeatPeriod, self._pdrHeartbeatCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
 
     # ======================== public ==========================================
 
@@ -193,21 +193,21 @@ class DotBot(Wireless.WirelessDevice):
         # stop movement and send notification
         self._stopAndTransmit()
 
-    def _pdrHeartbeatCb(self):
+    def _heartbeatCb(self):
         '''
         send estimated PDR to orchestrator to update on PDR status
         '''
 
-        self.simEngine.schedule(self.simEngine.currentTime() + self.pdrHeartbeatPeriod, self._pdrHeartbeatCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
 
-        # set pdr heartbeat to distinguish from other notification
-        # FIXME: improve naming
-        self.pdrHeartbeat = True
+        # set notification type
+        self.notificationType = "heartbeat"
 
         # send notification with updates estimated PDR
         self._transmit()
 
-        self.pdrHeartbeat = False
+        # clear notification type stored
+        self.notificationType = None
 
     def _stopAndTransmit(self):
 
@@ -220,8 +220,15 @@ class DotBot(Wireless.WirelessDevice):
         # remember how long DotBot moved for
         self.movementDuration      = self.simEngine.currentTime() - self.tsMovementStart
 
+        # set notification type
+        self.notificationType = "stopped"
+
         # transmit
         self._transmit()
+
+        # clear notification type stored
+        self.notificationType = None
+
 
     def _transmit(self):
         '''
@@ -231,11 +238,11 @@ class DotBot(Wireless.WirelessDevice):
         # format frame to transmit
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
+            'notificationType':   self.notificationType,
             'source':             self.dotBotId,
             'movementDuration':   self.movementDuration,
             'seqNumNotification': self.seqNumNotification,
             'hasJustBumped':      self.hasJustBumped,
-            'pdrHeartbeat':       self.pdrHeartbeat,
         }
 
         # hand over to wireless
@@ -244,7 +251,7 @@ class DotBot(Wireless.WirelessDevice):
             sender    = self,
         )
 
-        if not self.pdrHeartbeat:
+        if not self.heartbeat:
             # schedule retransmission
             self.simEngine.schedule(
                 ts        = self.simEngine.currentTime() + self.RETRY_TIMEOUT_S,

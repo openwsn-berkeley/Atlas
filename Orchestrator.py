@@ -22,7 +22,7 @@ class Orchestrator(Wireless.WirelessDevice):
     The central orchestrator of the expedition.
     '''
     
-    COMM_DOWNSTREAM_PERIOD_S    = 1
+    COMM_DOWNSTREAM_PERIOD_S    = 0.5
     MINFEATURESIZE              = 1
     
     def __init__(self, numRobots, initX, initY, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8):
@@ -96,12 +96,6 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['speed']           = 1
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
 
-        # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime()+2, self._assignRelaysAndRelayPositionsCb)
-
-        # kickoff pdr estimation
-        self.simEngine.schedule(self.simEngine.currentTime() + self.pdrSlidingWindowPeriod, self._computeEstimatedPdrsCb)
-
     #======================== public ==========================================
 
     #=== admin
@@ -120,6 +114,10 @@ class Orchestrator(Wireless.WirelessDevice):
     #=== communication
 
     def _downstreamTimeoutCb(self):
+
+        # FIXME: move these to seperate function
+        self._assignRelaysAndRelayPositionsCb()
+        self._computeEstimatedPdrsCb()
 
         # send downstream command
         self._sendDownstreamCommands()
@@ -174,7 +172,7 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
         # Do not compute new movements for pdr heartbeat notifications
-        if frame['pdrHeartbeat']:
+        if frame['notificationType'] == "heartbeat":
             dotBot['pdrHistory']   += [(1, self.simEngine.currentTime())]
             return
 
@@ -834,7 +832,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _computeEstimatedPdrsCb(self):
 
-        self.simEngine.schedule(self.simEngine.currentTime()+self.pdrSlidingWindowPeriod, self._computeEstimatedPdrsCb)
         for ( _, dotBot) in self.dotBotsView.items():
             numOfPackerRxed = 0
             slidingWindowStartTime = self.lastSlidingWindowEndTime
@@ -849,7 +846,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
                 numOfPackerRxed += pdr
             # FIXME: *2 should be change to variable/relationship to
-            dotBot['estimatedPdr'] = (numOfPackerRxed/(self.pdrSlidingWindowPeriod*2))
+            dotBot['estimatedPdr'] = (numOfPackerRxed/(self.pdrSlidingWindowPeriod))
             logging.debug('estimated pdr for dotbot {} is {} '.format(_,dotBot['estimatedPdr']))
             assert  0 <= dotBot['estimatedPdr'] <= 1
 
@@ -859,9 +856,6 @@ class Orchestrator(Wireless.WirelessDevice):
     def _assignRelaysAndRelayPositionsCb(self):
 
         log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
-
-        # schedule next relay check to see if new relays are needed
-        self.simEngine.schedule(self.simEngine.currentTime() + self.assignRelaysPeriod, self._assignRelaysAndRelayPositionsCb)
 
         # collect PDRs
         self.dataCollector.collect(
