@@ -248,7 +248,6 @@ class Orchestrator(Wireless.WirelessDevice):
         )
 
 
-
     def _sendDownstreamCommands(self):
         '''
         Send the next heading and speed commands to the robots
@@ -274,6 +273,16 @@ class Orchestrator(Wireless.WirelessDevice):
         self.wireless.transmit(
             frame  = frameToTx,
             sender = self,
+        )
+
+        # collect PDRs
+        self.dataCollector.collect(
+            {
+                'type':        'KPI',
+                'PDRs':        self.wireless.getCurrentPDRs(),
+                'numOfRelays': len([db for (_, db) in self.dotBotsView.items() if db['isRelay'] == True ]),
+                'time':        self.simEngine.currentTime()
+            },
         )
 
     def computeCurrentPosition(self):
@@ -883,17 +892,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _assignRelaysAndRelayPositionsCb(self):
 
-        log.info('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
-
-        # collect PDRs
-        self.dataCollector.collect(
-            {
-                'type':        'KPI',
-                'PDRs':        self.wireless.getCurrentPDRs(),
-                'numOfRelays': len([db for (_, db) in self.dotBotsView.items() if db['isRelay'] == True ]),
-                'time':        self.simEngine.currentTime()
-            },
-        )
+        log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
 
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
