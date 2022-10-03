@@ -170,7 +170,7 @@ class Orchestrator(Wireless.WirelessDevice):
                         currentX=dotBot['x'],
                         currentY=dotBot['y'],
                         heading=(dotBot['heading'] + 180) % 360,
-                        speed=1,
+                        speed  =1,
                         duration=(self.MINFEATURESIZE / 4),
                     )
 
@@ -185,7 +185,9 @@ class Orchestrator(Wireless.WirelessDevice):
                         ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*startCell)) and
                         dotBot['hasJustBumped'] and
                         ((dotBot['x'], dotBot['y']) == self._xy2cell(*startCell)) and
-                        (not dotBot['lastCellExplored'])
+                        (not dotBot['lastCellExplored']) and
+                        dotBot['currentPath']
+
                 ):
                     self.cellsObstacle += [dotBot['currentPath'][0]]
 
@@ -330,7 +332,6 @@ class Orchestrator(Wireless.WirelessDevice):
         # shorthands
         cellsExplored                  = cellsExploredAndNextCell['cellsExplored']
         nextCell                       = cellsExploredAndNextCell['nextCell']
-
 
         # to determine starting cell later on when updating movement
         if cellsExplored:
