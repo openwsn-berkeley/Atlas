@@ -232,7 +232,6 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _dotBotControl(self):
         self._computeEstimatedPdrsCb()
-        log.info('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
         self._assignRelaysAndRelayPositionsCb()
         self._updateMovements()
 
