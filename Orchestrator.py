@@ -49,6 +49,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.pdrSlidingWindowPeriod   = 10
         self.lastSlidingWindowEndTime = 0
         self.assignRelaysPeriod       = 10
+        self.lastRelayPlacementTime   = 0
 
         # for wireless to identify if this is a relay device or not
         self.isRelay                  = False
@@ -231,6 +232,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _dotBotControl(self):
         self._computeEstimatedPdrsCb()
+        log.info('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
         self._assignRelaysAndRelayPositionsCb()
         self._updateMovements()
 
@@ -906,8 +908,12 @@ class Orchestrator(Wireless.WirelessDevice):
             pass
 
     def _relayPlacementRecovery(self):
+
         LOWER_PDR_THRESHOLD = self.lowerPdrThreshold
         UPPER_PDR_THRESHOLD = self.upperPdrThreshold
+
+        if (self.simEngine.currentTime() - self.lastRelayPlacementTime) < self.pdrSlidingWindowPeriod:
+            return
 
         # find DotBots that have an average PDR (over a defined time window) that is <= lower PDR threshold
         dotBotsWithAvgPdrBelowThreshold = [
@@ -940,6 +946,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 if (self._xy2cell(dotBotX, dotBotY) in self.cellsExplored):
                     # set relay position for DotBot to move to
                     dotBotToBecomeRelay['relayPosition']     = (dotBotX, dotBotY)
+                    self.lastRelayPlacementTime              = self.simEngine.currentTime()
                     break
 
 
