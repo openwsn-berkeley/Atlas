@@ -875,7 +875,7 @@ class Orchestrator(Wireless.WirelessDevice):
             numOfPackerRxed        = 0
             slidingWindowStartTime = self.lastSlidingWindowEndTime
             slidingWindowEndTime   = slidingWindowStartTime + self.pdrSlidingWindowPeriod
-            dotBot['pdrHistory']   = [time for time in dotBot['pdrHistory'] if time > slidingWindowStartTime]
+            dotBot['pdrHistory']   = [time for time in dotBot['pdrHistory'] if time >= slidingWindowStartTime]
 
             for time in dotBot['pdrHistory']:
 
@@ -951,7 +951,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
     def _relayPlacementSelfHealing(self):
 
-        RANGE_DISTANCE = 8  # up to 10m pister-hack stability minimum PDR is still above 0
+        RANGE_DISTANCE = 7  # up to 10m pister-hack stability minimum PDR is still above 0
 
         # check if orchestrator has lost connection to any DotBots
         for (dotBotId, dotBot) in self.dotBotsView.items():
