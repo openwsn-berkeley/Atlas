@@ -46,10 +46,9 @@ class Orchestrator(Wireless.WirelessDevice):
         self.x                        = self.initX
         self.y                        = self.initY
         self.dotBotId                 = 0
-        self.pdrSlidingWindowPeriod   = 10
+        self.pdrSlidingWindowPeriod   = 7
         self.lastSlidingWindowEndTime = 0
-        self.assignRelaysPeriod       = 10
-        self.lastRelayPlacementTime   = 0
+        self.lastRelayCheckTime       = 0
 
         # for wireless to identify if this is a relay device or not
         self.isRelay                  = False
@@ -84,7 +83,7 @@ class Orchestrator(Wireless.WirelessDevice):
                     # [(cx1, cy1) -> (cx2, cy2) -> .... -> (cxTarget, cyTarget)]
                     'currentPath':         [],
                     # last estimated PDR from DotBot
-                    'estimatedPdr':        1,
+                    'estimatedPdr':        None,
                     # an array of timestamps representing when each packet was received
                     'pdrHistory':          [],
                     # [(estimated pdr, DotBot position at time of estimation), ..] (oldest -> latest)
@@ -911,8 +910,11 @@ class Orchestrator(Wireless.WirelessDevice):
         LOWER_PDR_THRESHOLD = self.lowerPdrThreshold
         UPPER_PDR_THRESHOLD = self.upperPdrThreshold
 
-        if (self.simEngine.currentTime() - self.lastRelayPlacementTime) < self.pdrSlidingWindowPeriod:
+        # only check for need for relays if estimated PDRs have been updated
+        if ((self.simEngine.currentTime() - self.lastRelayCheckTime) < self.pdrSlidingWindowPeriod):
             return
+
+        self.lastRelayCheckTime = self.simEngine.currentTime()
 
         # find DotBots that have an average PDR (over a defined time window) that is <= lower PDR threshold
         dotBotsWithAvgPdrBelowThreshold = [
@@ -945,7 +947,6 @@ class Orchestrator(Wireless.WirelessDevice):
                 if (self._xy2cell(dotBotX, dotBotY) in self.cellsExplored):
                     # set relay position for DotBot to move to
                     dotBotToBecomeRelay['relayPosition']     = (dotBotX, dotBotY)
-                    self.lastRelayPlacementTime              = self.simEngine.currentTime()
                     break
 
 
