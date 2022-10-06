@@ -226,7 +226,7 @@ class Orchestrator(Wireless.WirelessDevice):
             dotBot['seqNumCommand'] += 1
 
             # update pdr history if using Recovery algorithm otherwise not needed
-            if self.relayAlgorithm == "Recovery":
+            if ((self.relayAlgorithm == "Recovery") and dotBot['estimatedPdr']):
                 dotBot['estimatedPdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
 
     def _dotBotControl(self):
