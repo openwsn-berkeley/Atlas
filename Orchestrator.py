@@ -166,12 +166,12 @@ class Orchestrator(Wireless.WirelessDevice):
                     startCell = dotBot['lastCellExplored']
                 else:
                     # startCell is where dotBot would be if it reversed by half a cell size.
-                    startCell = u.computeCurrentPosition(
-                        currentX=dotBot['x'],
-                        currentY=dotBot['y'],
-                        heading=(dotBot['heading'] + 180) % 360,
-                        speed  =1,
-                        duration=(self.MINFEATURESIZE / 4),
+                    startCell    = u.computeCurrentPosition(
+                        currentX = dotBot['x'],
+                        currentY = dotBot['y'],
+                        heading  = (dotBot['heading'] + 180) % 360,
+                        speed    = 1,
+                        duration = (self.MINFEATURESIZE / 4),
                     )
 
                     # convert coordinates to cell
@@ -207,19 +207,19 @@ class Orchestrator(Wireless.WirelessDevice):
                 # if a DotBot is a relay and is moving to it's relay position, move it to the exact coordinates given.
                 # otherwise move it to random position in cell its heading to.
                 (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(
-                    dotBotId=dotBotId,
-                    path=path,
-                    moveToRandomPositionInCell=False if (dotBot['relayPosition'] and (
+                    dotBotId                   = dotBotId,
+                    path                       = path,
+                    moveToRandomPositionInCell = False if (dotBot['relayPosition'] and (
                                 targetCell == self._xy2cell(dotBot['x'], dotBot['y']))) else True)
             else:
                 (heading, speed, movementTimeout) = (0, 0, 0.5)
 
             log.debug('heading & movementTimeout for {} are {} {}'.format(dotBotId, heading, movementTimeout))
 
-            dotBot['targetCell'] = targetCell
-            dotBot['currentPath'] = path
-            dotBot['heading'] = heading
-            dotBot['speed'] = speed
+            dotBot['targetCell']      = targetCell
+            dotBot['currentPath']     = path
+            dotBot['heading']         = heading
+            dotBot['speed']           = speed
             dotBot['movementTimeout'] = movementTimeout
 
             # update sequence number of movement instruction
@@ -581,7 +581,7 @@ class Orchestrator(Wireless.WirelessDevice):
         return returnVal
 
     def _computeCellNeighbours(self, cx, cy):
-        cellSize = self.MINFEATURESIZE/2
+        cellSize  = self.MINFEATURESIZE/2
 
         returnVal = [
             (cx+cellSize, cy),          (cx-cellSize, cy),
@@ -644,12 +644,12 @@ class Orchestrator(Wireless.WirelessDevice):
                 firstObstacleCorners  = set(self._computeCellCorners(cx, cy))
                 secondObstacleCorners = set(self._computeCellCorners(nx, ny))
 
-                commonCorner = firstObstacleCorners.intersection(secondObstacleCorners)
+                commonCorner          = firstObstacleCorners.intersection(secondObstacleCorners)
 
                 if not commonCorner:
                     continue
 
-                (ccx, ccy) = list(commonCorner)[0]
+                (ccx, ccy)     = list(commonCorner)[0]
 
                 cellSize       = self.MINFEATURESIZE / 2
                 connectedCells = [
@@ -769,10 +769,10 @@ class Orchestrator(Wireless.WirelessDevice):
                 # add extra cost to frontier cells (if they are diagonal and are not the target)
                 # to prioritise explored cells over frontiers and to avoid building paths through undiscovered obstacles
                 if childCell.cellPos in self.cellsFrontier and childCell.cellPos in diagonalCells and childCell.cellPos != targetCell:
-                    addedCost = 10
+                    addedCost  = 10
                     log.debug(f'adding cost to diagonal cell {childCell.cellPos}')
                 else:
-                    addedCost = 0
+                    addedCost  = 0
                 hCost          = u.distance(childCell.cellPos, targetCell) + addedCost
 
                 # skip cell if it is an obstacle cell
@@ -929,7 +929,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # out of all DotBots with PDRs falling below lower threshold, select one with highest PDR to become relay
         # to assure communication between Orchestrator and relay DotBot until DotBot reaches it's relay position.
-        dotBotToBecomeRelay          = sorted(dotBotsWithAvgPdrBelowThreshold, key=lambda e: e[1])[-1][0]
+        dotBotToBecomeRelay              = sorted(dotBotsWithAvgPdrBelowThreshold, key=lambda e: e[1])[-1][0]
 
         # assign DotBot as relay
         dotBotToBecomeRelay['isRelay']   = True
@@ -938,7 +938,7 @@ class Orchestrator(Wireless.WirelessDevice):
         estimatedPdrHistory              = dotBotToBecomeRelay['estimatedPdrHistory']
 
         # reverse PDR history (latest -> oldest)
-        pdrHistoryReversed  = estimatedPdrHistory[::-1]
+        pdrHistoryReversed               = estimatedPdrHistory[::-1]
 
         for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
 

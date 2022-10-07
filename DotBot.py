@@ -212,22 +212,22 @@ class DotBot(Wireless.WirelessDevice):
     def _stopAndTransmit(self):
 
         # update notification ID
-        self.seqNumNotification += 1
+        self.seqNumNotification   += 1
 
         # stop moving
-        self.currentSpeed        = 0
+        self.currentSpeed          = 0
 
         # remember how long DotBot moved for
         self.movementDuration      = self.simEngine.currentTime() - self.tsMovementStart
 
         # set notification type
-        self.notificationType = "stopped"
+        self.notificationType      = "stopped"
 
         # transmit
         self._transmit()
 
         # clear notification type stored
-        self.notificationType = None
+        self.notificationType      = None
 
 
     def _transmit(self):
