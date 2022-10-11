@@ -123,7 +123,8 @@ class Wireless(object):
             assert sender != receiver
 
             # get pdr between sender and receiver
-            pdr               = self._getPDR(sender, relays, receiver)
+            #pdr               = self._getPDR(sender, relays, receiver)
+            pdr = 1
             self.currentPDRs += [pdr]
 
             # only log pdr when pdr is critically low
