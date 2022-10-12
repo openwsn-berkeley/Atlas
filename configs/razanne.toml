@@ -1,8 +1,8 @@
 [atlas]
-    numRobots                = 1
+    numRobots                = 15
     floorplan                = "office_small"             # filename in floorplans
     navigationAlgorithm      = "Atlas"                   # options: Atlas, Ballistic
-    relayAlgorithm           = "NoRelay"                # options: Recovery, SelfHealing, NoRelays
+    relayAlgorithm           = "Recovery"                # options: Recovery, SelfHealing, NoRelays
     lowerPdrThreshold        = 0.8                       # (for Recovery) trigger relay placement if below
     upperPdrThreshold        = 0.9                       # (for Recovery) to determine relay position
     propagationModel         = "PisterHack"              # options: LOS, Friis, Radius, PisterHack

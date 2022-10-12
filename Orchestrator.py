@@ -685,7 +685,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.assignedFrontiers = []
 
         if self.cellsFrontier:
-            targetFrontiers = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
+            targetFrontiers = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
                                               self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
             targetFrontier  = sorted(targetFrontiers, key=lambda e: e[1])[0][0]
 
@@ -855,12 +855,12 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # find movementTimeout to stop at target cell
         movementTimeout = distance / speed
-
-        log.info('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
-            (dotBot['x'], dotBot['y']),
-            destination, heading,
-            movementTimeout)
-        )
+        if movementTimeout > 2:
+            log.debug('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
+                (dotBot['x'], dotBot['y']),
+                destination, heading,
+                movementTimeout)
+            )
 
         return (heading, speed, movementTimeout)
 
