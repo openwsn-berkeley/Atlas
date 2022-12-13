@@ -22,65 +22,74 @@ class Orchestrator(Wireless.WirelessDevice):
     The central orchestrator of the expedition.
     '''
     
-    COMM_DOWNSTREAM_PERIOD_S    = 1
+    COMM_DOWNSTREAM_PERIOD_S    = 0.5
     MINFEATURESIZE              = 1
     
     def __init__(self, numRobots, initX, initY, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8):
 
         # store params
-        self.numRobots          = numRobots
-        self.initX              = initX
-        self.initY              = initY
+        self.numRobots                = numRobots
+        self.initX                    = initX
+        self.initY                    = initY
         # algorithm used to place relays
-        self.relayAlgorithm     = relayAlgorithm
-        self.lowerPdrThreshold  = lowerPdrThreshold
-        self.upperPdrThreshold  = upperPdrThreshold
+        self.relayAlgorithm           = relayAlgorithm
+        self.lowerPdrThreshold        = lowerPdrThreshold
+        self.upperPdrThreshold        = upperPdrThreshold
 
         # local variables
-        self.simEngine           = SimEngine.SimEngine()
-        self.wireless            = Wireless.Wireless()
-        self.dataCollector       = DataCollector.DataCollector()
-        self.cellsExplored       = []
-        self.cellsObstacle       = []
-        self.cellsFrontier       = []
-        self.x                   = self.initX
-        self.y                   = self.initY
-        self.dotBotId            = 0
+        self.simEngine                = SimEngine.SimEngine()
+        self.wireless                 = Wireless.Wireless()
+        self.dataCollector            = DataCollector.DataCollector()
+        self.cellsExplored            = []
+        self.cellsObstacle            = []
+        self.cellsFrontier            = []
+        self.x                        = self.initX
+        self.y                        = self.initY
+        self.dotBotId                 = 0
+        self.pdrSlidingWindowPeriod   = 7
+        self.lastSlidingWindowEndTime = 0
+        self.lastRelayCheckTime       = 0
 
         # for wireless to identify if this is a relay device or not
-        self.isRelay             = False
+        self.isRelay                  = False
         # to know if A* should be used for finding alternative path
-        self.bumpedOnWayToTarget = True
+        self.bumpedOnWayToTarget      = True
         # to avoid given multiple robots same frontier as target cell
-        self.assignedFrontiers   = []
+        self.assignedFrontiers        = []
 
-        self.dotBotsView         = dict([
+        self.dotBotsView              = dict([
             (
                 i,
                 {
                     # current position of DotBot
-                    'x':                  initX,
-                    'y':                  initY,
+                    'x':                   initX,
+                    'y':                   initY,
                     # current heading and speed
-                    'heading':            0,
-                    'speed':              0,
+                    'heading':             0,
+                    'speed':               0,
                     # sequence numbers (to filter out duplicate commands and notifications)
-                    'seqNumCommand':      0,
-                    'seqNumNotification': None,
+                    'seqNumCommand':       0,
+                    'seqNumNotification':  None,
                     # if DotBot is relay or not
-                    'isRelay':            False,
+                    'isRelay':             False,
                     # duration of movement until robot stops
-                    'movementTimeout':    None,
+                    'movementTimeout':     None,
+                    # if DotBot bumped or not
+                    'hasJustBumped':       False,
                     # frontier cell DotBot has been given to explore and path to it
-                    'targetCell':         None,
+                    'targetCell':          None,
+                    # to use as starting cell when computing new movement instruction
+                    'lastCellExplored':    None,
                     # [(cx1, cy1) -> (cx2, cy2) -> .... -> (cxTarget, cyTarget)]
-                    'currentPath':        [],
+                    'currentPath':         [],
                     # last estimated PDR from DotBot
-                    'estimatedPdr':       1,
-                    # [(estimated pdr, DotBot position ), ..] (oldest -> latest)
-                    'pdrHistory':         [],
+                    'estimatedPdr':        None,
+                    # an array of timestamps representing when each packet was received
+                    'pdrHistory':          [],
+                    # [(estimated pdr, DotBot position at time of estimation), ..] (oldest -> latest)
+                    'estimatedPdrHistory': [],
                     # position DotBot should go to when/if it becomes a relay
-                    'relayPosition':      None,
+                    'relayPosition':       None,
                 }
             ) for i in range(1, self.numRobots+1)
         ])
@@ -90,9 +99,6 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['heading']         = 360*random.random()
             self.dotBotsView[dotBotId]['speed']           = 1
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
-
-        # kickoff relay placement algorithm
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
     #======================== public ==========================================
 
@@ -105,22 +111,144 @@ class Orchestrator(Wireless.WirelessDevice):
         
         # arm first downstream communication
         self.simEngine.schedule(
-            self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
+            self.simEngine.currentTime(),
             self._downstreamTimeoutCb,
         )
-        
+
+    #=== DotBot control
+
+    def _updateMovements(self):
+
+        for (dotBotId, dotBot) in self.dotBotsView.items():
+            # assign target cell (destination)
+
+            if dotBot['speed'] > 0:
+                continue
+
+            if dotBot['relayPosition']:
+
+                # DotBot has been assigned as relay, move to relay position
+                targetCell = self._xy2cell(*dotBot['relayPosition'])
+
+                # if DotBots previous target has not been explored yet,
+                # release it from pool of assigned frontiers
+                if dotBot['targetCell'] in self.assignedFrontiers:
+                    self.assignedFrontiers.remove(dotBot['targetCell'])
+
+            elif (
+                    ((not dotBot['targetCell']) or
+                     (dotBot['targetCell'] not in self.cellsFrontier))
+            ):
+                # target has successfully been explored
+                # assign a new target cell to DotBot
+                targetCell = self._computeTargetCell(dotBotId)
+
+            else:
+                # target cell not explored yet, keep moving towards it
+                targetCell = dotBot['targetCell']
+
+            # find path to target
+
+            if ((not targetCell) or (
+                    dotBot['relayPosition'] and (dotBot['relayPosition'] == (dotBot['x'], dotBot['y'])))):
+                # no target or DotBot is relay and is at it's relay position
+                path = None
+
+            elif dotBot['relayPosition'] and (self._xy2cell(dotBot['x'], dotBot['y']) == targetCell):
+                # relay has reached its assigned targetCell but not the exact coordinates in that cell yet.
+                # we need it to be in the exact (x, y) position assigned to assure PDR is the same there.
+                path = [dotBot['relayPosition']]
+
+            elif ((targetCell != dotBot['targetCell']) or (dotBot['hasJustBumped']) or (not dotBot['currentPath'])):
+                # new target, find path to it
+
+                if dotBot['lastCellExplored']:
+                    startCell = dotBot['lastCellExplored']
+                else:
+                    # startCell is where dotBot would be if it reversed by half a cell size.
+                    startCell    = u.computeCurrentPosition(
+                        currentX = dotBot['x'],
+                        currentY = dotBot['y'],
+                        heading  = (dotBot['heading'] + 180) % 360,
+                        speed    = 1,
+                        duration = (self.MINFEATURESIZE / 4),
+                    )
+
+                    # convert coordinates to cell
+                    startCell = self._xy2cell(*startCell)
+
+                path = self._computePath(startCell, targetCell)
+
+                # if DotBot bumped into first cell on it's path at it's corner
+                # add that cell as an obstacle
+                if (
+                        ((dotBot['x'], dotBot['y']) in self._computeCellCorners(*startCell)) and
+                        dotBot['hasJustBumped'] and
+                        ((dotBot['x'], dotBot['y']) == self._xy2cell(*startCell)) and
+                        (not dotBot['lastCellExplored']) and
+                        dotBot['currentPath']
+
+                ):
+                    self.cellsObstacle += [dotBot['currentPath'][0]]
+
+                log.debug(
+                    'new path from {} to new target {} is {}'.format((dotBot['x'], dotBot['y']), targetCell, path))
+
+            else:
+                # DotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
+                # remove cells already traversed from path
+                path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(dotBot['x'], dotBot['y'])) + 1:]
+
+                log.debug(
+                    'same path from {} to same target {} is {}'.format((dotBot['x'], dotBot['y']), targetCell, path))
+
+            # set new speed and heading and movementTimeout for DotBot
+            if path:
+                # if a DotBot is a relay and is moving to it's relay position, move it to the exact coordinates given.
+                # otherwise move it to random position in cell its heading to.
+                (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(
+                    dotBotId                   = dotBotId,
+                    path                       = path,
+                    moveToRandomPositionInCell = False if (dotBot['relayPosition'] and (
+                                targetCell == self._xy2cell(dotBot['x'], dotBot['y']))) else True)
+            else:
+                (heading, speed, movementTimeout) = (0, 0, 0.5)
+
+            log.debug('heading & movementTimeout for {} are {} {}'.format(dotBotId, heading, movementTimeout))
+
+            dotBot['targetCell']      = targetCell
+            dotBot['currentPath']     = path
+            dotBot['heading']         = heading
+            dotBot['speed']           = speed
+            dotBot['movementTimeout'] = movementTimeout
+
+            # update sequence number of movement instruction
+            dotBot['seqNumCommand'] += 1
+
+            # update pdr history if using Recovery algorithm otherwise not needed
+            if ((self.relayAlgorithm == "Recovery") and dotBot['estimatedPdr']):
+                dotBot['estimatedPdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
+
+    def _dotBotControl(self):
+        self._computeEstimatedPdrsCb()
+        self._assignRelaysAndRelayPositionsCb()
+        self._updateMovements()
+
     #=== communication
 
     def _downstreamTimeoutCb(self):
-        
+
+        self._dotBotControl()
+
         # send downstream command
         self._sendDownstreamCommands()
-       
+
         # arm next downstream communication
         self.simEngine.schedule(
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
+
 
     def _sendDownstreamCommands(self):
         '''
@@ -149,6 +277,16 @@ class Orchestrator(Wireless.WirelessDevice):
             sender = self,
         )
 
+        # collect PDRs
+        self.dataCollector.collect(
+            {
+                'type':        'KPI',
+                'PDRs':        self.wireless.getCurrentPDRs(),
+                'numOfRelays': len([db for (_, db) in self.dotBotsView.items() if db['isRelay'] == True ]),
+                'time':        self.simEngine.currentTime()
+            },
+        )
+
     def computeCurrentPosition(self):
         return (self.x, self.y)
 
@@ -165,12 +303,15 @@ class Orchestrator(Wireless.WirelessDevice):
             frame['source'], (dotBot['x'], dotBot['y']), dotBot['targetCell'])
         )
 
-        # store estimated PDR
-        dotBot['estimatedPdr']         = frame['estimatedPdr']
+        # Do not compute new movements for pdr heartbeat notifications
+        if frame['notificationType'] == "heartbeat":
+            dotBot['pdrHistory']   += [self.simEngine.currentTime()]
+            return
 
         # filter out duplicates
         if frame['seqNumNotification'] == dotBot['seqNumNotification']:
             return
+
         dotBot['seqNumNotification']   = frame['seqNumNotification']
 
         # update DotBot's position
@@ -182,12 +323,21 @@ class Orchestrator(Wireless.WirelessDevice):
             duration = frame['movementDuration'],
         )
 
+        # update current DotBot speed stored
+        dotBot['speed']                = 0
+
         # update explored cells
         cellsExploredAndNextCell       = self._computeCellsExploredAndNextCell(dotBot['x'], dotBot['y'], newX, newY)
 
         # shorthands
         cellsExplored                  = cellsExploredAndNextCell['cellsExplored']
         nextCell                       = cellsExploredAndNextCell['nextCell']
+
+        # to determine starting cell later on when updating movement
+        if cellsExplored:
+            dotBot['lastCellExplored'] = cellsExplored[-1]
+        else:
+            dotBot['lastCellExplored'] = None
 
         self.cellsExplored            += cellsExploredAndNextCell['cellsExplored']
 
@@ -243,104 +393,8 @@ class Orchestrator(Wireless.WirelessDevice):
         dotBot['x']      = newX
         dotBot['y']      = newY
 
-        # if DotBot bumped
-        if frame['hasJustBumped']:
-            self.bumpedOnWayToTarget = True
-
-        # assign target cell (destination)
-
-        if dotBot['relayPosition']:
-
-            # DotBot has been assigned as relay, move to relay position
-            targetCell            = self._xy2cell(*dotBot['relayPosition'])
-
-            # if DotBots previous target has not been explored yet,
-            # release it from pool of assigned frontiers
-            if dotBot['targetCell'] in self.assignedFrontiers:
-                self.assignedFrontiers.remove(dotBot['targetCell'])
-
-        elif (
-           ((not dotBot['targetCell'])                     or
-            (dotBot['targetCell'] not in self.cellsFrontier))
-        ):
-            # target has successfully been explored
-            # assign a new target cell to DotBot
-            targetCell           = self._computeTargetCell(frame['source'])
-
-        else:
-            # target cell not explored yet, keep moving towards it
-            targetCell           = dotBot['targetCell']
-
-        # find path to target
-
-        if (self.bumpedOnWayToTarget or (not targetCell)):
-
-            if ((not targetCell) or (dotBot['relayPosition'] and (dotBot['relayPosition'] == (newX, newY)))):
-                # no target or DotBot is relay and is at it's relay position
-                path = None
-
-            elif dotBot['relayPosition'] and (self._xy2cell(newX, newY) == targetCell):
-                # relay has reached its assigned targetCell but not the exact coordinates in that cell yet.
-                # we need it to be in the exact (x, y) position assigned to assure PDR is the same there.
-                path = [dotBot['relayPosition']]
-
-            elif ((targetCell != dotBot['targetCell']) or (frame['hasJustBumped']) or (not dotBot['currentPath'])):
-                # new target, find path to it
-
-                if cellsExplored:
-                    startCell = cellsExplored[-1]
-                else:
-                    # startCell is where dotBot would be if it reversed by half a cell size.
-                    startCell = u.computeCurrentPosition(
-                                    currentX =  dotBot['x'],
-                                    currentY =  dotBot['y'],
-                                    heading  = (dotBot['heading'] + 180) % 360,
-                                    speed    =  dotBot['speed'],
-                                    duration = (self.MINFEATURESIZE/4),
-                                )
-
-                    # convert coordinates to cell
-                    startCell = self._xy2cell(*startCell)
-
-                path = self._computePath(startCell, targetCell)
-
-                log.debug('new path from {} to new target {} is {}'.format((newX, newY), targetCell, path))
-
-            else:
-                # DotBot hasn't bumped nor reached target, keep moving along same path given upon assigning target
-                # remove cells already traversed from path
-                path = dotBot['currentPath'][dotBot['currentPath'].index(self._xy2cell(newX, newY)) + 1:]
-
-                log.debug('same path from {} to same target {} is {}'.format((newX, newY), targetCell, path))
-        else:
-            # send DotBot straight to target
-            path                  = [targetCell]
-
-        # set new speed and heading and movementTimeout for DotBot
-        if path :
-            # if a DotBot is a relay and is moving to it's relay position, move it to the exact coordinates given.
-            # otherwise move it to random position in cell its heading to.
-            (heading, speed, movementTimeout) = self._computeHeadingSpeedMovementTimeout(
-                dotBotId                   = frame['source'],
-                path                       = path,
-                moveToRandomPositionInCell = False if (dotBot['relayPosition'] and (targetCell == self._xy2cell(newX, newY))) else True)
-        else:
-            (heading, speed, movementTimeout) = (0, 0, 0.5)
-
-        log.debug('heading & movementTimeout for {} are {} {}'.format(frame['source'], heading, movementTimeout))
-
-        dotBot['targetCell']      = targetCell
-        dotBot['currentPath']     = path
-        dotBot['heading']         = heading
-        dotBot['speed']           = speed
-        dotBot['movementTimeout'] = movementTimeout
-
-        # update sequence number of movement instruction
-        dotBot['seqNumCommand']  += 1
-
-        # update pdr history if using Recovery algorithm otherwise not needed
-        if self.relayAlgorithm == "Recovery":
-            dotBot['pdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
+        # store if DotBot bumped or not
+        dotBot['hasJustBumped'] = frame['hasJustBumped']
 
     #=== Map
 
@@ -527,7 +581,7 @@ class Orchestrator(Wireless.WirelessDevice):
         return returnVal
 
     def _computeCellNeighbours(self, cx, cy):
-        cellSize = self.MINFEATURESIZE/2
+        cellSize  = self.MINFEATURESIZE/2
 
         returnVal = [
             (cx+cellSize, cy),          (cx-cellSize, cy),
@@ -590,12 +644,12 @@ class Orchestrator(Wireless.WirelessDevice):
                 firstObstacleCorners  = set(self._computeCellCorners(cx, cy))
                 secondObstacleCorners = set(self._computeCellCorners(nx, ny))
 
-                commonCorner = firstObstacleCorners.intersection(secondObstacleCorners)
+                commonCorner          = firstObstacleCorners.intersection(secondObstacleCorners)
 
                 if not commonCorner:
                     continue
 
-                (ccx, ccy) = list(commonCorner)[0]
+                (ccx, ccy)     = list(commonCorner)[0]
 
                 cellSize       = self.MINFEATURESIZE / 2
                 connectedCells = [
@@ -631,23 +685,11 @@ class Orchestrator(Wireless.WirelessDevice):
             self.assignedFrontiers = []
 
         if self.cellsFrontier:
-            # find closest frontiers to initial position
-            cellsAndDistancesToStart     = [((cx, cy), u.distance((self.initX, self.initY), (cx, cy))) for (cx, cy) in
-                                        self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+            targetFrontiers = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
+                                              self.cellsFrontier if (cx, cy) not in self.assignedFrontiers]
+            targetFrontier  = sorted(targetFrontiers, key=lambda e: e[1])[0][0]
 
-            if cellsAndDistancesToStart:
-                cellsAndDistancesToStart = sorted(cellsAndDistancesToStart, key=lambda e: e[1])
-                closestFrontiersToStart  = [cell for (cell, distance) in cellsAndDistancesToStart if
-                                           distance == cellsAndDistancesToStart[0][1]]
-
-                # find closest frontier to robot
-                cellsAndDistancesToDotBot = [((cx, cy), u.distance((dotBot['x'], dotBot['y']), (cx, cy))) for (cx, cy) in
-                                             closestFrontiersToStart]
-                cellsAndDistancesToDotBot = sorted(cellsAndDistancesToDotBot, key=lambda e: e[1])
-                closestFrontiersToDotBot  = [cell for (cell, distance) in cellsAndDistancesToDotBot if
-                                            distance == cellsAndDistancesToDotBot[0][1]]
-                targetFrontier            = closestFrontiersToDotBot[0]
-                self.assignedFrontiers   += [targetFrontier]
+            self.assignedFrontiers += [targetFrontier]
 
         return targetFrontier
 
@@ -720,13 +762,17 @@ class Orchestrator(Wireless.WirelessDevice):
                 childCell      = u.AstarNode(childCell, currentCell)
                 gCost          = currentCell.gCost + 1
 
+                # skip cells that have not been explored
+                if childCell.cellPos not in self.cellsFrontier and childCell.cellPos not in self.cellsExplored:
+                    continue
+
                 # add extra cost to frontier cells (if they are diagonal and are not the target)
                 # to prioritise explored cells over frontiers and to avoid building paths through undiscovered obstacles
                 if childCell.cellPos in self.cellsFrontier and childCell.cellPos in diagonalCells and childCell.cellPos != targetCell:
-                    addedCost = 10
-                    log.debug(f'adding cost to {childCell.cellPos}')
+                    addedCost  = 10
+                    log.debug(f'adding cost to diagonal cell {childCell.cellPos}')
                 else:
-                    addedCost = 0
+                    addedCost  = 0
                 hCost          = u.distance(childCell.cellPos, targetCell) + addedCost
 
                 # skip cell if it is an obstacle cell
@@ -770,10 +816,11 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # shift coordinates from cell center to compute movement to random position in cell
         # otherwise compute movement to exact target coordinates given.
-        shift          = random.uniform(0.01, (self.MINFEATURESIZE/2 - 0.01)) if moveToRandomPositionInCell is True else 0
+        shift          = random.uniform(0.01, ((self.MINFEATURESIZE/2) - 0.01)) if moveToRandomPositionInCell is True else 0
 
         # find initial heading and distance to reach first cell in path (to use as reference)
-        initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
+        (cx, cy) = self._xy2cell(dotBot['x'], dotBot['y'])
+        initialHeading = (math.degrees(math.atan2(path[0][1] - cy, path[0][0] - cx)) + 90) % 360
 
         # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
         # movement is from cell centre to cell centre to avoid movements across cell borders and assure
@@ -808,24 +855,46 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # find movementTimeout to stop at target cell
         movementTimeout = distance / speed
-
-        log.debug('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
-            (dotBot['x'], dotBot['y']),
-            destination, heading,
-            movementTimeout)
-        )
+        if movementTimeout > 2:
+            log.debug('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
+                (dotBot['x'], dotBot['y']),
+                destination, heading,
+                movementTimeout)
+            )
 
         return (heading, speed, movementTimeout)
 
     # === Relays
 
+    def _computeEstimatedPdrsCb(self):
+
+        if (self.simEngine.currentTime() - self.lastSlidingWindowEndTime) < self.pdrSlidingWindowPeriod:
+            return
+
+        for ( _, dotBot) in self.dotBotsView.items():
+            numOfPackerRxed        = 0
+            slidingWindowStartTime = self.lastSlidingWindowEndTime
+            slidingWindowEndTime   = slidingWindowStartTime + self.pdrSlidingWindowPeriod
+            dotBot['pdrHistory']   = [time for time in dotBot['pdrHistory'] if time >= slidingWindowStartTime]
+
+            for time in dotBot['pdrHistory']:
+
+                if time >= slidingWindowEndTime:
+                    break
+
+                numOfPackerRxed += 1
+
+            # FIXME: *2 should be change to variable/relationship to
+            dotBot['estimatedPdr'] = (numOfPackerRxed/((self.pdrSlidingWindowPeriod)*2))
+            logging.debug('estimated pdr for dotbot {} is {} '.format(_,dotBot['estimatedPdr']))
+            assert  0 <= dotBot['estimatedPdr'] <= 1
+
+        self.lastSlidingWindowEndTime = slidingWindowEndTime
+
+
     def _assignRelaysAndRelayPositionsCb(self):
 
         log.debug('estimated PDRs {}'.format([db['estimatedPdr'] for (_, db) in self.dotBotsView.items()]))
-
-        # schedule next relay check to see if new relays are needed
-        # check every 10 seconds as estimated PDR from DotBots is sent every 10 seconds.
-        self.simEngine.schedule(self.simEngine.currentTime() + 10, self._assignRelaysAndRelayPositionsCb)
 
         if self.relayAlgorithm   == "Recovery":
             self._relayPlacementRecovery()
@@ -838,42 +907,53 @@ class Orchestrator(Wireless.WirelessDevice):
             pass
 
     def _relayPlacementRecovery(self):
+
         LOWER_PDR_THRESHOLD = self.lowerPdrThreshold
         UPPER_PDR_THRESHOLD = self.upperPdrThreshold
 
-        # first check if we need relays
-        for (dotBotId, dotBot) in self.dotBotsView.items():
+        # only check for need for relays if estimated PDRs have been updated
+        if ((self.simEngine.currentTime() - self.lastRelayCheckTime) < self.pdrSlidingWindowPeriod):
+            return
 
-            # DotBot with high PDR isn't a relay
-            if dotBot['estimatedPdr'] > LOWER_PDR_THRESHOLD:
-                continue
+        self.lastRelayCheckTime = self.simEngine.currentTime()
 
-            # skip dotBots that are already relays
-            if dotBot['isRelay']:
-                continue
+        # find DotBots that have an average PDR (over a defined time window) that is <= lower PDR threshold
+        dotBotsWithAvgPdrBelowThreshold = [
+            (db, db['estimatedPdr']) for (_, db) in self.dotBotsView.items() if
+            (db['estimatedPdrHistory'] and
+            ((db['estimatedPdr'] <= LOWER_PDR_THRESHOLD) and
+            (not db['isRelay'])))
+        ]
 
-            # assign DotBot as relay
-            dotBot['isRelay']   = True
+        if not dotBotsWithAvgPdrBelowThreshold:
+            return
 
-            # get stored PDR history (oldest -> latest)
-            pdrHistory          = dotBot['pdrHistory']
+        # out of all DotBots with PDRs falling below lower threshold, select one with highest PDR to become relay
+        # to assure communication between Orchestrator and relay DotBot until DotBot reaches it's relay position.
+        dotBotToBecomeRelay              = sorted(dotBotsWithAvgPdrBelowThreshold, key=lambda e: e[1])[-1][0]
 
-            # reverse PDR history (latest -> oldest)
-            pdrHistoryReversed  = pdrHistory[::-1]
+        # assign DotBot as relay
+        dotBotToBecomeRelay['isRelay']   = True
 
-            for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
+        # get stored PDR history (oldest -> latest)
+        estimatedPdrHistory              = dotBotToBecomeRelay['estimatedPdrHistory']
 
-                # look for last DotBot position with PDR above acceptable threshold
-                if pdrValue >= UPPER_PDR_THRESHOLD:
-                    if (self._xy2cell(dotBotX, dotBotY) in self.cellsExplored):
-                        # set relay position for DotBot to move to
-                        dotBot['relayPosition']     = (dotBotX, dotBotY)
-                        break
-            break
+        # reverse PDR history (latest -> oldest)
+        pdrHistoryReversed               = estimatedPdrHistory[::-1]
+
+        for (pdrValue, (dotBotX, dotBotY)) in pdrHistoryReversed:
+
+            # look for last DotBot position with PDR above upper threshold
+            if pdrValue >= UPPER_PDR_THRESHOLD:
+                if (self._xy2cell(dotBotX, dotBotY) in self.cellsExplored):
+                    # set relay position for DotBot to move to
+                    dotBotToBecomeRelay['relayPosition']     = (dotBotX, dotBotY)
+                    break
+
 
     def _relayPlacementSelfHealing(self):
 
-        RANGE_DISTANCE = 8  # up to 10m pister-hack stability minimum PDR is still above 0
+        RANGE_DISTANCE = 7  # up to 10m pister-hack stability minimum PDR is still above 0
 
         # check if orchestrator has lost connection to any DotBots
         for (dotBotId, dotBot) in self.dotBotsView.items():
@@ -923,12 +1003,16 @@ class Orchestrator(Wireless.WirelessDevice):
                 )
 
                 # chose random DotBot to be relay
-                dotBot               = random.choice(
-                    [
-                        db for (id, db) in self.dotBotsView.items() if
-                        (db != lostDotBot and ((db['x'], db['y']) and (not db['relayPosition']) and (db != lostDotBot)))
-                    ]
-                )
+                try:
+                    dotBot               = random.choice(
+                        [
+                            db for (id, db) in self.dotBotsView.items() if
+                            (db != lostDotBot and ((db['x'], db['y']) and (not db['relayPosition']) and (db != lostDotBot)))
+                        ]
+                    )
+                except IndexError:
+                    # no valid DotBots left to be placed as relays
+                    return
 
                 # set DotBot as relay
                 dotBot['isRelay'] = True

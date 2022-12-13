@@ -90,6 +90,7 @@ class Wireless(object):
         
         # local variables
         self.devices         = []
+        self.currentPDRs     = []
         self.lastPositions   = {}
         self.lastStabilities = {}
 
@@ -105,11 +106,14 @@ class Wireless(object):
         """
         Singleton destructor.
         """
-        self._instance = None
-        self._init     = False
+        self._instance   = None
+        self._init       = False
+        self.currentPDRs = []
 
     def transmit(self, sender, frame):
-        relays = [device for device in self.devices if device.isRelay]
+
+        self.currentPDRs = []
+        relays           = [device for device in self.devices if device.isRelay]
 
         for receiver in self.devices:
 
@@ -119,7 +123,8 @@ class Wireless(object):
             assert sender != receiver
 
             # get pdr between sender and receiver
-            pdr            = self._getPDR(sender, relays, receiver)
+            pdr               = self._getPDR(sender, relays, receiver)
+            self.currentPDRs += [pdr]
 
             # only log pdr when pdr is critically low
             if pdr < self.CRITICAL_PDR:
@@ -127,6 +132,9 @@ class Wireless(object):
 
             if random.uniform(0, 1) < pdr:
                 receiver.receive(frame)
+
+    def getCurrentPDRs(self):
+        return self.currentPDRs
 
     # ======================== private =========================================
 

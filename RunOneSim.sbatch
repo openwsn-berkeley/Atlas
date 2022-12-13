@@ -6,13 +6,12 @@
 #SBATCH --partition=gpu                           # partition of nodes used (cpu_devel, cpu_homogen,gpu)
 #SBATCH --gres=gpu:rtx6000:1                      # GPU nodes are only available in gpu partition
 #SBATCH --mem=10G                                 # Total memory allocated
-#SBATCH --time=1:00:00                            # total run time limit (HH:MM:SS)
+#SBATCH --time=2:00:00                            # total run time limit (HH:MM:SS)
 
 # If you use conda
 source /home/$USER/.bashrc
 conda activate py38
+pip install yappi
 echo "Running RunOneSim.sbatch"
 python ../RunOneSim.py --simSetting "$1"
-
-
 

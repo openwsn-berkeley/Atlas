@@ -37,6 +37,7 @@ class DotBot(Wireless.WirelessDevice):
         # timestamps of when movement starts/stops
         self.tsMovementStart      = None
         self.tsMovementStop       = None
+        self.movementDuration     = None
         # sequence numbers (to filter out duplicate commands and notifications)
         self.seqNumCommand        = None
         self.seqNumNotification   = 0
@@ -48,14 +49,13 @@ class DotBot(Wireless.WirelessDevice):
         self.isRelay              = False
         # if DotBot has bumped
         self.hasJustBumped        = False  # needed as variable as retransmits are called by simEngine
-        # estimated PDR is number of packets received over number of packets expected
-        self.estimatedPdr         = 1      # packets received per second
         # how frequent estimated PDR is sent to orchestrator
-        self.estimatedPdrPeriod   = 5     # in seconds
-        self.numPacketReceived    = 0
+        self.heartbeatPeriod      = 0.5    # in seconds
+        self.heartbeat            = False
+        self.notificationType     = None
 
         # schedule next estimated PDR call back
-        self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
 
     # ======================== public ==========================================
 
@@ -68,9 +68,6 @@ class DotBot(Wireless.WirelessDevice):
         # drop any frame that is NOT a FRAMETYPE_COMMAND
         if frame['frameType']  != self.FRAMETYPE_COMMAND:
             return
-
-        # new command packet received
-        self.numPacketReceived += 1
 
         # filter out duplicates
         if frame['movements'][self.dotBotId]['seqNumCommand'] == self.seqNumCommand:
@@ -196,35 +193,42 @@ class DotBot(Wireless.WirelessDevice):
         # stop movement and send notification
         self._stopAndTransmit()
 
-    def _estimatedPdrCb(self):
+    def _heartbeatCb(self):
         '''
         send estimated PDR to orchestrator to update on PDR status
         '''
 
-        self.simEngine.schedule(self.simEngine.currentTime() + self.estimatedPdrPeriod, self._estimatedPdrCb)
+        self.simEngine.schedule(self.simEngine.currentTime() + self.heartbeatPeriod, self._heartbeatCb)
 
-        # number of packets received to number of packets expected, to give an estimate of PDR
-        self.estimatedPdr         = self.numPacketReceived / self.estimatedPdrPeriod
-
-        # reset packet count
-        self.numPacketReceived = 0
+        # set notification type
+        self.notificationType = "heartbeat"
 
         # send notification with updates estimated PDR
         self._transmit()
 
+        # clear notification type stored
+        self.notificationType = None
+
     def _stopAndTransmit(self):
 
         # update notification ID
-        self.seqNumNotification += 1
+        self.seqNumNotification   += 1
 
         # stop moving
-        self.currentSpeed        = 0
+        self.currentSpeed          = 0
 
         # remember how long DotBot moved for
         self.movementDuration      = self.simEngine.currentTime() - self.tsMovementStart
 
+        # set notification type
+        self.notificationType      = "stopped"
+
         # transmit
         self._transmit()
+
+        # clear notification type stored
+        self.notificationType      = None
+
 
     def _transmit(self):
         '''
@@ -234,11 +238,11 @@ class DotBot(Wireless.WirelessDevice):
         # format frame to transmit
         frameToTx = {
             'frameType':          self.FRAMETYPE_NOTIFICATION,
+            'notificationType':   self.notificationType,
             'source':             self.dotBotId,
             'movementDuration':   self.movementDuration,
             'seqNumNotification': self.seqNumNotification,
             'hasJustBumped':      self.hasJustBumped,
-            'estimatedPdr':       self.estimatedPdr,
         }
 
         # hand over to wireless
@@ -247,12 +251,13 @@ class DotBot(Wireless.WirelessDevice):
             sender    = self,
         )
 
-        # schedule retransmission
-        self.simEngine.schedule(
-            ts        = self.simEngine.currentTime() + self.RETRY_TIMEOUT_S,
-            cb        = self._transmit,
-            tag       = "retransmission_DotBot_{}".format(self.dotBotId),
-        )
+        if not self.heartbeat:
+            # schedule retransmission
+            self.simEngine.schedule(
+                ts        = self.simEngine.currentTime() + self.RETRY_TIMEOUT_S,
+                cb        = self._transmit,
+                tag       = "retransmission_DotBot_{}".format(self.dotBotId),
+            )
 
     #=== motor control
     
