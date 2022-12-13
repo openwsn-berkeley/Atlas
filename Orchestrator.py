@@ -819,7 +819,8 @@ class Orchestrator(Wireless.WirelessDevice):
         shift          = random.uniform(0.01, ((self.MINFEATURESIZE/2) - 0.01)) if moveToRandomPositionInCell is True else 0
 
         # find initial heading and distance to reach first cell in path (to use as reference)
-        initialHeading = (math.degrees(math.atan2(path[0][1] - dotBot['y'], path[0][0] - dotBot['x'])) + 90) % 360
+        (cx, cy) = self._xy2cell(dotBot['x'], dotBot['y'])
+        initialHeading = (math.degrees(math.atan2(path[0][1] - cy, path[0][0] - cx)) + 90) % 360
 
         # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
         # movement is from cell centre to cell centre to avoid movements across cell borders and assure
@@ -854,12 +855,12 @@ class Orchestrator(Wireless.WirelessDevice):
 
         # find movementTimeout to stop at target cell
         movementTimeout = distance / speed
-
-        log.debug('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
-            (dotBot['x'], dotBot['y']),
-            destination, heading,
-            movementTimeout)
-        )
+        if movementTimeout > 2:
+            log.debug('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
+                (dotBot['x'], dotBot['y']),
+                destination, heading,
+                movementTimeout)
+            )
 
         return (heading, speed, movementTimeout)
 
