@@ -90,6 +90,7 @@ class Wireless(object):
         
         # local variables
         self.devices         = []
+        self.currentPDRs     = []
         self.lastPositions   = {}
         self.lastStabilities = {}
 
@@ -124,6 +125,7 @@ class Wireless(object):
             # get pdr between sender and receiver
             pdr               = self._getPDR(sender, relays, receiver)
             self.currentPDRs += [pdr]
+
             # only log pdr when pdr is critically low
             if pdr < self.CRITICAL_PDR:
                 log.debug(f'PDR between {(sender.x, sender.y)} and {(receiver.x, receiver.y)} is {pdr}')
