@@ -2,6 +2,7 @@
 import random
 import math
 # third-party
+import requests
 # local
 import SimEngine
 import Wireless
@@ -103,6 +104,36 @@ class Orchestrator(Wireless.WirelessDevice):
     #======================== public ==========================================
 
     #=== admin
+
+    def moveRawPhysicalDotbot(self, left_y=100, right_y=10):
+        "Control physical DotBot"
+
+        # Set the base URL for the API
+        base_url = "http://localhost:8000"
+
+        # Set the endpoint for the API
+        endpoint = "/controller/dotbots/2f6bc46cd94828f8/move_raw"
+
+        # Set the data for the new user
+        data = {
+            "left_x": 0,
+            "left_y": left_y,
+            "right_x": 0,
+            "right_y": right_y
+        }
+
+        try:
+            # Make the POST request to the endpoint
+            response = requests.put(base_url + endpoint, json=data)
+
+            # Check the status code of the response
+            if response.status_code == 200:
+                # Print the response data
+                print(response.json())
+            else:
+                print("An error occurred:", response.status_code)
+        except:
+            pass
     
     def startExploration(self):
         '''
@@ -248,6 +279,8 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
+        for (_, dotBotId) in self.dotBotsView:
+            self.moveRawPhysicalDotbot()
 
 
     def _sendDownstreamCommands(self):

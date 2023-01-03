@@ -63,6 +63,7 @@ class DotBot(Wireless.WirelessDevice):
         '''
         Received a frame from the orchestrator
         '''
+
         assert frame['frameType'] in self.FRAMETYPE_ALL
 
         # drop any frame that is NOT a FRAMETYPE_COMMAND
