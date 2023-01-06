@@ -104,6 +104,9 @@ class Orchestrator(Wireless.WirelessDevice):
     #======================== public ==========================================
 
     #=== admin
+    def getActiveDotbotAddress(self):
+        activeDotBotAddresses = {}
+        return activeDotBotAddresses
 
     def moveRawPhysicalDotbot(self, left_y=100, right_y=10):
         "Control physical DotBot"
@@ -112,7 +115,7 @@ class Orchestrator(Wireless.WirelessDevice):
         base_url = "http://localhost:8000"
 
         # Set the endpoint for the API
-        endpoint = "/controller/dotbots/2f6bc46cd94828f8/move_raw"
+        endpoint = "/controller/dotbots/0f434ab73c908fc0/move_raw"
 
         # Set the data for the new user
         data = {
@@ -279,7 +282,7 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-        for (_, dotBotId) in self.dotBotsView:
+        for (_, dotBotId) in self.dotBotsView.items():
             self.moveRawPhysicalDotbot()
 
 
