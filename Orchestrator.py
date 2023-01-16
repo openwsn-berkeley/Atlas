@@ -95,6 +95,24 @@ class Orchestrator(Wireless.WirelessDevice):
             ) for i in range(1, self.numRobots+1)
         ])
 
+        self.realDotBotsView              = dict([
+            (
+                i,
+                {
+                    # physical address
+                    "address":             self.getActiveDotbots()[i-1]['address'],
+                    # current position of DotBot
+                    'x':                   self.getActiveDotbots()[i-1]['lh2_position']['x'],
+                    'y':                   self.getActiveDotbots()[i-1]['lh2_position']['y'],
+                    # current heading and speed
+                    'leftWheelSpeed':      0,
+                    'rightWheelSpeed':     0,
+                }
+            ) for i in range(1, self.numRobots+1)
+        ])
+
+        print(self.realDotBotsView)
+
         # initial movements
         for dotBotId in range(1, self.numRobots + 1):
             self.dotBotsView[dotBotId]['heading']         = 360*random.random()
@@ -104,18 +122,26 @@ class Orchestrator(Wireless.WirelessDevice):
     #======================== public ==========================================
 
     #=== admin
-    def getActiveDotbotAddress(self):
-        activeDotBotAddresses = {}
-        return activeDotBotAddresses
+    def getActiveDotbots(self):
 
-    def moveRawPhysicalDotbot(self, left_y=100, right_y=10):
+        # Set the base URL for the API
+        base_url = "http://localhost:8000"
+
+        # Set the endpoint for the API
+        endpoint = "/controller/dotbots"
+
+        response = requests.get(base_url + endpoint)
+
+        return response.json()
+
+    def moveRawRealDotbot(self, address, left_y, right_y):
         "Control physical DotBot"
 
         # Set the base URL for the API
         base_url = "http://localhost:8000"
 
         # Set the endpoint for the API
-        endpoint = "/controller/dotbots/0f434ab73c908fc0/move_raw"
+        endpoint = '/controller/dotbots/{address}/move_raw'.format(address = address)
 
         # Set the data for the new user
         data = {
@@ -259,6 +285,13 @@ class Orchestrator(Wireless.WirelessDevice):
             # update sequence number of movement instruction
             dotBot['seqNumCommand'] += 1
 
+            dir        = (128 * targetCell[0] / 200) * -1
+            angle      = (128 * targetCell[1] / 200) * -1
+
+            self.realDotBotsView[dotBotId]['leftWheelSpeed']  = (dir - angle)
+            self.realDotBotsView[dotBotId]['rightWheelSpeed'] = (dir + angle)
+
+
             # update pdr history if using Recovery algorithm otherwise not needed
             if ((self.relayAlgorithm == "Recovery") and dotBot['estimatedPdr']):
                 dotBot['estimatedPdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
@@ -267,6 +300,9 @@ class Orchestrator(Wireless.WirelessDevice):
         self._computeEstimatedPdrsCb()
         self._assignRelaysAndRelayPositionsCb()
         self._updateMovements()
+        for (realDotBotId, realDotBot) in self.realDotBotsView.items():
+            self.moveRawRealDotbot(realDotBot['address'], realDotBot['leftWheelSpeed'], realDotBot['rightWheelSpeed'])
+            self.moveRawRealDotbot(realDotBot['address'], 100, 100)
 
     #=== communication
 
@@ -282,8 +318,6 @@ class Orchestrator(Wireless.WirelessDevice):
             self.simEngine.currentTime()+self.COMM_DOWNSTREAM_PERIOD_S,
             self._downstreamTimeoutCb,
         )
-        for (_, dotBotId) in self.dotBotsView.items():
-            self.moveRawPhysicalDotbot()
 
 
     def _sendDownstreamCommands(self):
@@ -358,6 +392,10 @@ class Orchestrator(Wireless.WirelessDevice):
             speed    = dotBot['speed'],
             duration = frame['movementDuration'],
         )
+
+        # update Physical DotBots position
+        self.realDotBotsView[frame['source']]['x'] = self.getActiveDotbots()[frame['source']-1]['lh2_position']['x']
+        self.realDotBotsView[frame['source']]['y'] = self.getActiveDotbots()[frame['source'] - 1]['lh2_position']['y']
 
         # update current DotBot speed stored
         dotBot['speed']                = 0
