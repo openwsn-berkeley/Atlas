@@ -45,20 +45,24 @@ def runOneSim(simSetting, atlasUI=None):
     # setting the seed
     random.seed(simSetting['seed'])
 
+    # fixme: automate filling of initialPositions
+    initialPositions = [(45,11), (45, 10)]
+
     # create the simulation environment
     floorplan      = Floorplan.Floorplan(alias=simSetting['floorplan'])
-    (initX, initY) = floorplan.getInitialPosition()
+    (orchX, orchY) = floorplan.getOrchPosition()
     simEngine      = SimEngine.SimEngine()
     orchestrator   = Orchestrator.Orchestrator(
         simSetting['numRobots'],
-        initX,
-        initY,
+        orchX,
+        orchY,
+        initialPositions,
         simSetting['relayAlgorithm'],
         simSetting['lowerPdrThreshold'],
         simSetting['upperPdrThreshold'],
     )
     dotBots        = [
-        DotBot.DotBot(dotBotId, initX, initY, floorplan)
+        DotBot.DotBot(dotBotId, initialPositions[dotBotId-1][0], initialPositions[dotBotId-1][1], floorplan)
         for dotBotId in range(1,simSetting['numRobots']+1)
     ]
     wireless       = Wireless.Wireless()

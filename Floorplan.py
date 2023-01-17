@@ -34,7 +34,7 @@ class Floorplan(object):
             'obstacles': self.obstacles,
         }
 
-    def getInitialPosition(self):
+    def getOrchPosition(self, diffInitialPositions=False):
         return (self.initX, self.initY)
 
     #======================== static =========================================

@@ -25,12 +25,12 @@ class Orchestrator(Wireless.WirelessDevice):
     COMM_DOWNSTREAM_PERIOD_S    = 0.5
     MINFEATURESIZE              = 1
     
-    def __init__(self, numRobots, initX, initY, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8):
+    def __init__(self, numRobots, orchX, orchY, initialPositions, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8):
 
         # store params
         self.numRobots                = numRobots
-        self.initX                    = initX
-        self.initY                    = initY
+        self.initialPositions         = initialPositions
+
         # algorithm used to place relays
         self.relayAlgorithm           = relayAlgorithm
         self.lowerPdrThreshold        = lowerPdrThreshold
@@ -43,8 +43,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self.cellsExplored            = []
         self.cellsObstacle            = []
         self.cellsFrontier            = []
-        self.x                        = self.initX
-        self.y                        = self.initY
+        self.x                        = orchX
+        self.y                        = orchY
         self.dotBotId                 = 0
         self.pdrSlidingWindowPeriod   = 7
         self.lastSlidingWindowEndTime = 0
@@ -62,8 +62,8 @@ class Orchestrator(Wireless.WirelessDevice):
                 i,
                 {
                     # current position of DotBot
-                    'x':                   initX,
-                    'y':                   initY,
+                    'x':                   self.initialPositions[i-1][0],
+                    'y':                   self.initialPositions[i-1][1],
                     # current heading and speed
                     'heading':             0,
                     'speed':               0,
@@ -93,6 +93,7 @@ class Orchestrator(Wireless.WirelessDevice):
                 }
             ) for i in range(1, self.numRobots+1)
         ])
+
 
         # initial movements
         for dotBotId in range(1, self.numRobots + 1):
