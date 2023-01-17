@@ -1,5 +1,5 @@
 [atlas]
-    numRobots                = 2
+    numRobots                = 1
     floorplan                = "tiny"                    # filename in floorplans
     navigationAlgorithm      = "Atlas"                   # options: Atlas, Ballistic
     relayAlgorithm           = "NoRelays"                # options: Recovery, SelfHealing, NoRelays

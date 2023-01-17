@@ -285,13 +285,6 @@ class Orchestrator(Wireless.WirelessDevice):
             # update sequence number of movement instruction
             dotBot['seqNumCommand'] += 1
 
-            dir        = (128 * targetCell[0] / 200) * -1
-            angle      = (128 * targetCell[1] / 200) * -1
-
-            self.realDotBotsView[dotBotId]['leftWheelSpeed']  = (dir - angle)
-            self.realDotBotsView[dotBotId]['rightWheelSpeed'] = (dir + angle)
-
-
             # update pdr history if using Recovery algorithm otherwise not needed
             if ((self.relayAlgorithm == "Recovery") and dotBot['estimatedPdr']):
                 dotBot['estimatedPdrHistory'] += [(dotBot['estimatedPdr'], (dotBot['x'], dotBot['y']))]
@@ -302,7 +295,8 @@ class Orchestrator(Wireless.WirelessDevice):
         self._updateMovements()
         for (realDotBotId, realDotBot) in self.realDotBotsView.items():
             self.moveRawRealDotbot(realDotBot['address'], realDotBot['leftWheelSpeed'], realDotBot['rightWheelSpeed'])
-            self.moveRawRealDotbot(realDotBot['address'], 100, 100)
+            #self.moveRawRealDotbot(realDotBot['address'],(realDotBot['leftWheelSpeed'] + realDotBot['rightWheelSpeed'])/2, (realDotBot['leftWheelSpeed'] + realDotBot['rightWheelSpeed'])/2)
+            self.moveRawRealDotbot(realDotBot['address'], 0, 0)
 
     #=== communication
 
@@ -922,6 +916,64 @@ class Orchestrator(Wireless.WirelessDevice):
         # heading to get to destination cell center (to assure exploration and avoid border to border movement)
         heading = (
             math.degrees(math.atan2(destination[1] - dotBot['y'], destination[0] - dotBot['x'])) + 90
+                  ) % 360
+
+        # set speed
+        speed   = 1
+
+        # find movementTimeout to stop at target cell
+        movementTimeout = distance / speed
+        if movementTimeout > 2:
+            log.debug('[computeHeadingSpeedMovementTimeout] moving from  {} to {}, heading {}, time {}'.format(
+                (dotBot['x'], dotBot['y']),
+                destination, heading,
+                movementTimeout)
+            )
+
+        (realHeading, realSpeed, realMovementTimeout)     = self._computeHeadingSpeedMovementTimeoutRealDotBot(dotBotId, path, shift)
+        angularVelocity                                   = (realHeading * math.pi)/180
+        self.realDotBotsView[dotBotId]['leftWheelSpeed']  = (1 - angularVelocity)+100
+        self.realDotBotsView[dotBotId]['rightWheelSpeed'] = (1 + angularVelocity)+100
+
+        print(self.realDotBotsView)
+        print(heading, realHeading, angularVelocity)
+        return (heading, speed, movementTimeout)
+
+    def _computeHeadingSpeedMovementTimeoutRealDotBot(self, dotBotId, path, shift):
+
+        dotBot         = self.dotBotsView[dotBotId]
+        realDotBot     = self.realDotBotsView[dotBotId]
+
+        # find initial heading and distance to reach first cell in path (to use as reference)
+        (cx, cy) = self._xy2cell(realDotBot['x'], realDotBot['y'])
+        initialHeading = (math.degrees(math.atan2(path[0][1] - cy, path[0][0] - cx)) + 90) % 360
+
+        # destination center coordinates of target (if no obstacles on path) or of last cell before changing heading
+        # movement is from cell centre to cell centre to avoid movements across cell borders and assure
+        # passing though cells to explore them
+        destination    = (path[0][0] + shift, path[0][1] + shift)
+
+        # compute distance DotBot will move along same trajectory until heading changes from initial one
+        for idx, (cx, cy) in enumerate(path):
+
+            if (cx, cy) == path[-1]:
+                # target is the only cell in the path
+                break
+
+            # find heading to center of next cell
+            headingToNext = (math.degrees(math.atan2(path[idx + 1][1] - cy, path[idx + 1][0] - cx)) + 90) % 360
+
+            if headingToNext != initialHeading:
+                # heading changes
+                destination   = (cx + shift, cy + shift)
+                break
+
+        # find distance to destination cell from DotBot position
+        distance = u.distance((realDotBot['x'], realDotBot['y']), destination)
+
+        # heading to get to destination cell center (to assure exploration and avoid border to border movement)
+        heading = (
+            math.degrees(math.atan2(destination[1] - realDotBot['y'], destination[0] - realDotBot['x'])) + 90
                   ) % 360
 
         # set speed
