@@ -34,10 +34,11 @@ def test_computePathWithoutObstacles(expectedInOut):
     testing finding path between two cells using A* algorithm
     '''
 
-    orchestrator  = Orchestrator.Orchestrator(
-        numRobots = 1,
-        initX     = 1,
-        initY     = 1
+    orchestrator         = Orchestrator.Orchestrator(
+        numRobots        = 1,
+        orchX            = 1,
+        orchY            = 1,
+        initialPositions = [(1,1)]
     )
     orchestrator.cellsExplored = [(0.50, 0.50), (1.00, 1.00), (1.50, 1.50), (2.00, 2.00), (0.50, 0.00),
                                   (1.00, 0.50), (1.50, 1.00), (2.00, 1.50)]
@@ -48,10 +49,11 @@ def test_computePathWithObstacles():
     testing finding path between two cells using A* algorithm
     '''
 
-    orchestrator  = Orchestrator.Orchestrator(
-        numRobots = 1,
-        initX     = 1,
-        initY     = 1
+    orchestrator         = Orchestrator.Orchestrator(
+        numRobots        = 1,
+        orchX            = 1,
+        orchY            = 1,
+        initialPositions = [(1,1)]
     )
 
     orchestrator.cellsExplored = [(0.00, 0.00), (0.50, 0.00), (1.00, 0.00), (1.50, 0.00), (2.00, 0.00),

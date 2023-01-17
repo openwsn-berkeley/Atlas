@@ -372,7 +372,7 @@ def test_computeCellsExplored(expectedInOut):
     and next cell beyond that
     '''
 
-    orchestrator = Orchestrator.Orchestrator(1, 1, 1)
+    orchestrator = Orchestrator.Orchestrator(1, 1, 1, [(1,1)])
 
     output       = orchestrator._computeCellsExploredAndNextCell(*expectedInOut['in'].values())
     assert sorted(output['cellsExplored']) == sorted(expectedInOut['out']['cellsExplored'])

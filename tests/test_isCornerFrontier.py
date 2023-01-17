@@ -91,10 +91,11 @@ def test_isCornerFrontier(expectedInOut):
     ###############
     '''
 
-    orchestrator  = Orchestrator.Orchestrator(
-        numRobots = 1,
-        initX     = 1,
-        initY     = 1
+    orchestrator         = Orchestrator.Orchestrator(
+        numRobots        = 1,
+        orchX            = 1,
+        orchY            = 1,
+        initialPositions = [(1,1)]
     )
     orchestrator.MINFEATURESIZE = 1
     orchestrator.cellsExplored = [(1,1), (1.5,1),(2,1),(5.5,1),(4,3),(1,4.5)]
@@ -114,11 +115,13 @@ def test_multipleDiagonalObstacles():
     o o o
     '''
 
-    orchestrator  = Orchestrator.Orchestrator(
-        numRobots = 1,
-        initX     = 1,
-        initY     = 1
+    orchestrator         = Orchestrator.Orchestrator(
+        numRobots        = 1,
+        orchX            = 1,
+        orchY            = 1,
+        initialPositions = [(1,1)]
     )
+    
     orchestrator.MINFEATURESIZE = 1
     orchestrator.cellsExplored = [(0, 0), (0, 1.5)]
     orchestrator.cellsObstacle = [(0.5, 0), (1, 0), (0, 0.5), (1, 0.5), (0, 1), (1, 1), (0.5, 1.5), (1, 1.5)]

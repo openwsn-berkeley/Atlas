@@ -46,7 +46,7 @@ def runOneSim(simSetting, atlasUI=None):
     random.seed(simSetting['seed'])
 
     # fixme: automate filling of initialPositions
-    initialPositions = [(45,11), (45, 10)]
+    initialPositions = [(45,11)]*simSetting['numRobots']
 
     # create the simulation environment
     floorplan      = Floorplan.Floorplan(alias=simSetting['floorplan'])
