@@ -12,11 +12,8 @@ class Connector():
                     # physical address
                     "address":             self.getActiveRealDotbots()[i-1]['address'],
                     # current position of DotBot
-                    'x':                   self.getActiveRealDotbots()[i-1]['lh2_position']['x'],
-                    'y':                   self.getActiveRealDotbots()[i-1]['lh2_position']['y'],
-                    # current heading and speed
-                    'leftWheelSpeed':      0,
-                    'rightWheelSpeed':     0,
+                    'x':                   self.getActiveRealDotbots()[i-1]['position_history'][-1]['x'],
+                    'y':                   self.getActiveRealDotbots()[i-1]['position_history'][-1]['y'],
                     # next bump coordinates
                     'nextBumpX':           None,
                     'nextBumpY':           None,
@@ -38,8 +35,6 @@ class Connector():
 
         response = requests.get(base_url + endpoint)
 
-        print(response.json())
-
         return response.json()
 
     def getRealCoordinates(self, virtualX, virtualY):
@@ -51,7 +46,7 @@ class Connector():
     def getRealInitialPositions(self):
         dotBots = self.getActiveRealDotbots()
         print(dotBots)
-        return [self.getVirtualCoordinates(dotBot['lh2_position']['x'], dotBot['lh2_position']['y']) for dotBot in dotBots]
+        return [self.getVirtualCoordinates(dotBot['position_history'][-1]['x'], dotBot['position_history'][-1]['y']) for dotBot in dotBots]
 
 
     def moveRawRealDotbot(self, address, x, y):
@@ -94,20 +89,21 @@ class Connector():
 
     def setNextRealDotBotMovement(self, dotBotId):
 
-        if not self.realDotBotsView[dotBotId]['targetX']:
-            return
-
         # get real DotBot position
         (currentX, currentY)   = (self.realDotBotsView[dotBotId]['x'], self.realDotBotsView[dotBotId]['y'] )
 
-        # compute distance between current position and target position
-        dotBotToTargetDistance = u.distance((currentX, currentY),(self.realDotBotsView[dotBotId]['targetX'], self.realDotBotsView[dotBotId]['targetY']))
+        (nextX, nextY)         =  (self.realDotBotsView[dotBotId]['targetX'], self.realDotBotsView[dotBotId]['targetY'])
+        if self.realDotBotsView[dotBotId]['nextBumpX']:
 
-        # compute distance between current position and next bump position
-        dotBotToBumpDistance   = u.distance((currentX, currentY),(self.realDotBotsView[dotBotId]['nextBumpX'], self.realDotBotsView[dotBotId]['nextBumpY']))
+            # compute distance between current position and target position
+            dotBotToTargetDistance = u.distance((currentX, currentY), (
+            self.realDotBotsView[dotBotId]['targetX'], self.realDotBotsView[dotBotId]['targetY']))
 
-        # compute which point is closer
-        (nextX, nextY)         = min([dotBotToTargetDistance, dotBotToBumpDistance])
+            # compute distance between current position and next bump position
+            dotBotToBumpDistance   = u.distance((currentX, currentY),(self.realDotBotsView[dotBotId]['nextBumpX'], self.realDotBotsView[dotBotId]['nextBumpY']))
+
+            if dotBotToBumpDistance < dotBotToTargetDistance:
+                (nextX, nextY)    = (self.realDotBotsView[dotBotId]['nextBumpX'], self.realDotBotsView[dotBotId]['nextBumpY'])
 
         # scale positions
         (scaledX, scaledY)     = self.getRealCoordinates(nextX, nextY)
