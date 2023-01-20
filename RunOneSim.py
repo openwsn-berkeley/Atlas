@@ -72,7 +72,7 @@ def runOneSim(simSetting, atlasUI=None):
         simSetting['connector'],
     )
     dotBots        = [
-        DotBot.DotBot(dotBotId, initialPositions[dotBotId-1][0], initialPositions[dotBotId-1][1], floorplan)
+        DotBot.DotBot(dotBotId, initialPositions[dotBotId-1][0], initialPositions[dotBotId-1][1], floorplan, simSetting['connector'])
         for dotBotId in range(1,simSetting['numRobots']+1)
     ]
     wireless       = Wireless.Wireless()

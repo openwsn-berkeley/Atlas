@@ -64,8 +64,12 @@ def expectedInOut(request):
 # ============================ tests =================================
 
 def test_computeHeadingSpeedTimeout(expectedInOut):
-
-    orchestrator                     = Orchestrator.Orchestrator(1, 1, 1)
+    orchestrator                     = Orchestrator.Orchestrator(
+        numRobots                    = 1,
+        orchX                        = 1,
+        orchY                        = 1,
+        initialPositions             = [(1, 1)]
+    )
     inputs                           = expectedInOut['in']
     orchestrator.dotBotsView[1]['x'] = inputs['x']
     orchestrator.dotBotsView[1]['y'] = inputs['y']

@@ -16,6 +16,12 @@ class Connector():
                     # current heading and speed
                     'leftWheelSpeed':      0,
                     'rightWheelSpeed':     0,
+                    # next bump coordinates
+                    'nextBumpX':           None,
+                    'nextBumpY':           None,
+                    # taget position coordinates
+                    'targetX':             None,
+                    'targetY':             None,
                 }
             ) for i in range(1, len(self.getActiveRealDotbots())+1)
         ])
@@ -72,3 +78,12 @@ class Connector():
                 print("An error occurred:", response.status_code)
         except:
             pass
+
+
+    def updateNextBumpCoordinates(self, dotBotId, nextBumpX, nextBumpY):
+        self.realDotBotsView[dotBotId]['nextBumpX'] = nextBumpX
+        self.realDotBotsView[dotBotId]['nextBumpY'] = nextBumpY
+
+    def updateTargetCoordinates(self, dotBotId, targetX, targetY):
+        self.realDotBotsView[dotBotId]['targetX']   = targetX
+        self.realDotBotsView[dotBotId]['targetY']   = targetY

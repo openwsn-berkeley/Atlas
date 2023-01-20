@@ -19,7 +19,7 @@ class DotBot(Wireless.WirelessDevice):
 
     RETRY_TIMEOUT_S               = 1
 
-    def __init__(self, dotBotId, x, y, floorplan):
+    def __init__(self, dotBotId, x, y, floorplan, connector='off'):
 
         # store params
         self.dotBotId             = dotBotId
@@ -31,6 +31,7 @@ class DotBot(Wireless.WirelessDevice):
         # singletons
         self.simEngine            = SimEngine.SimEngine()
         self.wireless             = Wireless.Wireless()
+        self.connector            = Connector.Connector() if connector == 'on' else None
         # current heading and speed
         self.currentHeading       = 0
         self.currentSpeed         = 0
@@ -115,6 +116,9 @@ class DotBot(Wireless.WirelessDevice):
         self.nextBumpY             = bumpY
         self.nextBumpTime          = self.simEngine.currentTime() + timetobump
         log.debug(f'Dotbot {self.dotBotId} next bump at ({bumpX}, {bumpY}) at {self.nextBumpTime}')
+
+        if self.connector == 'on':
+            self.connector.updateNextBumpCoordinates(self.dotBotId, self.nextBumpX , self.nextBumpY)
 
         if stopTime < self.nextBumpTime:
             # schedule movement timeout
