@@ -5,6 +5,7 @@ import math
 import SimEngine
 import Wireless
 import Utils as u
+import Connector
 
 # setup logging
 import logging.config
