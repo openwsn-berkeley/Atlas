@@ -219,6 +219,9 @@ class Orchestrator(Wireless.WirelessDevice):
 
             log.debug('heading & movementTimeout for {} are {} {}'.format(dotBotId, heading, movementTimeout))
 
+            if self.connector == 'on':
+                self.connector.updateTargetCoordinates(dotBotId, targetCell)
+
             dotBot['targetCell']      = targetCell
             dotBot['currentPath']     = path
             dotBot['heading']         = heading
@@ -236,12 +239,9 @@ class Orchestrator(Wireless.WirelessDevice):
         self._computeEstimatedPdrsCb()
         self._assignRelaysAndRelayPositionsCb()
         self._updateMovements()
-        if self.connector:
-            address         = self.connector.getActiveRealDotbots()[0]['address']
-            (xvir, yvir)    = self.connector.getRealCoordinates(1.5,1.5)
-            print(address, xvir, yvir)
-
-            self.connector.moveRawRealDotbot(address, xvir, yvir )
+        for (dotBotId, dotBot) in self.dotBotsView.items():
+            if self.connector:
+                self.connector.setNextRealDotBotMovement(dotBotId)
 
     #=== communication
 

@@ -1,4 +1,5 @@
 import requests
+import Utils as u
 
 class Connector():
 
@@ -26,6 +27,8 @@ class Connector():
             ) for i in range(1, len(self.getActiveRealDotbots())+1)
         ])
 
+        print(self.realDotBotsView)
+
     def getActiveRealDotbots(self):
         # Set the base URL for the API
         base_url = "http://localhost:8000"
@@ -47,6 +50,7 @@ class Connector():
 
     def getRealInitialPositions(self):
         dotBots = self.getActiveRealDotbots()
+        print(dotBots)
         return [self.getVirtualCoordinates(dotBot['lh2_position']['x'], dotBot['lh2_position']['y']) for dotBot in dotBots]
 
 
@@ -84,6 +88,29 @@ class Connector():
         self.realDotBotsView[dotBotId]['nextBumpX'] = nextBumpX
         self.realDotBotsView[dotBotId]['nextBumpY'] = nextBumpY
 
-    def updateTargetCoordinates(self, dotBotId, targetX, targetY):
-        self.realDotBotsView[dotBotId]['targetX']   = targetX
-        self.realDotBotsView[dotBotId]['targetY']   = targetY
+    def updateTargetCoordinates(self, dotBotId, targetCell):
+        self.realDotBotsView[dotBotId]['targetX']   = targetCell[0]
+        self.realDotBotsView[dotBotId]['targetY']   = targetCell[1]
+
+    def setNextRealDotBotMovement(self, dotBotId):
+
+        if not self.realDotBotsView[dotBotId]['targetX']:
+            return
+
+        # get real DotBot position
+        (currentX, currentY)   = (self.realDotBotsView[dotBotId]['x'], self.realDotBotsView[dotBotId]['y'] )
+
+        # compute distance between current position and target position
+        dotBotToTargetDistance = u.distance((currentX, currentY),(self.realDotBotsView[dotBotId]['targetX'], self.realDotBotsView[dotBotId]['targetY']))
+
+        # compute distance between current position and next bump position
+        dotBotToBumpDistance   = u.distance((currentX, currentY),(self.realDotBotsView[dotBotId]['nextBumpX'], self.realDotBotsView[dotBotId]['nextBumpY']))
+
+        # compute which point is closer
+        (nextX, nextY)         = min([dotBotToTargetDistance, dotBotToBumpDistance])
+
+        # scale positions
+        (scaledX, scaledY)     = self.getRealCoordinates(nextX, nextY)
+
+        # send API
+        self.moveRawRealDotbot(self.realDotBotsView[dotBotId]['address'], scaledX, scaledY)
