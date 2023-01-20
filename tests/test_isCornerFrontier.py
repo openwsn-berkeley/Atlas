@@ -121,7 +121,7 @@ def test_multipleDiagonalObstacles():
         orchY            = 1,
         initialPositions = [(1,1)]
     )
-    
+
     orchestrator.MINFEATURESIZE = 1
     orchestrator.cellsExplored = [(0, 0), (0, 1.5)]
     orchestrator.cellsObstacle = [(0.5, 0), (1, 0), (0, 0.5), (1, 0.5), (0, 1), (1, 1), (0.5, 1.5), (1, 1.5)]

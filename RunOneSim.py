@@ -11,6 +11,7 @@ import Wireless
 import SimEngine
 import DataCollector
 import Utils as u
+import Connector
 # setup logging
 import logging.config
 log = logging.getLogger('RunOneSim')
@@ -45,12 +46,20 @@ def runOneSim(simSetting, atlasUI=None):
     # setting the seed
     random.seed(simSetting['seed'])
 
-    # fixme: automate filling of initialPositions
-    initialPositions = [(45,11)]*simSetting['numRobots']
+    print(simSetting['connector'])
 
     # create the simulation environment
     floorplan      = Floorplan.Floorplan(alias=simSetting['floorplan'])
     (orchX, orchY) = floorplan.getOrchPosition()
+
+    # set initialPositions
+    if simSetting['connector'] == 'on':
+        connector = Connector.Connector()
+        initialPositions = connector.getRealInitialPositions()
+        print(initialPositions)
+    else:
+        initialPositions = [(orchX, orchY)]*simSetting['numRobots']
+
     simEngine      = SimEngine.SimEngine()
     orchestrator   = Orchestrator.Orchestrator(
         simSetting['numRobots'],
@@ -60,6 +69,7 @@ def runOneSim(simSetting, atlasUI=None):
         simSetting['relayAlgorithm'],
         simSetting['lowerPdrThreshold'],
         simSetting['upperPdrThreshold'],
+        simSetting['connector'],
     )
     dotBots        = [
         DotBot.DotBot(dotBotId, initialPositions[dotBotId-1][0], initialPositions[dotBotId-1][1], floorplan)

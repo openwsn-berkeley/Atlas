@@ -7,6 +7,7 @@ import SimEngine
 import Wireless
 import Utils as u
 import DataCollector
+import Connector
 
 # setup logging
 import logging.config
@@ -25,7 +26,7 @@ class Orchestrator(Wireless.WirelessDevice):
     COMM_DOWNSTREAM_PERIOD_S    = 0.5
     MINFEATURESIZE              = 1
     
-    def __init__(self, numRobots, orchX, orchY, initialPositions, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8):
+    def __init__(self, numRobots, orchX, orchY, initialPositions, relayAlgorithm="Recovery", lowerPdrThreshold=0.7, upperPdrThreshold=0.8, connector='off'):
 
         # store params
         self.numRobots                = numRobots
@@ -40,6 +41,7 @@ class Orchestrator(Wireless.WirelessDevice):
         self.simEngine                = SimEngine.SimEngine()
         self.wireless                 = Wireless.Wireless()
         self.dataCollector            = DataCollector.DataCollector()
+        self.connector                = Connector.Connector() if connector == 'on' else None
         self.cellsExplored            = []
         self.cellsObstacle            = []
         self.cellsFrontier            = []
@@ -234,6 +236,12 @@ class Orchestrator(Wireless.WirelessDevice):
         self._computeEstimatedPdrsCb()
         self._assignRelaysAndRelayPositionsCb()
         self._updateMovements()
+        if self.connector:
+            address         = self.connector.getActiveRealDotbots()[0]['address']
+            (xvir, yvir)    = self.connector.getRealCoordinates(1.5,1.5)
+            print(address, xvir, yvir)
+
+            self.connector.moveRawRealDotbot(address, xvir, yvir )
 
     #=== communication
 
