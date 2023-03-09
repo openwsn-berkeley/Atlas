@@ -55,8 +55,8 @@ def runOneSim(simSetting, atlasUI=None):
     # set initialPositions
     if simSetting['connector'] == 'on':
         connector = Connector.Connector()
-        initialPositions = connector.getRealInitialPositions()
-        print(initialPositions)
+        initialPositions = connector.getRealPositions()
+        print('initial positions in virtual values', initialPositions)
     else:
         initialPositions = [(orchX, orchY)]*simSetting['numRobots']
 

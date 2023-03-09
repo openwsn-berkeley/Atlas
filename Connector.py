@@ -5,6 +5,8 @@ class Connector():
 
     def __init__(self):
 
+        self.scale                        = 3
+
         self.realDotBotsView              = dict([
             (
                 i,
@@ -24,8 +26,6 @@ class Connector():
             ) for i in range(1, len(self.getActiveRealDotbots())+1)
         ])
 
-        print(self.realDotBotsView)
-
     def getActiveRealDotbots(self):
         # Set the base URL for the API
         base_url = "http://localhost:8000"
@@ -37,16 +37,16 @@ class Connector():
 
         return response.json()
 
-    def getRealCoordinates(self, virtualX, virtualY):
-        return  ((0.2*virtualX)/0.5, (0.2*virtualY)/0.5)
+    def computeRealCoordinates(self, virtualX, virtualY):
+        return  ((virtualX)/self.scale, (virtualY)/self.scale)
 
-    def getVirtualCoordinates(self, realX, realY):
-        return  ((0.5*realX)/0.2, (0.5*realY)/0.2)
+    def computeVirtualCoordinates(self, realX, realY):
+        print('real coordinates',realX, realY)
+        return  (realX*self.scale, realY*self.scale)
 
-    def getRealInitialPositions(self):
+    def getRealPositions(self):
         dotBots = self.getActiveRealDotbots()
-        print(dotBots)
-        return [self.getVirtualCoordinates(dotBot['position_history'][-1]['x'], dotBot['position_history'][-1]['y']) for dotBot in dotBots]
+        return [self.computeVirtualCoordinates(dotBot['position_history'][-1]['x'], dotBot['position_history'][-1]['y']) for dotBot in dotBots]
 
 
     def moveRawRealDotbot(self, address, x, y):
@@ -105,8 +105,23 @@ class Connector():
             if dotBotToBumpDistance < dotBotToTargetDistance:
                 (nextX, nextY)    = (self.realDotBotsView[dotBotId]['nextBumpX'], self.realDotBotsView[dotBotId]['nextBumpY'])
 
-        # scale positions
-        (scaledX, scaledY)     = self.getRealCoordinates(nextX, nextY)
 
-        # send API
-        self.moveRawRealDotbot(self.realDotBotsView[dotBotId]['address'], scaledX, scaledY)
+        # scale positions
+        (scaledNextX, scaledNextY)     = self.computeRealCoordinates(nextX, nextY)
+
+        print('target',nextX, nextY, 'scaled to reality is:', scaledNextX, scaledNextY)
+
+        #send API
+        while True:
+            self.moveRawRealDotbot(self.realDotBotsView[dotBotId]['address'], scaledNextX, scaledNextY)
+            (realX, realY) = self.getRealPositions()[dotBotId-1]
+            print(realX, realY, nextX, nextY)
+            print('here')
+            if  (nextX-0.2 <= realX<= nextX+0.2) and (nextY-0.2 <= realY <= nextY+0.2):
+                print('DotBot arrived')
+                break
+
+
+
+
+

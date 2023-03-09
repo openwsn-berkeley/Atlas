@@ -102,8 +102,10 @@ class Orchestrator(Wireless.WirelessDevice):
             self.dotBotsView[dotBotId]['heading']         = 360*random.random()
             self.dotBotsView[dotBotId]['speed']           = 1
             self.dotBotsView[dotBotId]['movementTimeout'] = 0.5
-            (nextX, nextY) = u.computeCurrentPosition(self.initialPositions[0][0], self.dotBotsView[dotBotId]['heading'],self.initialPositions[0][1], 1, 0.5)
+
             if self.connector:
+                (nextX, nextY) = u.computeCurrentPosition(self.initialPositions[0][0], self.initialPositions[0][1],
+                                                          self.dotBotsView[dotBotId]['heading'] , 1, 0.5)
                 self.connector.updateTargetCoordinates(dotBotId, (nextX, nextY))
     #======================== public ==========================================
 
@@ -221,7 +223,7 @@ class Orchestrator(Wireless.WirelessDevice):
 
             log.debug('heading & movementTimeout for {} are {} {}'.format(dotBotId, heading, movementTimeout))
 
-            if self.connector == 'on':
+            if self.connector:
                 self.connector.updateTargetCoordinates(dotBotId, targetCell)
 
             dotBot['targetCell']      = targetCell

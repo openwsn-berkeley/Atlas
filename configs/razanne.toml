@@ -1,11 +1,11 @@
 [atlas]
-    numRobots                = 1
-    floorplan                = "tiny"            # filename in floorplans
+    numRobots                = 10
+    floorplan                = "office_small"            # filename in floorplans
     navigationAlgorithm      = "Atlas"                   # options: Atlas, Ballistic
-    relayAlgorithm           = "NoRelays"                # options: Recovery, SelfHealing, NoRelays
+    relayAlgorithm           = "Recovery"                # options: Recovery, SelfHealing, NoRelays
     lowerPdrThreshold        = 0.8                       # (for Recovery) trigger relay placement if below
     upperPdrThreshold        = 0.9                       # (for Recovery) to determine relay position
     propagationModel         = "PisterHack"              # options: LOS, Friis, Radius, PisterHack
     numberOfRuns             = 1                         # number of simulations runs with same simSetting
-    connector                = 'on'                     # on if connector to real DotBots in watnted, else off
+    connector                = 'off'                     # on if connector to real DotBots in watnted, else off
 

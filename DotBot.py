@@ -118,7 +118,8 @@ class DotBot(Wireless.WirelessDevice):
         self.nextBumpTime          = self.simEngine.currentTime() + timetobump
         log.debug(f'Dotbot {self.dotBotId} next bump at ({bumpX}, {bumpY}) at {self.nextBumpTime}')
 
-        if self.connector == 'on':
+        if self.connector:
+            print(self.dotBotId, self.nextBumpX , self.nextBumpY)
             self.connector.updateNextBumpCoordinates(self.dotBotId, self.nextBumpX , self.nextBumpY)
 
         if stopTime < self.nextBumpTime:
