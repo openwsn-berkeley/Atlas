@@ -7,7 +7,7 @@
     upperPdrThreshold        = 0.9                       # (for Recovery) to determine relay position
     propagationModel         = "PisterHack"              # options: LOS, Friis, Radius, PisterHack
     numberOfRuns             = 1                         # number of simulations runs with same simSetting
-
+    connector                = 'off'                     # on if connector to real DotBots in watnted, else off
 
 
 
