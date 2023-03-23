@@ -26,6 +26,8 @@ class Connector():
             ) for i in range(1, len(self.getActiveRealDotbots())+1)
         ])
 
+        self.maxLength = 7
+
     def getActiveRealDotbots(self):
         # Set the base URL for the API
         base_url = "http://localhost:8000"
@@ -38,11 +40,31 @@ class Connector():
         return response.json()
 
     def computeRealCoordinates(self, virtualX, virtualY):
-        return  ((virtualX)/self.scale, (virtualY)/self.scale)
+
+        # compute realX
+        if virtualX <= 1:
+            realX = 0
+        elif virtualX >= (self.maxLength-1):
+            realX = 1
+        else:
+            realX = virtualX/(self.maxLength-1)
+
+        # compute realY
+        if virtualY <= 1:
+            realY = 0
+        elif virtualY >= (self.maxLength-1):
+            realY = 1
+        else:
+            realY = virtualY/(self.maxLength-1)
+
+        print('virtual coordinates', virtualX, virtualY, '-> real coordinates', realX, realY)
+        return (realX, realY)
 
     def computeVirtualCoordinates(self, realX, realY):
-        print('real coordinates',realX, realY)
-        return  (realX*self.scale, realY*self.scale)
+
+        (virtualX, virtualY) =   (realX*(self.maxLength-1), realY*(self.maxLength-1))
+        print('real coordinates', realX, realY, '-> virtual coordinates', virtualX, virtualY)
+        return (virtualX, virtualY)
 
     def getRealPositions(self):
         dotBots = self.getActiveRealDotbots()
@@ -59,11 +81,16 @@ class Connector():
         endpoint = '/controller/dotbots/{address}/0/waypoints'.format(address = address)
 
         # Set the data for the new user
-        data = [{
-            "x": x,
-            "y": y,
-            "z": 0,
-        }]
+        data = {
+          "threshold": 40,
+          "waypoints": [
+            {
+              "x": x,
+              "y": y,
+              "z": 0
+            }
+          ]
+        }
 
         try:
             # Make the POST request to the endpoint
@@ -75,6 +102,7 @@ class Connector():
                 print(response.json())
             else:
                 print("An error occurred:", response.status_code)
+                print('***')
         except:
             pass
 
@@ -116,8 +144,9 @@ class Connector():
             self.moveRawRealDotbot(self.realDotBotsView[dotBotId]['address'], scaledNextX, scaledNextY)
             (realX, realY) = self.getRealPositions()[dotBotId-1]
             print(realX, realY, nextX, nextY)
-            print('here')
-            if  (nextX-0.2 <= realX<= nextX+0.2) and (nextY-0.2 <= realY <= nextY+0.2):
+            break
+
+            if  (nextX-0.1 <= realX<= nextX+0.1) and (nextY-0.1 <= realY <= nextY+0.1):
                 print('DotBot arrived')
                 break
 
